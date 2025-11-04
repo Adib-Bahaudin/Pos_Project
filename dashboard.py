@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
 from database import DatabaseManager
 from manajemen_produk import ManajemenProduk
 from error import ErrorWindow
+from welcome import WelcomeWindow
 
 class Dashboard(QWidget):
     """Dashboard utama aplikasi dengan sidebar navigasi"""
@@ -36,6 +37,10 @@ class Dashboard(QWidget):
 
         # Stack widget untuk konten utama
         self.main_stack = QStackedWidget()
+
+        if not hasattr(self, 'welcome'):
+            self.welcome = WelcomeWindow()
+            self.main_stack.addWidget(self.welcome)
 
         if not hasattr(self, 'error_handling'):
             self.error_handling = ErrorWindow()
