@@ -21,7 +21,7 @@ class TitleBar(QWidget):
         self.setStyleSheet("""
             QWidget {
                 background-color: #000000;
-                border-bottom: 2px solid #454545;
+                border-bottom: 2px solid #ffffff;
             }
         """)
 
