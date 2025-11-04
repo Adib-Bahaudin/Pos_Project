@@ -6,7 +6,8 @@ from PySide6.QtWidgets import (
 )
 
 from database import DatabaseManager
-
+from manajemen_produk import ManajemenProduk
+from error import ErrorWindow
 
 class Dashboard(QWidget):
     """Dashboard utama aplikasi dengan sidebar navigasi"""
@@ -35,6 +36,10 @@ class Dashboard(QWidget):
 
         # Stack widget untuk konten utama
         self.main_stack = QStackedWidget()
+
+        if not hasattr(self, 'error_handling'):
+            self.error_handling = ErrorWindow()
+            self.main_stack.addWidget(self.error_handling)
 
         # Tambahkan widget ke layout
         main_layout.addWidget(self.sidebar_left)
@@ -324,11 +329,13 @@ class Dashboard(QWidget):
         self.undowidth()
         if self.btn_manajemen_left.isChecked():
             self.btn_manajemen_right.setMinimumWidth(260)
-            from manajemen_produk import ManajemenProduk
             if not hasattr(self, 'manajemen_widget'):
                 self.manajemen_widget = ManajemenProduk()
                 self.main_stack.addWidget(self.manajemen_widget)
             self.main_stack.setCurrentWidget(self.manajemen_widget)
+        elif self.btn_transaksi_left.isChecked():
+            self.btn_transaksi_right.setMinimumWidth(260)
+            self.main_stack.setCurrentWidget(self.error_handling)
 
     def undowidth(self):
         self.btn_transaksi_right.setMinimumWidth(10)
