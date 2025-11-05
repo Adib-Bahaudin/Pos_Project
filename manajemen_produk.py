@@ -1,7 +1,7 @@
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QFont, Qt, QIcon
 from PySide6.QtWidgets import (QWidget, QHBoxLayout, QFrame, QVBoxLayout, QLabel,
-                               QPushButton, QLineEdit, QTableWidget, QComboBox)
+                               QPushButton, QLineEdit, QTableWidget, QComboBox, QStackedWidget)
 
 
 class ManajemenProduk(QWidget):
@@ -37,7 +37,7 @@ class ManajemenProduk(QWidget):
 
         tombol_tambah = self.buat_tombol("Tambah Produk", "#00ff00")
         tombol_hapus = self.buat_tombol("Hapus Produk", "#ff0000")
-        tombol_return = self.buat_tombol("Retun Produk", "#00aaff")
+        tombol_return = self.buat_tombol("Return Produk", "#00aaff")
 
         tombol_layout.addWidget(tombol_tambah)
         tombol_layout.addWidget(tombol_hapus)
@@ -81,8 +81,8 @@ class ManajemenProduk(QWidget):
                 padding-left: 10px;
                 font-size: 16px;
             }
-            QLineEdit:placedholder {
-            color: #d3d3d3;
+            QLineEdit:placeholder {
+                color: #d3d3d3;
             }
         """)
         cari.setPlaceholderText("Cari Produk...")
@@ -134,12 +134,12 @@ class ManajemenProduk(QWidget):
         label_selector.setStyleSheet("color: #ffffff;")
         content_layout_selector.addWidget(label_selector)
 
-        box_selector = QComboBox()
-        box_selector.addItems(["Satuan", "Paket"])
-        box_selector.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
-        box_selector.setFixedSize(100, 35)
-        box_selector.setCursor(Qt.CursorShape.WhatsThisCursor)
-        box_selector.setStyleSheet("""
+        self.box_selector = QComboBox()
+        self.box_selector.addItems(["Satuan", "Paket"])
+        self.box_selector.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
+        self.box_selector.setFixedSize(100, 35)
+        self.box_selector.setCursor(Qt.CursorShape.WhatsThisCursor)
+        self.box_selector.setStyleSheet("""
             QComboBox{
                 background-color: transparent;
                 border: none;
@@ -153,7 +153,7 @@ class ManajemenProduk(QWidget):
                 color: #ffffff;
             }
         """)
-        content_layout_selector.addWidget(box_selector)
+        content_layout_selector.addWidget(self.box_selector)
 
         content_layout_selector.addStretch()
 
@@ -163,7 +163,16 @@ class ManajemenProduk(QWidget):
         root_selector.setLayout(selector_layout)
         data_layout.addWidget(root_selector)
 
-        data_layout.addWidget(ProdukSatuan())
+        self.stack = QStackedWidget()
+
+        data_layout.addWidget(self.stack)
+
+        # Tambahkan kedua widget ke stack
+        self.stack.addWidget(ProdukSatuan())
+        self.stack.addWidget(ProdukPaket())
+
+        # Hubungkan signal combobox dengan fungsi ganti_stack
+        self.box_selector.currentIndexChanged.connect(self.ganti_stack)
 
         root_tombol_bawah_widget = QWidget()
         root_tombol_bawah_widget.setContentsMargins(0,0,0,0)
@@ -242,6 +251,10 @@ class ManajemenProduk(QWidget):
             border: none
         """)
 
+    def ganti_stack(self, index):
+        """Fungsi untuk mengganti stack berdasarkan pilihan combobox"""
+        self.stack.setCurrentIndex(index)
+
     @staticmethod
     def buat_tombol(teks, warna):
         tombol = QPushButton(teks)
@@ -263,6 +276,7 @@ class ManajemenProduk(QWidget):
             }}
         """)
         return tombol
+
 
 class ProdukSatuan(QWidget):
     def __init__(self):
@@ -320,6 +334,64 @@ class ProdukSatuan(QWidget):
         root_layout.addStretch()
 
         self.setLayout(root_layout)
+
+
+class ProdukPaket(QWidget):
+    def __init__(self):
+        super().__init__()
+
+        root_layout = QHBoxLayout()
+        root_layout.setContentsMargins(0, 0, 0, 5)
+
+        root_layout.addStretch()
+
+        table_widget = QWidget()
+        table_layout = QVBoxLayout()
+        table_layout.setContentsMargins(0, 0, 0, 0)
+
+        table = QTableWidget()
+        table.setRowCount(5)
+        table.setColumnCount(4)
+        table.setFixedWidth(800)
+        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+
+        header = ["P_ID", "NAMA BARANG", "HARGA JUAL", "KETERANGAN"]
+        table.setHorizontalHeaderLabels(header)
+
+        table.setColumnWidth(0, 60)
+        table.setColumnWidth(1, 300)
+        table.setColumnWidth(2, 80)
+        table.setColumnWidth(3, 150)
+
+        header_set = table.horizontalHeader()
+        header_set.setSectionResizeMode(header_set.ResizeMode.Interactive)
+
+        table.verticalHeader().setVisible(False)
+
+        table.setAlternatingRowColors(True)
+        table.setStyleSheet("""
+            QTableWidget{
+                background-color: #ffffff;
+                gridline-color: #d0d0d0;
+            }
+            QHeaderView::section {
+                background-color: #f0f0f0;
+                padding: 5px;
+                border: 1px solid #d0d0d0;
+                font-weight: bold;
+            }
+        """)
+
+        table_layout.addWidget(table)
+
+        table_widget.setLayout(table_layout)
+
+        root_layout.addWidget(table_widget)
+
+        root_layout.addStretch()
+
+        self.setLayout(root_layout)
+
 
 class ButtonNav(QPushButton):
     def __init__(self, normal, hover):

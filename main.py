@@ -203,7 +203,7 @@ class MainWindow(QMainWindow):
             role = self.datalogin['role']
             coki.session_login(userid,username,role)
         else:
-            print("Belum Login")
+            print("main.py : Belum Login")
 
 if __name__ == "__main__":
     app = QApplication([])
