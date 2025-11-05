@@ -1,0 +1,7 @@
+# === Project Dependencies ===
+# POS Kasir App - Python 100%
+
+pip==25.3
+PySide6>=6.10.0
+tzdata==2025.2
+PyJWT
