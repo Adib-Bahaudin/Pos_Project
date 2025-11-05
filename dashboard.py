@@ -10,17 +10,30 @@ from manajemen_produk import ManajemenProduk
 from error import ErrorWindow
 from welcome import WelcomeWindow
 
+
 class Dashboard(QWidget):
     """Dashboard utama aplikasi dengan sidebar navigasi"""
 
+    # Konstanta
+    SIDEBAR_LEFT_WIDTH = 50
+    SIDEBAR_RIGHT_WIDTH = 250
+    BUTTON_SIZE = 30
+    ICON_SIZE = 22
+    MENU_BUTTON_SIZE = 30
+    BUTTON_EXPANDED_WIDTH = 260
+    BUTTON_COLLAPSED_WIDTH = 10
+
     def __init__(self, data):
         super().__init__()
+
         self.user_role = data.get('role')
-        self._init_ui()
+        self.manajemen_widget = None
+
+        self._setup_ui()
         self._setup_connections()
         self._apply_role_permissions()
 
-    def _init_ui(self):
+    def _setup_ui(self):
         """Inisialisasi user interface"""
         # Layout utama
         root_layout = QVBoxLayout()
@@ -38,13 +51,11 @@ class Dashboard(QWidget):
         # Stack widget untuk konten utama
         self.main_stack = QStackedWidget()
 
-        if not hasattr(self, 'welcome'):
-            self.welcome = WelcomeWindow()
-            self.main_stack.addWidget(self.welcome)
+        self.welcome_widget = WelcomeWindow()
+        self.main_stack.addWidget(self.welcome_widget)
 
-        if not hasattr(self, 'error_handling'):
-            self.error_handling = ErrorWindow()
-            self.main_stack.addWidget(self.error_handling)
+        self.error_widget = ErrorWindow()
+        self.main_stack.addWidget(self.error_widget)
 
         # Tambahkan widget ke layout
         main_layout.addWidget(self.sidebar_left)
@@ -57,14 +68,12 @@ class Dashboard(QWidget):
         root_layout.addWidget(root_frame)
 
         self.setLayout(root_layout)
-        self.setStyleSheet("""
-            background-color: #000000;
-        """)
+        self.setStyleSheet("background-color: #000000;")
 
-    def _create_left_sidebar(self):
+    def _create_left_sidebar(self) -> QWidget:
         """Membuat sidebar kiri dengan icon saja"""
         widget = QWidget()
-        widget.setFixedWidth(50)
+        widget.setFixedWidth(self.SIDEBAR_LEFT_WIDTH)
         widget.setStyleSheet(self._get_sidebar_style())
 
         layout = QVBoxLayout(widget)
@@ -72,64 +81,62 @@ class Dashboard(QWidget):
         layout.setSpacing(15)
 
         # Tombol menu
-        self.btn_menu_left = self._create_icon_button(
-            "data/menu putih.png", size=30
-        )
-        layout.addWidget(self.btn_menu_left)
+        self.button_menu_left = self._create_menu_button("data/menu putih.png")
+        layout.addWidget(self.button_menu_left)
         layout.addSpacing(25)
 
         # Tombol navigasi
-        self.btn_transaksi_left = self._create_nav_button(
+        self.button_transaksi_left = self._create_nav_button(
             "data/Transaksi putih.png",
             "data/Transaksi hijau.png"
         )
-        layout.addWidget(self.btn_transaksi_left)
+        layout.addWidget(self.button_transaksi_left)
 
-        self.btn_sejarah_left = self._create_nav_button(
+        self.button_sejarah_left = self._create_nav_button(
             "data/sejarah putih.png",
             "data/sejarah hijau.png"
         )
-        layout.addWidget(self.btn_sejarah_left)
+        layout.addWidget(self.button_sejarah_left)
 
-        self.btn_manajemen_left = self._create_nav_button(
+        self.button_manajemen_left = self._create_nav_button(
             "data/manajemen putih.png",
             "data/manajemen hijau.png"
         )
-        layout.addWidget(self.btn_manajemen_left)
+        layout.addWidget(self.button_manajemen_left)
 
-        self.btn_pelanggan_left = self._create_nav_button(
+        self.button_pelanggan_left = self._create_nav_button(
             "data/pelanggan putih.png",
             "data/pelanggan hijau.png"
         )
-        layout.addWidget(self.btn_pelanggan_left)
+        layout.addWidget(self.button_pelanggan_left)
 
-        self.btn_kas_left = self._create_nav_button(
+        self.button_kas_left = self._create_nav_button(
             "data/kas putih.png",
             "data/kas hijau.png"
         )
-        layout.addWidget(self.btn_kas_left)
+        layout.addWidget(self.button_kas_left)
 
-        self.btn_buku_left = self._create_nav_button(
+        self.button_buku_left = self._create_nav_button(
             "data/buku putih.png",
             "data/buku hijau.png"
         )
-        layout.addWidget(self.btn_buku_left)
+        layout.addWidget(self.button_buku_left)
 
         layout.addStretch()
 
         # Tombol logout
-        self.btn_logout_left = self._create_nav_button(
+        self.button_logout_left = self._create_nav_button(
             "data/logout putih.png",
             "data/logout hijau.png"
         )
-        layout.addWidget(self.btn_logout_left)
+        layout.addWidget(self.button_logout_left)
 
         return widget
 
-    def _create_right_sidebar(self):
+    def _create_right_sidebar(self) -> QWidget:
         """Membuat sidebar kanan dengan icon dan text"""
         widget = QWidget()
-        widget.setFixedWidth(250)
+        widget.setFixedWidth(self.SIDEBAR_RIGHT_WIDTH)
         widget.setStyleSheet(self._get_sidebar_style(with_text=True))
 
         layout = QVBoxLayout(widget)
@@ -137,107 +144,99 @@ class Dashboard(QWidget):
         layout.setSpacing(15)
 
         # Tombol menu
-        self.btn_menu_right = self._create_icon_button(
-            "data/menu putih.png", size=30
-        )
-        layout.addWidget(self.btn_menu_right)
+        self.button_menu_right = self._create_menu_button("data/menu putih.png")
+        layout.addWidget(self.button_menu_right)
         layout.addSpacing(25)
 
         # Tombol navigasi dengan text
-        self.btn_transaksi_right = self._create_nav_button_with_text(
+        self.button_transaksi_right = self._create_nav_button_with_text(
             "data/Transaksi putih.png",
             "data/Transaksi hijau.png",
             " Input Transaksi"
         )
-        layout.addWidget(self.btn_transaksi_right)
+        layout.addWidget(self.button_transaksi_right)
 
-        self.btn_sejarah_right = self._create_nav_button_with_text(
+        self.button_sejarah_right = self._create_nav_button_with_text(
             "data/sejarah putih.png",
             "data/sejarah hijau.png",
             " Sejarah Transaksi"
         )
-        layout.addWidget(self.btn_sejarah_right)
+        layout.addWidget(self.button_sejarah_right)
 
-        self.btn_manajemen_right = self._create_nav_button_with_text(
+        self.button_manajemen_right = self._create_nav_button_with_text(
             "data/manajemen putih.png",
             "data/manajemen hijau.png",
             " Manajemen Produk"
         )
-        layout.addWidget(self.btn_manajemen_right)
+        layout.addWidget(self.button_manajemen_right)
 
-        self.btn_pelanggan_right = self._create_nav_button_with_text(
+        self.button_pelanggan_right = self._create_nav_button_with_text(
             "data/pelanggan putih.png",
             "data/pelanggan hijau.png",
             " Data Customer"
         )
-        layout.addWidget(self.btn_pelanggan_right)
+        layout.addWidget(self.button_pelanggan_right)
 
-        self.btn_kas_right = self._create_nav_button_with_text(
+        self.button_kas_right = self._create_nav_button_with_text(
             "data/kas putih.png",
             "data/kas hijau.png",
             " Laporan Kas Flow"
         )
-        layout.addWidget(self.btn_kas_right)
+        layout.addWidget(self.button_kas_right)
 
-        self.btn_buku_right = self._create_nav_button_with_text(
+        self.button_buku_right = self._create_nav_button_with_text(
             "data/buku putih.png",
             "data/buku hijau.png",
             " Tutup Buku"
         )
-        layout.addWidget(self.btn_buku_right)
+        layout.addWidget(self.button_buku_right)
 
         layout.addStretch()
 
         # Tombol logout
-        self.btn_logout_right = self._create_nav_button_with_text(
+        self.button_logout_right = self._create_nav_button_with_text(
             "data/logout putih.png",
             "data/logout hijau.png",
             " Log Out"
         )
-        layout.addWidget(self.btn_logout_right)
+        layout.addWidget(self.button_logout_right)
 
         return widget
 
-    @staticmethod
-    def _create_icon_button(icon_path, size=30):
-        """Helper untuk membuat tombol dengan icon saja"""
+    def _create_menu_button(self, icon_path: str) -> QPushButton:
+        """Membuat tombol menu"""
         button = QPushButton()
-        button.setFixedSize(size, size)
+        button.setFixedSize(self.MENU_BUTTON_SIZE, self.MENU_BUTTON_SIZE)
 
         icon = QIcon()
         icon.addFile(icon_path, QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         button.setIcon(icon)
-        button.setIconSize(QSize(22, 22))
+        button.setIconSize(QSize(self.ICON_SIZE, self.ICON_SIZE))
 
         return button
 
-    @staticmethod
-    def create_icon(button, icon_normal, icon_checked):
-        icon = QIcon()
-        icon.addFile(icon_normal, QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        icon.addFile(icon_checked, QSize(), QIcon.Mode.Normal, QIcon.State.On)
-        button.setIcon(icon)
-        button.setIconSize(QSize(22, 22))
-
-        return button
-
-    def _create_nav_button(self, icon_normal, icon_checked):
-        """Helper untuk membuat tombol navigasi dengan 2 state icon"""
+    def _create_nav_button(self, icon_normal: str, icon_checked: str) -> QPushButton:
+        """Membuat tombol navigasi dengan 2 state icon"""
         button = QPushButton()
-        button.setFixedSize(30, 30)
+        button.setFixedSize(self.BUTTON_SIZE, self.BUTTON_SIZE)
 
-        button = self.create_icon(button, icon_normal, icon_checked)
+        self._set_button_icon(button, icon_normal, icon_checked)
         button.setCheckable(True)
         button.setAutoExclusive(True)
 
         return button
 
-    def _create_nav_button_with_text(self, icon_normal, icon_checked, text):
-        """Helper untuk membuat tombol navigasi dengan icon dan text"""
+    def _create_nav_button_with_text(
+            self,
+            icon_normal: str,
+            icon_checked: str,
+            text: str
+    ) -> QPushButton:
+        """Membuat tombol navigasi dengan icon dan text"""
         button = QPushButton()
-        button.setFixedHeight(30)
+        button.setFixedHeight(self.BUTTON_SIZE)
 
-        button = self.create_icon(button, icon_normal, icon_checked)
+        self._set_button_icon(button, icon_normal, icon_checked)
         button.setText(text)
         button.setFont(QFont("Arial", 15))
         button.setCheckable(True)
@@ -245,8 +244,21 @@ class Dashboard(QWidget):
 
         return button
 
+    def _set_button_icon(
+            self,
+            button: QPushButton,
+            icon_normal: str,
+            icon_checked: str
+    ) -> None:
+        """Set icon untuk button dengan 2 state (normal dan checked)"""
+        icon = QIcon()
+        icon.addFile(icon_normal, QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        icon.addFile(icon_checked, QSize(), QIcon.Mode.Normal, QIcon.State.On)
+        button.setIcon(icon)
+        button.setIconSize(QSize(self.ICON_SIZE, self.ICON_SIZE))
+
     @staticmethod
-    def _get_sidebar_style(with_text=False):
+    def _get_sidebar_style(with_text: bool = False) -> str:
         """Mendapatkan stylesheet untuk sidebar"""
         base_style = """
             QWidget {
@@ -288,30 +300,30 @@ class Dashboard(QWidget):
     def _setup_connections(self):
         """Setup semua signal-slot connections"""
         # Toggle sidebar
-        self.btn_menu_left.clicked.connect(self._show_right_sidebar)
-        self.btn_menu_right.clicked.connect(self._show_left_sidebar)
+        self.button_menu_left.clicked.connect(self._show_right_sidebar)
+        self.button_menu_right.clicked.connect(self._show_left_sidebar)
 
         # Sinkronisasi tombol kiri-kanan
-        self._sync_buttons(self.btn_transaksi_left, self.btn_transaksi_right)
-        self._sync_buttons(self.btn_sejarah_left, self.btn_sejarah_right)
-        self._sync_buttons(self.btn_manajemen_left, self.btn_manajemen_right)
-        self._sync_buttons(self.btn_pelanggan_left, self.btn_pelanggan_right)
-        self._sync_buttons(self.btn_kas_left, self.btn_kas_right)
-        self._sync_buttons(self.btn_buku_left, self.btn_buku_right)
+        self._sync_buttons(self.button_transaksi_left, self.button_transaksi_right)
+        self._sync_buttons(self.button_sejarah_left, self.button_sejarah_right)
+        self._sync_buttons(self.button_manajemen_left, self.button_manajemen_right)
+        self._sync_buttons(self.button_pelanggan_left, self.button_pelanggan_right)
+        self._sync_buttons(self.button_kas_left, self.button_kas_right)
+        self._sync_buttons(self.button_buku_left, self.button_buku_right)
 
-        # Handler khusus
-        self.btn_transaksi_left.toggled.connect(self._on_clicked)
-        self.btn_manajemen_left.toggled.connect(self._on_clicked)
+        # Handler navigasi
+        self.button_transaksi_left.toggled.connect(self._handle_navigation)
+        self.button_manajemen_left.toggled.connect(self._handle_navigation)
 
         # Logout
-        self.btn_logout_left.clicked.connect(self._on_logout)
-        self.btn_logout_right.clicked.connect(self._on_logout)
+        self.button_logout_left.clicked.connect(self._handle_logout)
+        self.button_logout_right.clicked.connect(self._handle_logout)
 
     @staticmethod
-    def _sync_buttons(btn_left, btn_right):
+    def _sync_buttons(button_left: QPushButton, button_right: QPushButton) -> None:
         """Sinkronisasi state 2 tombol (kiri-kanan)"""
-        btn_left.toggled.connect(btn_right.setChecked)
-        btn_right.toggled.connect(btn_left.setChecked)
+        button_left.toggled.connect(button_right.setChecked)
+        button_right.toggled.connect(button_left.setChecked)
 
     def _show_right_sidebar(self):
         """Tampilkan sidebar kanan, sembunyikan kiri"""
@@ -326,34 +338,36 @@ class Dashboard(QWidget):
     def _apply_role_permissions(self):
         """Terapkan permission berdasarkan role user"""
         if self.user_role != "Super_user":
-            self.btn_kas_left.hide()
-            self.btn_kas_right.hide()
+            self.button_kas_left.hide()
+            self.button_kas_right.hide()
 
-    def _on_clicked(self):
-        """Handler ketika tombol diklik"""
-        self.undowidth()
-        if self.btn_manajemen_left.isChecked():
-            self.btn_manajemen_right.setMinimumWidth(260)
-            if not hasattr(self, 'manajemen_widget'):
+    def _handle_navigation(self):
+        """Handler ketika tombol navigasi diklik"""
+        self._reset_all_button_widths()
+
+        if self.button_manajemen_left.isChecked():
+            self.button_manajemen_right.setMinimumWidth(self.BUTTON_EXPANDED_WIDTH)
+            if not self.manajemen_widget:
                 self.manajemen_widget = ManajemenProduk()
                 self.main_stack.addWidget(self.manajemen_widget)
             self.main_stack.setCurrentWidget(self.manajemen_widget)
-        elif self.btn_transaksi_left.isChecked():
-            self.btn_transaksi_right.setMinimumWidth(260)
-            self.main_stack.setCurrentWidget(self.error_handling)
+        elif self.button_transaksi_left.isChecked():
+            self.button_transaksi_right.setMinimumWidth(self.BUTTON_EXPANDED_WIDTH)
+            self.main_stack.setCurrentWidget(self.error_widget)
 
-    def undowidth(self):
-        self.btn_transaksi_right.setMinimumWidth(10)
-        self.btn_sejarah_right.setMinimumWidth(10)
-        self.btn_manajemen_right.setMinimumWidth(10)
-        self.btn_pelanggan_right.setMinimumWidth(10)
-        self.btn_kas_right.setMinimumWidth(10)
-        self.btn_buku_right.setMinimumWidth(10)
+    def _reset_all_button_widths(self):
+        """Reset semua lebar tombol sidebar kanan ke ukuran default"""
+        self.button_transaksi_right.setMinimumWidth(self.BUTTON_COLLAPSED_WIDTH)
+        self.button_sejarah_right.setMinimumWidth(self.BUTTON_COLLAPSED_WIDTH)
+        self.button_manajemen_right.setMinimumWidth(self.BUTTON_COLLAPSED_WIDTH)
+        self.button_pelanggan_right.setMinimumWidth(self.BUTTON_COLLAPSED_WIDTH)
+        self.button_kas_right.setMinimumWidth(self.BUTTON_COLLAPSED_WIDTH)
+        self.button_buku_right.setMinimumWidth(self.BUTTON_COLLAPSED_WIDTH)
 
-    def _on_logout(self):
+    def _handle_logout(self):
         """Handler logout: hapus session dan kembali ke login"""
-        db_manager = DatabaseManager()
-        db_manager.delete_session()
+        database_manager = DatabaseManager()
+        database_manager.delete_session()
 
         parent_window = self.window()
         parent_window.close()
