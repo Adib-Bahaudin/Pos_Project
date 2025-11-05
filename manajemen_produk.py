@@ -360,8 +360,8 @@ class ProdukPaket(QWidget):
 
         table.setColumnWidth(0, 60)
         table.setColumnWidth(1, 300)
-        table.setColumnWidth(2, 80)
-        table.setColumnWidth(3, 150)
+        table.setColumnWidth(2, 200)
+        table.setColumnWidth(3, 240)
 
         header_set = table.horizontalHeader()
         header_set.setSectionResizeMode(header_set.ResizeMode.Interactive)
