@@ -347,9 +347,7 @@ class ManajemenProduk(QWidget):
         if result == DialogTambahBarang.DialogCode.Accepted:
             data = dialog.get_data()
 
-            # Validasi data tidak kosong
             if all(data.values()):
-                # Tampilkan pesan sukses
                 QMessageBox.information(
                     self,
                     "Berhasil",
@@ -447,8 +445,8 @@ class ProdukSatuan(BaseProductTable):
     # Konstanta
     TABLE_WIDTH = 800
     TABLE_ROW_COUNT = 5
-    COLUMN_WIDTHS = [60, 300, 80, 150, 210]
-    HEADERS = ["P_ID", "NAMA BARANG", "STOCK", "HARGA JUAL", "TGL MASUK"]
+    COLUMN_WIDTHS = [100, 300, 80, 150, 170]
+    HEADERS = ["SKU", "NAMA BARANG", "STOCK", "HARGA JUAL", "TGL MASUK"]
 
 
 class ProdukPaket(BaseProductTable):
@@ -457,8 +455,8 @@ class ProdukPaket(BaseProductTable):
     # Konstanta
     TABLE_WIDTH = 800
     TABLE_ROW_COUNT = 5
-    COLUMN_WIDTHS = [60, 300, 200, 240]
-    HEADERS = ["P_ID", "NAMA BARANG", "HARGA JUAL", "KETERANGAN"]
+    COLUMN_WIDTHS = [100, 300, 200, 200]
+    HEADERS = ["SKU", "NAMA BARANG", "HARGA JUAL", "KETERANGAN"]
 
 
 class NavigationButton(QPushButton):

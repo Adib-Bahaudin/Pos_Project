@@ -1,0 +1,3 @@
+
+class TambahBarangBaru:
+    pass

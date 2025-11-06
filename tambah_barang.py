@@ -21,14 +21,14 @@ class DialogTambahBarang(QDialog):
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
 
-        self.setFixedSize(500, 580)
+        self.setFixedSize(500, 680)
         self.setModal(True)
         self.setup_ui()
         self.apply_stylesheet()
 
     def setup_ui(self):
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(0, 3, 0, 0)
+        main_layout.setContentsMargins(0, 5, 0, 0)
         main_layout.setSpacing(0)
 
         # Custom Title Bar
@@ -38,15 +38,14 @@ class DialogTambahBarang(QDialog):
         # Content Layout
         content_layout = QVBoxLayout()
         content_layout.setContentsMargins(30, 30, 30, 30)
-        content_layout.setSpacing(20)
+        content_layout.setSpacing(10)
 
         header_layout = QHBoxLayout()
-        header_layout.setSpacing(15)
+        header_layout.setSpacing(0)
 
         icon_label = QLabel()
         icon_label.setFixedSize(60, 60)
         icon_label.setObjectName("iconLabel")
-        # Uncomment baris di bawah jika sudah ada gambar
         pixmap = QPixmap("data/product_icon.png")
         icon_label.setPixmap(
             pixmap.scaled(60, 60, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))

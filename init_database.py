@@ -30,9 +30,11 @@ class InitDatabase:
         cursor.execute("""
             CREATE TABLE "produk_satuan" (
 	            "id" INTEGER,
+                "sku" TEXT NOT NULL UNIQUE,
 	            "nama_barang" TEXT NOT NULL UNIQUE,
 	            "harga_jual" INTEGER NOT NULL,
 	            "stok" INTEGER NOT NULL DEFAULT 0,
+                "tanggal" TEXT,
 	            PRIMARY KEY("id" AUTOINCREMENT)
             )
         """)
@@ -40,6 +42,7 @@ class InitDatabase:
         cursor.execute("""
             CREATE TABLE "produk_paket" (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sku TEXT NOT NULL UNIQUE,
                 nama_paket TEXT NOT NULL,
                 harga_jual INTEGER NOT NULL
 			)

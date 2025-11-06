@@ -270,3 +270,15 @@ class DatabaseManager:
 
         conn.commit()
         conn.close()
+
+    def insert_barang_baru(self, sku, nama, harga_jual, harga_beli, stok, tanggal):
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO produk_satuan (sku, nama_barang, harga_jual, stok, tanggal)
+            VALUES (?,?,?,?,?)
+        """,(sku, nama, harga_jual, harga_beli, stok, tanggal))
+
+        conn.commit()
+        conn.close()
