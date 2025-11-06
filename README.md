@@ -80,7 +80,7 @@ Terima kasih atas pengertiannya! ❤️
 
 ## 📬 Kontak
 
-📧 **Email:** *[2342.jenius@gmail.com]*
+📧 **Email:** *2342.jenius@gmail.com*
 
 🌐 **GitHub:** [Adib-Bahaudin](https://github.com/Adib-Bahaudin)
 
