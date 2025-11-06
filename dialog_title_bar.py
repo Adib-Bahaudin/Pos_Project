@@ -12,16 +12,16 @@ class DialogTitleBar(QWidget):
         self.drag_position = QPoint()
 
         root_layout = QHBoxLayout()
-        root_layout.setContentsMargins(8, 0, 8, 0)
+        root_layout.setContentsMargins(0, 0, 0, 0)
         root_frame = QFrame()
         main_layout = QHBoxLayout()
-        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setContentsMargins(5, 0, 5, 0)
 
         icon = QLabel()
         icon.setFixedSize(20, 20)
         icon.setPixmap(QPixmap("data/Black White Geometric Letter B Modern Logo.svg"))
         icon.setScaledContents(True)
-        root_layout.addWidget(icon)
+        main_layout.addWidget(icon)
 
         main_layout.addStretch()
 
@@ -53,13 +53,15 @@ class DialogTitleBar(QWidget):
         root_frame.setLayout(main_layout)
         root_layout.addWidget(root_frame)
         self.setLayout(root_layout)
-        self.setFixedHeight(30)
+        self.setFixedHeight(40)
         self.setStyleSheet("""
             QWidget {
                 background-color: #000000;
+                border: 2px solid #ffffff;
             }
             QLabel {
                 color: #ffffff;
+                border: none;
             }
         """)
 
