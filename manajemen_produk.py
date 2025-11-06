@@ -2,8 +2,10 @@ from PySide6.QtCore import QSize
 from PySide6.QtGui import QFont, Qt, QIcon
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QFrame, QVBoxLayout, QLabel,
-    QPushButton, QLineEdit, QTableWidget, QComboBox, QStackedWidget
+    QPushButton, QLineEdit, QTableWidget, QComboBox, QStackedWidget, QMessageBox
 )
+
+from tambah_barang import DialogTambahBarang
 
 
 class ManajemenProduk(QWidget):
@@ -110,10 +112,10 @@ class ManajemenProduk(QWidget):
         layout.addStretch()
 
         button_edit = self._create_action_button("Edit Produk", "#ff8000")
-        button_baru = self._create_action_button("Produk Baru", "#00ff00")
+        self.button_baru = self._create_action_button("Produk Baru", "#00ff00")
 
         layout.addWidget(button_edit)
-        layout.addWidget(button_baru)
+        layout.addWidget(self.button_baru)
         layout.addStretch()
 
         widget.setLayout(layout)
@@ -331,10 +333,39 @@ class ManajemenProduk(QWidget):
     def _setup_connections(self):
         """Setup signal-slot connections"""
         self.product_selector.currentIndexChanged.connect(self._switch_product_view)
+        self.button_baru.clicked.connect(self._show_tambah_barang_dialog)
 
     def _switch_product_view(self, index: int):
         """Switch tampilan tabel berdasarkan pilihan selector"""
         self.stack.setCurrentIndex(index)
+
+    def _show_tambah_barang_dialog(self):
+        """Menampilkan dialog tambah barang"""
+        dialog = DialogTambahBarang(self)
+        result = dialog.exec()
+
+        if result == DialogTambahBarang.DialogCode.Accepted:
+            data = dialog.get_data()
+
+            # Validasi data tidak kosong
+            if all(data.values()):
+                # Tampilkan pesan sukses
+                QMessageBox.information(
+                    self,
+                    "Berhasil",
+                    f"Produk '{data['nama_barang']}' berhasil ditambahkan!\n\n"
+                    f"Harga Jual: Rp {data['harga_jual']}\n"
+                    f"Harga Beli: Rp {data['harga_beli']}\n"
+                    f"Stok: {data['stok']}"
+                )
+                # Di sini Anda bisa menambahkan logika untuk menyimpan data ke database
+                # atau memperbarui tabel
+            else:
+                QMessageBox.warning(
+                    self,
+                    "Peringatan",
+                    "Semua field harus diisi!"
+                )
 
 
 class BaseProductTable(QWidget):
