@@ -57,7 +57,7 @@ class DialogTitleBar(QWidget):
         self.setStyleSheet("""
             QWidget {
                 background-color: #000000;
-                border: 2px solid #ffffff;
+                border-bottom: 2px solid #ffffff;
             }
             QLabel {
                 color: #ffffff;
