@@ -12,7 +12,7 @@ class DialogTitleBar(QWidget):
         self.drag_position = QPoint()
 
         root_layout = QHBoxLayout()
-        root_layout.setContentsMargins(5, 0, 5, 0)
+        root_layout.setContentsMargins(8, 0, 8, 0)
         root_frame = QFrame()
         main_layout = QHBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)

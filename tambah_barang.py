@@ -28,7 +28,7 @@ class DialogTambahBarang(QDialog):
 
     def setup_ui(self):
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setContentsMargins(0, 3, 0, 0)
         main_layout.setSpacing(0)
 
         # Custom Title Bar
