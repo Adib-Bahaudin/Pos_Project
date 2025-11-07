@@ -208,8 +208,8 @@ class ManajemenProduk(QWidget):
 
         # Stack widget untuk tabel
         self.stack = QStackedWidget()
-        self.stack.addWidget(ProdukSatuan())
-        self.stack.addWidget(ProdukPaket())
+        self.stack.addWidget(ProdukSatuanTable())
+        self.stack.addWidget(ProdukPaketTable())
         layout.addWidget(self.stack)
 
         # Tombol navigasi bawah
@@ -353,7 +353,7 @@ class ManajemenProduk(QWidget):
 
             if jenis == "satuan":
                 barang_baru = DatabaseManager()
-                barang_baru.insert_barang_baru(
+                barang_baru.insert_barang_baru_satuan(
                     sku= data["sku"],
                     nama= data["nama_barang"],
                     harga_jual= data["harga_jual"],
@@ -362,23 +362,31 @@ class ManajemenProduk(QWidget):
                     tanggal= datetime.now(ZoneInfo("Asia/Jakarta"))
                 )
                 print("Data Satuan Ditambahkan")
-
             else:
+                barang_baru = DatabaseManager()
+                barang_baru.insert_barang_baru_paket(
+                    nama= data["nama_paket"],
+                    harga_jual= data["harga_jual"],
+                    nama_barang= data["nama_barang"],
+                    sku= data["sku"],
+                    coversion= data["per_satuan"],
+                )
                 print("Data Paket Ditambahkan")
-                print(f"nama barang = {data['nama_barang']}")
 
 
 class BaseProductTable(QWidget):
     """Base class untuk tabel produk dengan fungsi shared"""
 
-    # Konstanta (akan di-override di subclass)
     TABLE_WIDTH = 800
     TABLE_ROW_COUNT = 5
     COLUMN_WIDTHS = []
     HEADERS = []
+    TABLE_NAME = ""
 
     def __init__(self):
         super().__init__()
+        self.current_page = 1
+        self.per_page = self.TABLE_ROW_COUNT
         self._setup_ui()
 
     def _setup_ui(self):
@@ -392,13 +400,12 @@ class BaseProductTable(QWidget):
         table_layout.setContentsMargins(0, 0, 0, 0)
 
         # Buat tabel
-        table = self._create_table()
-        table_layout.addWidget(table)
+        self.table = self._create_table()
+        table_layout.addWidget(self.table)
 
         table_widget.setLayout(table_layout)
         root_layout.addWidget(table_widget)
         root_layout.addStretch()
-
         self.setLayout(root_layout)
 
     def _create_table(self) -> QTableWidget:
@@ -419,8 +426,6 @@ class BaseProductTable(QWidget):
         # Konfigurasi header
         header = table.horizontalHeader()
         header.setSectionResizeMode(header.ResizeMode.Interactive)
-
-        # Sembunyikan header vertikal
         table.verticalHeader().setVisible(False)
 
         # Styling
@@ -437,24 +442,23 @@ class BaseProductTable(QWidget):
                 font-weight: bold;
             }
         """)
-
         return table
 
 
-class ProdukSatuan(BaseProductTable):
+class ProdukSatuanTable(BaseProductTable):
     """Widget tabel untuk produk satuan"""
 
-    # Konstanta
+    TABLE_NAME = "produksatuan"
     TABLE_WIDTH = 800
     TABLE_ROW_COUNT = 5
     COLUMN_WIDTHS = [100, 300, 80, 150, 170]
     HEADERS = ["SKU", "NAMA BARANG", "STOCK", "HARGA JUAL", "TGL MASUK"]
 
 
-class ProdukPaket(BaseProductTable):
+class ProdukPaketTable(BaseProductTable):
     """Widget tabel untuk produk paket"""
 
-    # Konstanta
+    TABLE_NAME = "produkpaket"
     TABLE_WIDTH = 800
     TABLE_ROW_COUNT = 5
     COLUMN_WIDTHS = [100, 300, 200, 200]

@@ -271,7 +271,58 @@ class DatabaseManager:
         conn.commit()
         conn.close()
 
-    def insert_barang_baru(self, sku, nama, harga_jual, harga_beli, stok, tanggal):
+    def verify_is_valid(self, jenis, sku, nama, nama_satuan = None):
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+
+        if jenis == "satuan":
+            cursor.execute("""
+                SELECT 1 FROM produk_satuan WHERE nama_barang = ?
+            """, (nama,))
+            nama_barang = cursor.fetchone()
+
+            cursor.execute("""
+                SELECT 1 FROM produk_satuan WHERE sku = ? 
+            """, (sku,))
+            sku_barang = cursor.fetchone()
+
+            conn.close()
+
+            is_valid = not (nama_barang or sku_barang)
+            return {
+                "is_valid": is_valid,
+                "nama_barang": nama_barang,
+                "sku_barang": sku_barang
+            }
+        else:
+            cursor.execute("""
+                SELECT 1 FROM produk_paket WHERE sku = ?
+            """, (sku,))
+
+            sku_barang = cursor.fetchone()
+
+            cursor.execute("""
+                SELECT 1 FROM produk_paket WHERE nama_paket = ?
+            """, (nama,))
+
+            nama_barang = cursor.fetchone()
+
+            cursor.execute("""
+                SELECT 1 FROM produk_satuan WHERE nama_barang = ?
+            """, (nama_satuan,))
+
+            nama_produk = cursor.fetchone()
+
+            is_valid = nama_produk and (not (sku_barang or nama_barang))
+            return {
+                "is_valid": is_valid,
+                "sku_barang": sku_barang,
+                "nama_barang": nama_barang,
+                "nama_produk": not nama_produk
+            }
+
+
+    def insert_barang_baru_satuan(self, sku, nama, harga_jual, harga_beli, stok, tanggal):
         conn = sqlite3.connect(self.db_name)
         cursor = conn.cursor()
 
@@ -293,6 +344,37 @@ class DatabaseManager:
             INSERT INTO harga_beli (id_satuan, harga)
             VALUES (?,?)
         """, (id_barang, harga_beli))
+
+        conn.commit()
+        conn.close()
+
+    def insert_barang_baru_paket(self, nama, harga_jual, nama_barang, sku, coversion):
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO produk_paket (sku, nama_paket, harga_jual) VALUES (?,?,?)
+        """, (sku, nama, harga_jual))
+
+        conn.commit()
+
+        cursor.execute("""
+            SELECT id FROM produk_satuan WHERE nama_barang = ?
+        """, (nama_barang,))
+
+        id_barang = cursor.fetchone()
+        id_barang_ = id_barang[0]
+
+        cursor.execute("""
+            SELECT id FROM produk_paket WHERE sku = ?
+        """, (sku,))
+
+        id_paket = cursor.fetchone()
+        id_paket_ = id_paket[0]
+
+        cursor.execute("""
+            INSERT INTO detail_paket (id_paket, id_produk, jumlah) VALUES (?,?,?)
+        """, (id_paket_, id_barang_, coversion))
 
         conn.commit()
         conn.close()

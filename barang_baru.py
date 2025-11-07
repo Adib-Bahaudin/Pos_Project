@@ -4,6 +4,7 @@ from PySide6.QtWidgets import QDialog, QVBoxLayout, QWidget, QPushButton, QHBoxL
 
 from dialog_title_bar import DialogTitleBar
 from fungsi import ScreenSize
+from database import DatabaseManager
 
 
 class TambahBarangBaru(QDialog):
@@ -148,10 +149,20 @@ class TambahBarangBaru(QDialog):
                                       "4000")
         conten_grid.addWidget(self.harga_jual, 2,0)
 
+        self.stack0 = QStackedWidget()
+        self.stack0.setStyleSheet("border: none;")
+
         self.harga_beli = WidgetKecil("data/uang.png",
                                       "harga_beli",
                                       "2000")
-        conten_grid.addWidget(self.harga_beli, 2,1)
+        self.stack0.addWidget(self.harga_beli)
+
+        self.nama_barang = WidgetKecil("data/satuan.png",
+                                       "Nama Barang Satuan",
+                                       "bolpoin")
+        self.stack0.addWidget(self.nama_barang)
+
+        conten_grid.addWidget(self.stack0, 2,1)
 
         self.stok = WidgetKecil("data/stok.png",
                                 "Stok",
@@ -230,7 +241,7 @@ class TambahBarangBaru(QDialog):
         """)
         self.btn_tambahkan.setFixedHeight(45)
         self.btn_tambahkan.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_tambahkan.clicked.connect(self.accept)
+        self.btn_tambahkan.clicked.connect(self.validasi_data)
         button_layout.addWidget(self.btn_tambahkan)
 
         main_layout.addLayout(button_layout)
@@ -247,10 +258,62 @@ class TambahBarangBaru(QDialog):
 
     def _on_change(self, index: int):
         self.stack.setCurrentIndex(index)
-        if index == 1:
-            self.harga_beli.hide()
+        self.stack0.setCurrentIndex(index)
+
+    def validasi_data(self):
+        index = self.combo_selector.currentIndex()
+        nama = self.nama.get_data()
+        harga_jual = self.harga_jual.get_data()
+        harga_beli = self.harga_beli.get_data()
+        stok = self.stok.get_data()
+        sku = self.sku.get_data()
+        nama_barang = self.nama_barang.get_data()
+        persatuan = self.convert.get_data()
+
+        if index == 0:
+            valid, pesan = self.validate_fields_not_empty(
+                nama = nama,
+                harga_jual = harga_jual,
+                harga_beli = harga_beli,
+                stok = stok,
+                sku = sku,
+            )
+            if not valid:
+                print(pesan)
+            else:
+                validasi = DatabaseManager()
+                validasi2 = validasi.verify_is_valid("satuan", sku, nama)
+                if validasi2['is_valid']:
+                    self.accept()
+                else:
+                    if validasi2['nama_barang'] and validasi2['sku_barang']:
+                        print("Nama Barang dan SKU sudah ada")
+                    elif validasi2['nama_barang']:
+                        print("Nama Barang sudah ada")
+                    elif validasi2['sku_barang']:
+                        print("SKU sudah ada")
         else:
-            self.harga_beli.show()
+            valid, pesan = self.validate_fields_not_empty(
+                nama = nama,
+                harga_jual = harga_jual,
+                nama_barang = nama_barang,
+                persatuan = persatuan,
+                sku = sku,
+            )
+            if not valid:
+                print(pesan)
+            else:
+                validasi = DatabaseManager()
+                validasi2 = validasi.verify_is_valid("paket", sku, nama, nama_barang)
+                if validasi2['is_valid']:
+                    self.accept()
+                else:
+                    if validasi2['nama_barang']:
+                        print("Nama Barang sudah ada")
+                    elif validasi2['sku_barang']:
+                        print("SKU sudah ada")
+                    elif validasi2['nama_produk']:
+                        print("Nama Barang Tidak Ditemukan")
 
     def get_data(self):
         index = self.combo_selector.currentIndex()
@@ -264,11 +327,28 @@ class TambahBarangBaru(QDialog):
             }
         else:
             return "paket", {
-                "nama_barang": self.nama.get_data(),
+                "nama_paket": self.nama.get_data(),
                 "harga_jual": self.harga_jual.get_data(),
+                "nama_barang": self.nama_barang.get_data(),
                 "per_satuan": self.convert.get_data(),
                 "sku": self.sku.get_data(),
             }
+
+    @staticmethod
+    def validate_fields_not_empty(**fields):
+        """
+        Memeriksa semua field tidak kosong.
+        Parameter:
+            fields: pasangan nama_field=nilai_field
+        Return:
+            (bool, message)
+        """
+        empty_fields = [name for name, value in fields.items() if not value or str(value).strip() == ""]
+
+        if empty_fields:
+            message = f"Field berikut tidak boleh kosong: {', '.join(empty_fields)}"
+            return False, message
+        return True, ""
 
 
 class WidgetKecil(QWidget):
@@ -333,5 +413,5 @@ class WidgetKecil(QWidget):
         self.setContentsMargins(0,0,0,0)
 
     def get_data(self):
-        return self.data.text()
+        return self.data.text().strip()
 
