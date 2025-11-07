@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
     QPushButton, QLineEdit, QTableWidget, QComboBox, QStackedWidget, QMessageBox
 )
 
-from tambah_barang import DialogTambahBarang
+from barang_baru import TambahBarangBaru
 
 
 class ManajemenProduk(QWidget):
@@ -341,29 +341,18 @@ class ManajemenProduk(QWidget):
 
     def _show_tambah_barang_dialog(self):
         """Menampilkan dialog tambah barang"""
-        dialog = DialogTambahBarang(self)
+        dialog = TambahBarangBaru(self)
         result = dialog.exec()
 
-        if result == DialogTambahBarang.DialogCode.Accepted:
-            data = dialog.get_data()
+        if result == TambahBarangBaru.DialogCode.Accepted:
+            jenis, data = dialog.get_data()
 
-            if all(data.values()):
-                QMessageBox.information(
-                    self,
-                    "Berhasil",
-                    f"Produk '{data['nama_barang']}' berhasil ditambahkan!\n\n"
-                    f"Harga Jual: Rp {data['harga_jual']}\n"
-                    f"Harga Beli: Rp {data['harga_beli']}\n"
-                    f"Stok: {data['stok']}"
-                )
-                # Di sini Anda bisa menambahkan logika untuk menyimpan data ke database
-                # atau memperbarui tabel
+            if jenis == "satuan":
+                print("Data Satuan Ditambahkan")
+                print(f"nama barang = {data['nama_barang']}")
             else:
-                QMessageBox.warning(
-                    self,
-                    "Peringatan",
-                    "Semua field harus diisi!"
-                )
+                print("Data Paket Ditambahkan")
+                print(f"nama barang = {data['nama_barang']}")
 
 
 class BaseProductTable(QWidget):

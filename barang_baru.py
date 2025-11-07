@@ -1,10 +1,10 @@
-import sys
-
 from PySide6.QtGui import Qt, QPixmap
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QWidget, QPushButton, QApplication, QHBoxLayout, QLabel, QLineEdit, \
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QWidget, QPushButton, QHBoxLayout, QLabel, QLineEdit, \
     QGridLayout, QComboBox, QStackedWidget
 
 from dialog_title_bar import DialogTitleBar
+from fungsi import ScreenSize
+
 
 class TambahBarangBaru(QDialog):
     def __init__(self, parent=None):
@@ -13,8 +13,12 @@ class TambahBarangBaru(QDialog):
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
 
-        self.setFixedSize(1000, 700)
+        self.setFixedSize(1000, 650)
         self.setModal(True)
+
+        screen_size = ScreenSize()
+        x, y = screen_size.get_centered_position(1000, 650)
+        self.move(x, y)
 
         root_layout = QVBoxLayout()
         root_widget= QWidget()
@@ -92,11 +96,11 @@ class TambahBarangBaru(QDialog):
 
         selector_layout.addLayout(label_layout)
 
-        combo_selector = QComboBox()
-        combo_selector.addItems(['Satuan', 'Paket'])
-        combo_selector.setFixedHeight(45)
-        combo_selector.setCursor(Qt.CursorShape.PointingHandCursor)
-        combo_selector.setStyleSheet("""
+        self.combo_selector = QComboBox()
+        self.combo_selector.addItems(['Satuan', 'Paket'])
+        self.combo_selector.setFixedHeight(45)
+        self.combo_selector.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.combo_selector.setStyleSheet("""
             QComboBox {
                 background-color: #1a1a1a;
                 border: 2px solid #333333;
@@ -117,13 +121,11 @@ class TambahBarangBaru(QDialog):
                 border: none;
                 width: 30px;
             }
-
             QComboBox::down-arrow {
                 image: url(data/panah atas bawah.png);
                 width: 25px;
                 height: 25px;
             }
-
             QComboBox QAbstractItemView {
                 background-color: #1a1a1a;
                 border: 2px solid #90EE90;
@@ -134,7 +136,8 @@ class TambahBarangBaru(QDialog):
             }
         """)
 
-        selector_layout.addWidget(combo_selector)
+        selector_layout.addWidget(self.combo_selector)
+        self.combo_selector.currentIndexChanged.connect(self._on_change)
 
         selector_widget.setLayout(selector_layout)
 
@@ -164,11 +167,75 @@ class TambahBarangBaru(QDialog):
         self.stack.addWidget(self.stok)
         self.stack.addWidget(self.convert)
 
-        conten_grid.addWidget(self.stack)
+        conten_grid.addWidget(self.stack, 3,0)
+
+        self.sku = WidgetKecil("data/sku.png",
+                               "SKU",
+                               "ABC123")
+        conten_grid.addWidget(self.sku, 3,1)
 
         main_layout.addLayout(conten_grid)
 
         main_layout.addStretch()
+
+        button_layout = QHBoxLayout()
+        button_layout.setContentsMargins(60,0,60,0)
+
+        self.btn_batal = QPushButton("Batal")
+        self.btn_batal.setStyleSheet("""
+            QPushButton {
+                background-color: #ff0000;
+                color: #FFFFFF;
+                border: 2px solid #ff0000;
+                border-radius: 8px;
+                padding: 10px 30px;
+                font-size: 14px;
+                font-weight: 600;
+                min-width: 120px;
+            }
+            QPushButton:hover {
+                background-color: #5500ff;
+                border: 2px solid #ff0000;
+            }
+            QPushButton:pressed {
+                background-color: #1a1a1a;
+            }
+        """)
+        self.btn_batal.setFixedHeight(45)
+        self.btn_batal.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_batal.clicked.connect(self.reject)
+        button_layout.addWidget(self.btn_batal)
+
+        button_layout.addStretch()
+
+        self.btn_tambahkan = QPushButton("Tambahkan")
+        self.btn_tambahkan.setStyleSheet("""
+            QPushButton {
+                background-color: #ffff00;
+                color: #000000;
+                border: 2px solid #ffff00;
+                border-radius: 8px;
+                padding: 10px 30px;
+                font-size: 14px;
+                font-weight: bold;
+                min-width: 140px;
+            }
+            QPushButton:hover {
+                background-color: #aaffff;
+                border: 2px solid #ffff00;
+            }
+            QPushButton:pressed {
+                background-color: #6FEF6F;
+            }
+        """)
+        self.btn_tambahkan.setFixedHeight(45)
+        self.btn_tambahkan.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_tambahkan.clicked.connect(self.accept)
+        button_layout.addWidget(self.btn_tambahkan)
+
+        main_layout.addLayout(button_layout)
+
+        main_layout.addSpacing(30)
 
         root_widget.setLayout(main_layout)
         root_layout.addWidget(root_widget)
@@ -177,6 +244,32 @@ class TambahBarangBaru(QDialog):
             background-color: #000000;
             border: 2px solid #90EE90;
         """)
+
+    def _on_change(self, index: int):
+        self.stack.setCurrentIndex(index)
+        if index == 1:
+            self.harga_beli.hide()
+        else:
+            self.harga_beli.show()
+
+    def get_data(self):
+        index = self.combo_selector.currentIndex()
+        if index == 0:
+            return "satuan", {
+                "nama_barang": self.nama.get_data(),
+                "harga_jual": self.harga_jual.get_data(),
+                "harga_beli": self.harga_beli.get_data(),
+                "stok": self.stok.get_data(),
+                "sku": self.sku.get_data(),
+            }
+        else:
+            return "paket", {
+                "nama_barang": self.nama.get_data(),
+                "harga_jual": self.harga_jual.get_data(),
+                "per_satuan": self.convert.get_data(),
+                "sku": self.sku.get_data(),
+            }
+
 
 class WidgetKecil(QWidget):
     def __init__(self, ikon_path, label_text, placeholder_text):
@@ -242,32 +335,3 @@ class WidgetKecil(QWidget):
     def get_data(self):
         return self.data.text()
 
-class Widgetutama(QWidget):
-    def __init__(self):
-        super().__init__()
-
-        self.setFixedSize(200,200)
-
-        root_layout = QVBoxLayout()
-        root_layout.setContentsMargins(0,0,0,0)
-
-        self.tombol = QPushButton("Tambah Produk Baru")
-        self.tombol.setFixedSize(100,50)
-        root_layout.addWidget(self.tombol)
-
-        self.setLayout(root_layout)
-
-        self.tombol.clicked.connect(self.clik)
-
-    def clik(self):
-        dialog = TambahBarangBaru(self)
-        ret = dialog.exec()
-
-        if ret == TambahBarangBaru.DialogCode.Accepted:
-            pass
-
-if __name__ == "__main__":
-    app = QApplication([])
-    window = Widgetutama()
-    window.show()
-    sys.exit(app.exec())
