@@ -5,7 +5,7 @@ from PySide6.QtCore import QSize
 from PySide6.QtGui import QFont, Qt, QIcon
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QFrame, QVBoxLayout, QLabel,
-    QPushButton, QLineEdit, QTableWidget, QComboBox, QStackedWidget
+    QPushButton, QLineEdit, QTableWidget, QComboBox, QStackedWidget, QTableWidgetItem
 )
 
 from barang_baru import TambahBarangBaru
@@ -373,7 +373,6 @@ class ManajemenProduk(QWidget):
                 )
                 print("Data Paket Ditambahkan")
 
-
 class BaseProductTable(QWidget):
     """Base class untuk tabel produk dengan fungsi shared"""
 
@@ -382,11 +381,14 @@ class BaseProductTable(QWidget):
     COLUMN_WIDTHS = []
     HEADERS = []
     TABLE_NAME = ""
+    FIELDS = []
+    FORMATTERS = {}
 
     def __init__(self):
         super().__init__()
         self.current_page = 1
         self.per_page = self.TABLE_ROW_COUNT
+        self._all_rows = []
         self._setup_ui()
 
     def _setup_ui(self):
@@ -444,6 +446,30 @@ class BaseProductTable(QWidget):
         """)
         return table
 
+    def set_data(self, rows: list[dict]):
+        """Set Seluruh Data tabel"""
+        self._all_rows = rows or []
+        self.current_page = 1
+        self._render_current_page()
+
+    def _render_current_page(self):
+        self.table.clearContents()
+        start = (self.current_page - 1) * self.per_page
+        end = start + self.per_page
+        page_rows = self._all_rows[start:end]
+        self.table.setRowCount(self.per_page)
+
+        for r, row in enumerate(page_rows):
+            for c, key in enumerate(self.FIELDS):
+                val = row.get(key)
+                if key in self.FORMATTERS:
+                    val = self.FORMATTERS[key](val)
+                item = QTableWidgetItem("" if val is None else str(val))
+                item.setTextAlignment(Qt.AlignmentFlag.AlignVCenter |
+                                      (Qt.AlignmentFlag.AlignRight if isinstance(val, float)
+                                       else Qt.AlignmentFlag.AlignLeft))
+                self.table.setItem(r, c, item)
+
 
 class ProdukSatuanTable(BaseProductTable):
     """Widget tabel untuk produk satuan"""
@@ -453,6 +479,7 @@ class ProdukSatuanTable(BaseProductTable):
     TABLE_ROW_COUNT = 5
     COLUMN_WIDTHS = [100, 300, 80, 150, 170]
     HEADERS = ["SKU", "NAMA BARANG", "STOCK", "HARGA JUAL", "TGL MASUK"]
+    FIELDS = ["sku", "nama_barang", "stock", "harga_jual", "tgl_masuk"]
 
 
 class ProdukPaketTable(BaseProductTable):
@@ -463,6 +490,7 @@ class ProdukPaketTable(BaseProductTable):
     TABLE_ROW_COUNT = 5
     COLUMN_WIDTHS = [100, 300, 200, 200]
     HEADERS = ["SKU", "NAMA BARANG", "HARGA JUAL", "KETERANGAN"]
+    FIELDS = ["sku", "nama_barang", "harga_jual", "keterangan"]
 
 
 class NavigationButton(QPushButton):
