@@ -278,7 +278,21 @@ class DatabaseManager:
         cursor.execute("""
             INSERT INTO produk_satuan (sku, nama_barang, harga_jual, stok, tanggal)
             VALUES (?,?,?,?,?)
-        """,(sku, nama, harga_jual, harga_beli, stok, tanggal))
+        """,(sku, nama, harga_jual, stok, tanggal))
+
+        conn.commit()
+
+        cursor.execute("""
+            SELECT id FROM produk_satuan WHERE sku = ?
+        """, (sku,))
+
+        result = cursor.fetchone()
+        id_barang = result[0]
+
+        cursor.execute("""
+            INSERT INTO harga_beli (id_satuan, harga)
+            VALUES (?,?)
+        """, (id_barang, harga_beli))
 
         conn.commit()
         conn.close()

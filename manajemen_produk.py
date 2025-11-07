@@ -1,11 +1,15 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QFont, Qt, QIcon
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QFrame, QVBoxLayout, QLabel,
-    QPushButton, QLineEdit, QTableWidget, QComboBox, QStackedWidget, QMessageBox
+    QPushButton, QLineEdit, QTableWidget, QComboBox, QStackedWidget
 )
 
 from barang_baru import TambahBarangBaru
+from database import DatabaseManager
 
 
 class ManajemenProduk(QWidget):
@@ -348,8 +352,17 @@ class ManajemenProduk(QWidget):
             jenis, data = dialog.get_data()
 
             if jenis == "satuan":
+                barang_baru = DatabaseManager()
+                barang_baru.insert_barang_baru(
+                    sku= data["sku"],
+                    nama= data["nama_barang"],
+                    harga_jual= data["harga_jual"],
+                    harga_beli= data["harga_beli"],
+                    stok= data["stok"],
+                    tanggal= datetime.now(ZoneInfo("Asia/Jakarta"))
+                )
                 print("Data Satuan Ditambahkan")
-                print(f"nama barang = {data['nama_barang']}")
+
             else:
                 print("Data Paket Ditambahkan")
                 print(f"nama barang = {data['nama_barang']}")
