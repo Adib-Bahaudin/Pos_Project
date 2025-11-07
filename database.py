@@ -378,3 +378,27 @@ class DatabaseManager:
 
         conn.commit()
         conn.close()
+
+    def get_produk_satuan(self, limit=None, offset=0):
+        conn = sqlite3.connect(self.db_name)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT 
+                ps.sku,
+                ps.nama_barang,
+                ps.harga_jual,
+                ps.stok AS stock,
+                ps.tanggal AS tgl_masuk,
+                hb.harga AS harga_beli
+            FROM produk_satuan ps
+            LEFT JOIN harga_beli hb ON ps.id = hb.id_satuan
+            ORDER BY nama_barang DESC 
+            LIMIT ? OFFSET ?
+        """, (limit, offset))
+
+        result = [dict(r) for r in cursor.fetchall()]
+
+        conn.close()
+        return result

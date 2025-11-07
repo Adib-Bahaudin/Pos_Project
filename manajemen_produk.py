@@ -76,6 +76,7 @@ class ManajemenProduk(QWidget):
         root_layout.addWidget(root_widget)
         self.setLayout(root_layout)
         self.setStyleSheet("border: none")
+        self.init_table()
 
     @staticmethod
     def _create_header_label() -> QLabel:
@@ -208,7 +209,8 @@ class ManajemenProduk(QWidget):
 
         # Stack widget untuk tabel
         self.stack = QStackedWidget()
-        self.stack.addWidget(ProdukSatuanTable())
+        self.tale_satuan = ProdukSatuanTable()
+        self.stack.addWidget(self.tale_satuan)
         self.stack.addWidget(ProdukPaketTable())
         layout.addWidget(self.stack)
 
@@ -373,6 +375,12 @@ class ManajemenProduk(QWidget):
                 )
                 print("Data Paket Ditambahkan")
 
+    def init_table(self):
+        print("satu")
+        database = DatabaseManager()
+        data = database.get_produk_satuan(5,0)
+        self.tale_satuan.set_data(data)
+
 class BaseProductTable(QWidget):
     """Base class untuk tabel produk dengan fungsi shared"""
 
@@ -469,6 +477,8 @@ class BaseProductTable(QWidget):
                                       (Qt.AlignmentFlag.AlignRight if isinstance(val, float)
                                        else Qt.AlignmentFlag.AlignLeft))
                 self.table.setItem(r, c, item)
+
+
 
 
 class ProdukSatuanTable(BaseProductTable):
