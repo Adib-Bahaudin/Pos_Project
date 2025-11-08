@@ -321,7 +321,6 @@ class DatabaseManager:
                 "nama_produk": not nama_produk
             }
 
-
     def insert_barang_baru_satuan(self, sku, nama, harga_jual, harga_beli, stok, tanggal):
         conn = sqlite3.connect(self.db_name)
         cursor = conn.cursor()
@@ -394,7 +393,7 @@ class DatabaseManager:
                 hb.harga AS harga_beli
             FROM produk_satuan ps
             LEFT JOIN harga_beli hb ON ps.id = hb.id_satuan
-            ORDER BY nama_barang DESC 
+            ORDER BY nama_barang ASC 
             LIMIT ? OFFSET ?
         """, (limit, offset))
 

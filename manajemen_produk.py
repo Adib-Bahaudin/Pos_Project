@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 from zoneinfo import ZoneInfo
 
 from PySide6.QtCore import QSize
@@ -76,7 +76,7 @@ class ManajemenProduk(QWidget):
         root_layout.addWidget(root_widget)
         self.setLayout(root_layout)
         self.setStyleSheet("border: none")
-        self.init_table()
+        self.table_data()
 
     @staticmethod
     def _create_header_label() -> QLabel:
@@ -306,15 +306,16 @@ class ManajemenProduk(QWidget):
 
         # Tombol navigasi kiri
         button_left = NavigationButton("data/arah kiri.svg", "data/kiri-hover.svg")
+        button_left.clicked.connect(self.prev_page)
         content_layout.addWidget(button_left)
 
         # Input halaman
-        page_input = QLineEdit()
-        page_input.setText("1")
-        page_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        page_input.setFixedSize(self.PAGE_INPUT_WIDTH, self.PAGE_INPUT_HEIGHT)
-        page_input.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
-        page_input.setStyleSheet("""
+        self.page_input = QLineEdit()
+        self.page_input.setText("1")
+        self.page_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.page_input.setFixedSize(self.PAGE_INPUT_WIDTH, self.PAGE_INPUT_HEIGHT)
+        self.page_input.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
+        self.page_input.setStyleSheet("""
             QLineEdit{
                 border: none;
                 background-color: #ffffff;
@@ -322,11 +323,12 @@ class ManajemenProduk(QWidget):
                 border-radius: 5px;
             }
         """)
-        page_input.setMaxLength(2)
-        content_layout.addWidget(page_input)
+        self.page_input.setMaxLength(2)
+        content_layout.addWidget(self.page_input)
 
         # Tombol navigasi kanan
         button_right = NavigationButton("data/arah kanan.svg", "data/kanan-hover.svg")
+        button_right.clicked.connect(self.next_page)
         content_layout.addWidget(button_right)
 
         content_widget.setLayout(content_layout)
@@ -363,7 +365,7 @@ class ManajemenProduk(QWidget):
                     stok= data["stok"],
                     tanggal= datetime.now(ZoneInfo("Asia/Jakarta"))
                 )
-                print("Data Satuan Ditambahkan")
+                self.table_data()
             else:
                 barang_baru = DatabaseManager()
                 barang_baru.insert_barang_baru_paket(
@@ -375,11 +377,65 @@ class ManajemenProduk(QWidget):
                 )
                 print("Data Paket Ditambahkan")
 
-    def init_table(self):
-        print("satu")
+    def table_data(self, offset=0):
         database = DatabaseManager()
-        data = database.get_produk_satuan(5,0)
-        self.tale_satuan.set_data(data)
+        produk = self.product_selector.currentIndex()
+        if produk == 0:
+            data = database.get_produk_satuan(5,offset)
+            self.tale_satuan.set_data(data)
+
+        if offset == 0:
+            self.page_input.setText("1")
+        else:
+            text = int(offset / 5) + 1
+            self.page_input.setText(str(text))
+
+    def next_page(self):
+        page = self.page_input.text().strip()
+        page = int(page) + 1
+        self.table_data((page - 1) * 5)
+
+    def prev_page(self):
+        page = int(self.page_input.text().strip())
+        if page > 1:
+            page -= 1
+            self.table_data((page - 1) * 5)
+        else:
+            pass
+
+
+_ID_MONTHS = {
+    1: "Januari", 2: "Februari", 3: "Maret", 4: "April",
+    5: "Mei", 6: "Juni", 7: "Juli", 8: "Agustus",
+    9: "September", 10: "Oktober", 11: "November", 12: "Desember"
+}
+
+def format_tanggal(value, in_fmt="%Y-%m-%d"):
+    """
+    Terima string ISO (contoh: '2025-11-07 19:32:27.262473+07:00'),
+    atau 'YYYY-MM-DD', atau datetime/date.
+    Kembalikan '7 November 2025' (tanpa ubah zona waktu).
+    """
+    if not value:
+        return ""
+    try:
+        if isinstance(value, str):
+            try:
+                dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            except ValueError:
+                dt = datetime.strptime(value, in_fmt)
+        elif isinstance(value, datetime):
+            dt = value
+        elif isinstance(value, date):
+            dt = datetime(value.year, value.month, value.day)
+        else:
+            return str(value)
+
+        d = dt.date()
+        return f"{d.day} {_ID_MONTHS[d.month]} {d.year}"
+    except (ValueError, TypeError):
+        return str(value)
+
 
 class BaseProductTable(QWidget):
     """Base class untuk tabel produk dengan fungsi shared"""
@@ -462,23 +518,18 @@ class BaseProductTable(QWidget):
 
     def _render_current_page(self):
         self.table.clearContents()
-        start = (self.current_page - 1) * self.per_page
-        end = start + self.per_page
-        page_rows = self._all_rows[start:end]
-        self.table.setRowCount(self.per_page)
 
-        for r, row in enumerate(page_rows):
+        for r, row in enumerate(self._all_rows):
             for c, key in enumerate(self.FIELDS):
                 val = row.get(key)
                 if key in self.FORMATTERS:
                     val = self.FORMATTERS[key](val)
                 item = QTableWidgetItem("" if val is None else str(val))
-                item.setTextAlignment(Qt.AlignmentFlag.AlignVCenter |
-                                      (Qt.AlignmentFlag.AlignRight if isinstance(val, float)
-                                       else Qt.AlignmentFlag.AlignLeft))
+                if key == "nama_barang":
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+                else:
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
                 self.table.setItem(r, c, item)
-
-
 
 
 class ProdukSatuanTable(BaseProductTable):
@@ -490,6 +541,9 @@ class ProdukSatuanTable(BaseProductTable):
     COLUMN_WIDTHS = [100, 300, 80, 150, 170]
     HEADERS = ["SKU", "NAMA BARANG", "STOCK", "HARGA JUAL", "TGL MASUK"]
     FIELDS = ["sku", "nama_barang", "stock", "harga_jual", "tgl_masuk"]
+    FORMATTERS = {
+        "tgl_masuk": format_tanggal,
+    }
 
 
 class ProdukPaketTable(BaseProductTable):
