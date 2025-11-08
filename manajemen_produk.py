@@ -156,8 +156,8 @@ class ManajemenProduk(QWidget):
         layout.addStretch()
 
         # Input pencarian
-        search_input = QLineEdit()
-        search_input.setStyleSheet("""
+        self.search_input = QLineEdit()
+        self.search_input.setStyleSheet("""
             QLineEdit{
                 border: 2px solid #ffffff;
                 border-radius: 10px;
@@ -171,9 +171,9 @@ class ManajemenProduk(QWidget):
                 color: #d3d3d3;
             }
         """)
-        search_input.setPlaceholderText("Cari Produk...")
-        search_input.setFixedSize(self.SEARCH_FIELD_WIDTH, self.BUTTON_HEIGHT)
-        layout.addWidget(search_input)
+        self.search_input.setPlaceholderText("Cari Produk...")
+        self.search_input.setFixedSize(self.SEARCH_FIELD_WIDTH, self.BUTTON_HEIGHT)
+        layout.addWidget(self.search_input)
 
         # Tombol cari
         search_button = QPushButton("   Cari")

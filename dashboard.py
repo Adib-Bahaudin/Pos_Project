@@ -349,7 +349,8 @@ class Dashboard(QWidget):
             self.button_manajemen_right.setMinimumWidth(self.BUTTON_EXPANDED_WIDTH)
             if not self.manajemen_widget:
                 self.manajemen_widget = ManajemenProduk()
-                self.main_stack.addWidget(self.manajemen_widget)
+                if self.main_stack.indexOf(self.manajemen_widget) == -1:
+                    self.main_stack.addWidget(self.manajemen_widget)
             self.main_stack.setCurrentWidget(self.manajemen_widget)
         elif self.button_transaksi_left.isChecked():
             self.button_transaksi_right.setMinimumWidth(self.BUTTON_EXPANDED_WIDTH)
