@@ -1,3 +1,4 @@
+from PySide6 import QtCore
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import (
@@ -371,10 +372,10 @@ class Dashboard(QWidget):
         database_manager.delete_session()
 
         parent_window = self.window()
-        parent_window.close()
 
         from main import MainWindow
         main_window = MainWindow()
         main_window.show()
 
-        parent_window.deleteLater()
+        parent_window.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, True)
+        parent_window.close()
