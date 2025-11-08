@@ -378,7 +378,7 @@ class DatabaseManager:
         conn.commit()
         conn.close()
 
-    def get_produk_satuan(self, limit=None, offset=0):
+    def get_produk_satuan(self, limit=1, offset=0):
         conn = sqlite3.connect(self.db_name)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
@@ -401,3 +401,51 @@ class DatabaseManager:
 
         conn.close()
         return result
+
+    def get_produk_paket(self, limit=1, offset=0):
+        conn = sqlite3.connect(self.db_name)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT
+                pp.sku,
+                pp.nama_paket AS nama_barang,
+                pp.harga_jual,
+                dp.jumlah,
+                ps.nama_barang AS nama
+            FROM produk_paket pp
+            LEFT JOIN detail_paket dp ON pp.id = dp.id_paket
+            LEFT JOIN produk_satuan ps ON ps.id = dp.id_produk
+            ORDER BY nama_barang ASC
+            LIMIT ? OFFSET ?
+        """, (limit, offset))
+
+        result = [dict(r) for r in cursor.fetchall()]
+
+        for item in result:
+            nama = item.get("nama")
+            jumlah = item.get("jumlah")
+            item["keterangan"] = f"{nama} {jumlah} pcs"
+
+        conn.close()
+        return result
+
+    def get_rows_produk(self, index):
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+
+        if index == 0:
+            cursor.execute("""
+                SELECT COUNT(*) FROM produk_satuan
+            """)
+
+            result = cursor.fetchone()[0]
+            return result
+        else:
+            cursor.execute("""
+                SELECT COUNT(*) FROM produk_paket
+            """)
+
+            result = cursor.fetchone()[0]
+            return result

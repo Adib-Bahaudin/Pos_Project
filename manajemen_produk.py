@@ -1,3 +1,4 @@
+import math
 from datetime import datetime, date
 from zoneinfo import ZoneInfo
 
@@ -209,9 +210,10 @@ class ManajemenProduk(QWidget):
 
         # Stack widget untuk tabel
         self.stack = QStackedWidget()
-        self.tale_satuan = ProdukSatuanTable()
-        self.stack.addWidget(self.tale_satuan)
-        self.stack.addWidget(ProdukPaketTable())
+        self.table_satuan = ProdukSatuanTable()
+        self.stack.addWidget(self.table_satuan)
+        self.table_produk = ProdukPaketTable()
+        self.stack.addWidget(self.table_produk)
         layout.addWidget(self.stack)
 
         # Tombol navigasi bawah
@@ -292,6 +294,7 @@ class ManajemenProduk(QWidget):
         button_reset.setIconSize(QSize(20, 20))
         button_reset.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
         button_reset.setCursor(Qt.CursorShape.PointingHandCursor)
+        button_reset.clicked.connect(self.reset_click)
         button_reset.setStyleSheet("""
             QPushButton{
                 background-color: #ff8000;
@@ -343,9 +346,14 @@ class ManajemenProduk(QWidget):
         self.product_selector.currentIndexChanged.connect(self._switch_product_view)
         self.button_baru.clicked.connect(self._show_tambah_barang_dialog)
 
+    def reset_click(self):
+        self.table_satuan.reset_width()
+        self.table_produk.reset_width()
+
     def _switch_product_view(self, index: int):
         """Switch tampilan tabel berdasarkan pilihan selector"""
         self.stack.setCurrentIndex(index)
+        self.table_data()
 
     def _show_tambah_barang_dialog(self):
         """Menampilkan dialog tambah barang"""
@@ -375,14 +383,17 @@ class ManajemenProduk(QWidget):
                     sku= data["sku"],
                     coversion= data["per_satuan"],
                 )
-                print("Data Paket Ditambahkan")
+                self.table_data()
 
     def table_data(self, offset=0):
         database = DatabaseManager()
         produk = self.product_selector.currentIndex()
         if produk == 0:
-            data = database.get_produk_satuan(5,offset)
-            self.tale_satuan.set_data(data)
+            data = database.get_produk_satuan(5, offset)
+            self.table_satuan.set_data(data)
+        else:
+            data = database.get_produk_paket(5, offset)
+            self.table_produk.set_data(data)
 
         if offset == 0:
             self.page_input.setText("1")
@@ -391,9 +402,14 @@ class ManajemenProduk(QWidget):
             self.page_input.setText(str(text))
 
     def next_page(self):
-        page = self.page_input.text().strip()
-        page = int(page) + 1
-        self.table_data((page - 1) * 5)
+        page = int(self.page_input.text().strip())
+        database = DatabaseManager()
+        pages = math.ceil(database.get_rows_produk(self.product_selector.currentIndex()) / 5)
+        if page < pages:
+            page = page + 1
+            self.table_data((page - 1) * 5)
+        else:
+            pass
 
     def prev_page(self):
         page = int(self.page_input.text().strip())
@@ -509,6 +525,11 @@ class BaseProductTable(QWidget):
             }
         """)
         return table
+
+    def reset_width(self):
+        """reset lebar kolom sesuai konfigurasi awal"""
+        for index, width in enumerate(self.COLUMN_WIDTHS):
+            self.table.setColumnWidth(index, width)
 
     def set_data(self, rows: list[dict]):
         """Set Seluruh Data tabel"""
