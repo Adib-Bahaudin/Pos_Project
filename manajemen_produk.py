@@ -327,6 +327,7 @@ class ManajemenProduk(QWidget):
             }
         """)
         self.page_input.setMaxLength(2)
+        self.page_input.returnPressed.connect(self.custom_page)
         content_layout.addWidget(self.page_input)
 
         # Tombol navigasi kanan
@@ -400,6 +401,18 @@ class ManajemenProduk(QWidget):
         else:
             text = int(offset / 5) + 1
             self.page_input.setText(str(text))
+
+    def custom_page(self):
+        index = self.product_selector.currentIndex()
+        database = DatabaseManager()
+        pages = math.ceil(database.get_rows_produk(index)/5)
+        page = int(self.page_input.text().strip())
+        if page >= pages:
+            self.page_input.setText(str(pages))
+            self.table_data((pages - 1) * 5)
+        else:
+            self.table_data((page - 1) * 5)
+
 
     def next_page(self):
         page = int(self.page_input.text().strip())
