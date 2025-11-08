@@ -11,7 +11,7 @@ from database import DatabaseManager
 class LoginPage(QWidget):
     """Halaman login dengan input kunci akses"""
 
-    def __init__(self, on_login_success):
+    def __init__(self, on_login_success=None):
         super().__init__()
 
         self.is_password_visible = False
@@ -305,3 +305,6 @@ class LoginPage(QWidget):
                 self.error_info.setText(result)
         else:
             self.error_info.setText("Kunci Hanya Berupa Angka")
+
+    def session_info(self, session):
+        self.error_info.setText(session)

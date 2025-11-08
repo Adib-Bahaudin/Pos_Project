@@ -230,11 +230,15 @@ class MainWindow(QMainWindow):
         if is_logged_in:
             self.on_login_success(session_data)
         else:
-            print(session_data)
+            if session_data == "token tidak sudah expaired":
+                pesan = LoginPage()
+                pesan.session_info(session_data)
+            elif session_data == "token tidak valid":
+                pesan = LoginPage()
+                pesan.session_info(session_data)
 
     def on_login_success(self, data):
         """Handler ketika login berhasil"""
-        print(f"main.py: Login Berhasil, Selamat Datang {data['username']}")
 
         self.login = True
         self.data_login = {
@@ -263,7 +267,7 @@ class MainWindow(QMainWindow):
             role = self.data_login['role']
             database_manager.session_login(user_id, username, role)
         else:
-            print("main.py : Belum Login")
+            pass
 
 
 if __name__ == "__main__":

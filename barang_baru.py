@@ -1,4 +1,4 @@
-from PySide6.QtGui import Qt, QPixmap, QIntValidator
+from PySide6.QtGui import Qt, QPixmap, QIntValidator, QFont
 from PySide6.QtWidgets import QDialog, QVBoxLayout, QWidget, QPushButton, QHBoxLayout, QLabel, QLineEdit, \
     QGridLayout, QComboBox, QStackedWidget
 
@@ -195,6 +195,14 @@ class TambahBarangBaru(QDialog):
 
         main_layout.addStretch()
 
+        self.label_peringatan = QLabel()
+        self.label_peringatan.setFont(QFont("Franklin Gothic", 12, QFont.Weight.Bold))
+        self.label_peringatan.setStyleSheet("color: #fbff00; border-top: none; border-bottom: none;")
+        self.label_peringatan.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        main_layout.addWidget(self.label_peringatan)
+
+        main_layout.addStretch()
+
         button_layout = QHBoxLayout()
         button_layout.setContentsMargins(60,0,60,0)
 
@@ -285,7 +293,7 @@ class TambahBarangBaru(QDialog):
                 sku = sku,
             )
             if not valid:
-                print(pesan)
+                self.label_peringatan.setText("Semua Kolom Wajib Diisi")
             else:
                 validasi = DatabaseManager()
                 validasi2 = validasi.verify_is_valid("satuan", sku, nama)
@@ -293,11 +301,11 @@ class TambahBarangBaru(QDialog):
                     self.accept()
                 else:
                     if validasi2['nama_barang'] and validasi2['sku_barang']:
-                        print("Nama Barang dan SKU sudah ada")
+                        self.label_peringatan.setText("Nama Barang dan SKU sudah ada")
                     elif validasi2['nama_barang']:
-                        print("Nama Barang sudah ada")
+                        self.label_peringatan.setText("Nama Barang sudah ada")
                     elif validasi2['sku_barang']:
-                        print("SKU sudah ada")
+                        self.label_peringatan.setText("SKU sudah ada")
         else:
             valid, pesan = self.validate_fields_not_empty(
                 nama = nama,
@@ -307,7 +315,7 @@ class TambahBarangBaru(QDialog):
                 sku = sku,
             )
             if not valid:
-                print(pesan)
+                self.label_peringatan.setText("Semua Kolom Wajib Diisi")
             else:
                 validasi = DatabaseManager()
                 validasi2 = validasi.verify_is_valid("paket", sku, nama, nama_barang)
@@ -315,11 +323,11 @@ class TambahBarangBaru(QDialog):
                     self.accept()
                 else:
                     if validasi2['nama_barang']:
-                        print("Nama Barang sudah ada")
+                        self.label_peringatan.setText("Nama Barang sudah ada")
                     elif validasi2['sku_barang']:
-                        print("SKU sudah ada")
+                        self.label_peringatan.setText("SKU sudah ada")
                     elif validasi2['nama_produk']:
-                        print("Nama Barang Tidak Ditemukan")
+                        self.label_peringatan.setText("Nama Barang Tidak Ditemukan")
 
     def get_data(self):
         index = self.combo_selector.currentIndex()

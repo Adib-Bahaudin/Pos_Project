@@ -257,9 +257,9 @@ class DatabaseManager:
                 "role": decoded_token['role']
             }
         except jwt.ExpiredSignatureError:
-            return False, "database.py : token tidak sudah expaired"
+            return False, "token tidak sudah expaired"
         except jwt.InvalidTokenError:
-            return False, "database.py : token tidak sudah tidak valid"
+            return False, "token tidak valid"
 
     def delete_session(self):
         """Menghapus semua session dari database"""
