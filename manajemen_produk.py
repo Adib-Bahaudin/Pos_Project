@@ -170,9 +170,13 @@ class ManajemenProduk(QWidget):
             QLineEdit:placeholder {
                 color: #d3d3d3;
             }
+            QLineEdit[active ="true"] {
+                border: 2px solid #00aaff;
+            }
         """)
-        self.search_input.setPlaceholderText("Cari Produk...")
+        self.search_input.setPlaceholderText("Cari Produk atau SKU ...")
         self.search_input.setFixedSize(self.SEARCH_FIELD_WIDTH, self.BUTTON_HEIGHT)
+        self.search_input.setProperty("active", False)
         layout.addWidget(self.search_input)
 
         # Tombol cari
@@ -190,7 +194,14 @@ class ManajemenProduk(QWidget):
                 font-size: 16px;
                 font-weight: bold;
             }
+            QPushButton:hover {
+                background-color: #0055ff;
+                color: #ffffff;
+                border: 2px solid #0055ff;
+            }
         """)
+        search_button.clicked.connect(self.search_page)
+        search_button.setShortcut("Return")
         layout.addWidget(search_button)
 
         layout.addStretch()
@@ -388,20 +399,40 @@ class ManajemenProduk(QWidget):
                 self.table_data()
 
     def table_data(self, offset=0):
+        current = bool(self.search_input.property("active"))
+        text = self.search_input.text().strip()
         database = DatabaseManager()
         produk = self.product_selector.currentIndex()
-        if produk == 0:
-            data = database.get_produk_satuan(5, offset)
-            self.table_satuan.set_data(data)
-        else:
-            data = database.get_produk_paket(5, offset)
-            self.table_produk.set_data(data)
+        if current == False or (text == "" and current == True):
+            if current:
+                self.search_input.setProperty("active", not current)
+                self.search_input.style().unpolish(self.search_input)
+                self.search_input.style().polish(self.search_input)
+
+            if produk == 0:
+                data = database.get_produk_satuan(5, offset)
+                self.table_satuan.set_data(data)
+            else:
+                data = database.get_produk_paket(5, offset)
+                self.table_produk.set_data(data)
 
         if offset == 0:
             self.page_input.setText("1")
         else:
             text = int(offset / 5) + 1
             self.page_input.setText(str(text))
+
+    def search_page(self):
+        current = bool(self.search_input.property("active"))
+        text = self.search_input.text().strip()
+        if text != "" and current == False:
+            self.search_input.setProperty("active", not current)
+            self.search_input.style().unpolish(self.search_input)
+            self.search_input.style().polish(self.search_input)
+        elif text == "" and current == True:
+            self.search_input.setProperty("active", not current)
+            self.search_input.style().unpolish(self.search_input)
+            self.search_input.style().polish(self.search_input)
 
     def custom_page(self):
         index = self.product_selector.currentIndex()
@@ -413,7 +444,6 @@ class ManajemenProduk(QWidget):
             self.table_data((pages - 1) * 5)
         else:
             self.table_data((page - 1) * 5)
-
 
     def next_page(self):
         page = int(self.page_input.text().strip())
