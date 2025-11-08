@@ -1,10 +1,10 @@
-from PySide6.QtGui import Qt, QPixmap
+from PySide6.QtGui import Qt, QPixmap, QIntValidator
 from PySide6.QtWidgets import QDialog, QVBoxLayout, QWidget, QPushButton, QHBoxLayout, QLabel, QLineEdit, \
     QGridLayout, QComboBox, QStackedWidget
 
+from database import DatabaseManager
 from dialog_title_bar import DialogTitleBar
 from fungsi import ScreenSize
-from database import DatabaseManager
 
 
 class TambahBarangBaru(QDialog):
@@ -20,6 +20,8 @@ class TambahBarangBaru(QDialog):
         screen_size = ScreenSize()
         x, y = screen_size.get_centered_position(1000, 650)
         self.move(x, y)
+
+        int_validator = QIntValidator(0, 9999999)
 
         root_layout = QVBoxLayout()
         root_widget= QWidget()
@@ -146,7 +148,8 @@ class TambahBarangBaru(QDialog):
 
         self.harga_jual = WidgetKecil("data/buy.png",
                                       "Harga Jual",
-                                      "4000")
+                                      "4000",
+                                      int_validator)
         conten_grid.addWidget(self.harga_jual, 2,0)
 
         self.stack0 = QStackedWidget()
@@ -154,7 +157,8 @@ class TambahBarangBaru(QDialog):
 
         self.harga_beli = WidgetKecil("data/uang.png",
                                       "harga_beli",
-                                      "2000")
+                                      "2000",
+                                      int_validator)
         self.stack0.addWidget(self.harga_beli)
 
         self.nama_barang = WidgetKecil("data/satuan.png",
@@ -166,11 +170,13 @@ class TambahBarangBaru(QDialog):
 
         self.stok = WidgetKecil("data/stok.png",
                                 "Stok",
-                                "100")
+                                "100",
+                                int_validator)
 
         self.convert = WidgetKecil("data/convert.png",
                                    "Paket Persatuan",
-                                   "12")
+                                   "12",
+                                   int_validator)
 
         self.stack = QStackedWidget()
         self.stack.setStyleSheet("border: none;")
@@ -352,7 +358,7 @@ class TambahBarangBaru(QDialog):
 
 
 class WidgetKecil(QWidget):
-    def __init__(self, ikon_path, label_text, placeholder_text):
+    def __init__(self, ikon_path, label_text, placeholder_text, validator=None):
         super().__init__()
 
         content_layout = QVBoxLayout()
@@ -407,6 +413,8 @@ class WidgetKecil(QWidget):
                 background-color: #2a2a2a;
             }
         """)
+        if validator is not None:
+            self.data.setValidator(validator)
         content_layout.addWidget(self.data)
 
         self.setLayout(content_layout)

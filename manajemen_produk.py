@@ -1,9 +1,10 @@
 import math
 from datetime import datetime, date
+from wsgiref.validate import validator
 from zoneinfo import ZoneInfo
 
 from PySide6.QtCore import QSize
-from PySide6.QtGui import QFont, Qt, QIcon
+from PySide6.QtGui import QFont, Qt, QIcon, QIntValidator
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QFrame, QVBoxLayout, QLabel,
     QPushButton, QLineEdit, QTableWidget, QComboBox, QStackedWidget, QTableWidgetItem
@@ -315,6 +316,7 @@ class ManajemenProduk(QWidget):
         # Input halaman
         self.page_input = QLineEdit()
         self.page_input.setText("1")
+        self.page_input.setValidator(QIntValidator(0, 99))
         self.page_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.page_input.setFixedSize(self.PAGE_INPUT_WIDTH, self.PAGE_INPUT_HEIGHT)
         self.page_input.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
