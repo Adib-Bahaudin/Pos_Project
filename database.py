@@ -450,7 +450,7 @@ class DatabaseManager:
             result = cursor.fetchone()[0]
             return result
 
-    def search_produk(self, index, keyword, limit=1, offset=0):
+    def get_search_produk(self, index, keyword, limit=1, offset=0):
         keyword = f"%{keyword}%"
         conn = sqlite3.connect(self.db_name)
         conn.row_factory = sqlite3.Row
@@ -487,12 +487,38 @@ class DatabaseManager:
                 FROM produk_paket pp
                 LEFT JOIN detail_paket dp ON pp.id = dp.id_paket
                 LEFT JOIN produk_satuan ps ON ps.id = dp.id_produk
-                WHERE sku LIKE ? OR nama_barang LIKE ?
+                WHERE pp.sku LIKE ? OR pp.nama_paket LIKE ?
                 ORDER BY nama_barang ASC
                 LIMIT ? OFFSET ?
             """, (keyword, keyword, limit, offset))
 
             result = [dict(r) for r in cursor.fetchall()]
+
+            conn.close()
+            return result
+
+    def get_search_row(self, index, keyword):
+        keyword = f"%{keyword}%"
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+
+        if index == 0:
+            cursor.execute("""
+                SELECT COUNT(*) FROM produk_satuan
+                WHERE sku LIKE ? OR nama_barang LIKE ?
+            """, (keyword, keyword))
+
+            result = cursor.fetchone()[0]
+
+            conn.close()
+            return result
+        else:
+            cursor.execute("""
+                SELECT COUNT(*) FROM produk_paket
+                WHERE sku LIKE ? OR nama_paket LIKE ?
+            """)
+
+            result = cursor.fetchone()[0]
 
             conn.close()
             return result

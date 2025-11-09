@@ -3,10 +3,10 @@ from datetime import datetime, date
 from zoneinfo import ZoneInfo
 
 from PySide6.QtCore import QSize
-from PySide6.QtGui import QFont, Qt, QIcon, QIntValidator
+from PySide6.QtGui import QFont, Qt, QIcon, QIntValidator, QShortcut, QKeySequence
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QFrame, QVBoxLayout, QLabel,
-    QPushButton, QLineEdit, QTableWidget, QComboBox, QStackedWidget, QTableWidgetItem
+    QPushButton, QLineEdit, QTableWidget, QComboBox, QStackedWidget, QTableWidgetItem, QApplication
 )
 
 from barang_baru import TambahBarangBaru
@@ -17,6 +17,7 @@ class ManajemenProduk(QWidget):
     """Widget utama untuk manajemen produk"""
 
     # Konstanta
+    pages = 0
     BUTTON_WIDTH = 200
     BUTTON_HEIGHT = 35
     SEARCH_FIELD_WIDTH = 500
@@ -34,6 +35,9 @@ class ManajemenProduk(QWidget):
 
         self._setup_ui()
         self._setup_connections()
+
+        shortcut = QShortcut(QKeySequence("Return"), self)
+        shortcut.activated.connect(self.handle_shortcut)
 
     def _setup_ui(self):
         """Inisialisasi user interface"""
@@ -201,7 +205,6 @@ class ManajemenProduk(QWidget):
             }
         """)
         search_button.clicked.connect(self.search_page)
-        search_button.setShortcut("Return")
         layout.addWidget(search_button)
 
         layout.addStretch()
@@ -339,7 +342,6 @@ class ManajemenProduk(QWidget):
             }
         """)
         self.page_input.setMaxLength(2)
-        self.page_input.returnPressed.connect(self.custom_page)
         content_layout.addWidget(self.page_input)
 
         # Tombol navigasi kanan
@@ -360,6 +362,8 @@ class ManajemenProduk(QWidget):
         self.button_baru.clicked.connect(self._show_tambah_barang_dialog)
 
     def reset_click(self):
+        self.search_input.setText("")
+        self.search_page()
         self.table_satuan.reset_width()
         self.table_paket.reset_width()
 
@@ -398,6 +402,14 @@ class ManajemenProduk(QWidget):
                 )
                 self.table_data()
 
+    def handle_shortcut(self):
+        focused = QApplication.focusWidget()
+
+        if focused == self.search_input:
+            self.search_page()
+        elif focused == self.page_input:
+            self.custom_page()
+
     def table_data(self, offset=0):
         current = bool(self.search_input.property("active"))
         text = self.search_input.text().strip()
@@ -417,13 +429,10 @@ class ManajemenProduk(QWidget):
                 self.table_paket.set_data(data)
         elif text != "" and current == True:
             if produk == 0:
-                data = database.search_produk(produk, text, 5, offset)
-                print("debug dua")
-                print(f"debug tiga : isi text {text}")
-                print(f"debug empat : isi data {data}")
+                data = database.get_search_produk(produk, text, 5, offset)
                 self.table_satuan.set_data(data)
             else:
-                data = database.search_produk(produk, text, 5, offset)
+                data = database.get_search_produk(produk, text, 5, offset)
                 self.table_paket.set_data(data)
 
         if offset == 0:
@@ -440,29 +449,46 @@ class ManajemenProduk(QWidget):
                 self.search_input.setProperty("active", not current)
             self.search_input.style().unpolish(self.search_input)
             self.search_input.style().polish(self.search_input)
-            print("debug satu")
             self.table_data()
         elif text == "" and current == True:
             self.search_input.setProperty("active", not current)
             self.search_input.style().unpolish(self.search_input)
             self.search_input.style().polish(self.search_input)
+            self.table_data()
 
     def custom_page(self):
+        text = self.search_input.text().strip()
+        current = bool(self.search_input.property("active"))
         index = self.product_selector.currentIndex()
         database = DatabaseManager()
-        pages = math.ceil(database.get_rows_produk(index)/5)
+
+        if current == False or (text == "" and current == True):
+            self.pages = math.ceil(database.get_rows_produk(index)/5)
+        else:
+            self.pages = math.ceil(database.get_search_row(index,text)/5)
+
         page = int(self.page_input.text().strip())
-        if page >= pages:
-            self.page_input.setText(str(pages))
-            self.table_data((pages - 1) * 5)
+        if page >= self.pages:
+            self.page_input.setText(str(self.pages))
+            self.table_data((self.pages - 1) * 5)
+        elif page <= 0:
+            self.table_data()
         else:
             self.table_data((page - 1) * 5)
 
     def next_page(self):
         page = int(self.page_input.text().strip())
         database = DatabaseManager()
-        pages = math.ceil(database.get_rows_produk(self.product_selector.currentIndex()) / 5)
-        if page < pages:
+        text = self.search_input.text().strip()
+        current = bool(self.search_input.property("active"))
+        index = self.product_selector.currentIndex()
+
+        if current == False or (text == "" and current == True):
+            self.pages = math.ceil(database.get_rows_produk(index) / 5)
+        else:
+            self.pages = math.ceil(database.get_search_row(index,text)/5)
+
+        if page < self.pages:
             page = page + 1
             self.table_data((page - 1) * 5)
         else:
