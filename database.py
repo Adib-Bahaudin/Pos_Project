@@ -449,3 +449,50 @@ class DatabaseManager:
 
             result = cursor.fetchone()[0]
             return result
+
+    def search_produk(self, index, keyword, limit=1, offset=0):
+        keyword = f"%{keyword}%"
+        conn = sqlite3.connect(self.db_name)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        if index == 0:
+            cursor.execute("""
+                SELECT 
+                    ps.sku,
+                    ps.nama_barang,
+                    ps.harga_jual,
+                    ps.stok AS stock,
+                    ps.tanggal AS tgl_masuk,
+                    hb.harga AS harga_beli
+                FROM produk_satuan ps
+                LEFT JOIN harga_beli hb ON ps.id = hb.id_satuan
+                WHERE ps.sku LIKE ? OR ps.nama_barang LIKE ?
+                ORDER BY nama_barang ASC 
+                LIMIT ? OFFSET ?
+            """, (keyword, keyword, limit, offset))
+
+            result = [dict(r) for r in cursor.fetchall()]
+
+            conn.close()
+            return result
+        else:
+            cursor.execute("""
+                SELECT
+                    pp.sku,
+                    pp.nama_paket AS nama_barang,
+                    pp.harga_jual,
+                    dp.jumlah,
+                    ps.nama_barang AS nama
+                FROM produk_paket pp
+                LEFT JOIN detail_paket dp ON pp.id = dp.id_paket
+                LEFT JOIN produk_satuan ps ON ps.id = dp.id_produk
+                WHERE sku LIKE ? OR nama_barang LIKE ?
+                ORDER BY nama_barang ASC
+                LIMIT ? OFFSET ?
+            """, (keyword, keyword, limit, offset))
+
+            result = [dict(r) for r in cursor.fetchall()]
+
+            conn.close()
+            return result

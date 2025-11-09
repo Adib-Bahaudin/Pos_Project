@@ -223,8 +223,8 @@ class ManajemenProduk(QWidget):
         self.stack = QStackedWidget()
         self.table_satuan = ProdukSatuanTable()
         self.stack.addWidget(self.table_satuan)
-        self.table_produk = ProdukPaketTable()
-        self.stack.addWidget(self.table_produk)
+        self.table_paket = ProdukPaketTable()
+        self.stack.addWidget(self.table_paket)
         layout.addWidget(self.stack)
 
         # Tombol navigasi bawah
@@ -361,7 +361,7 @@ class ManajemenProduk(QWidget):
 
     def reset_click(self):
         self.table_satuan.reset_width()
-        self.table_produk.reset_width()
+        self.table_paket.reset_width()
 
     def _switch_product_view(self, index: int):
         """Switch tampilan tabel berdasarkan pilihan selector"""
@@ -414,7 +414,17 @@ class ManajemenProduk(QWidget):
                 self.table_satuan.set_data(data)
             else:
                 data = database.get_produk_paket(5, offset)
-                self.table_produk.set_data(data)
+                self.table_paket.set_data(data)
+        elif text != "" and current == True:
+            if produk == 0:
+                data = database.search_produk(produk, text, 5, offset)
+                print("debug dua")
+                print(f"debug tiga : isi text {text}")
+                print(f"debug empat : isi data {data}")
+                self.table_satuan.set_data(data)
+            else:
+                data = database.search_produk(produk, text, 5, offset)
+                self.table_paket.set_data(data)
 
         if offset == 0:
             self.page_input.setText("1")
@@ -425,10 +435,13 @@ class ManajemenProduk(QWidget):
     def search_page(self):
         current = bool(self.search_input.property("active"))
         text = self.search_input.text().strip()
-        if text != "" and current == False:
-            self.search_input.setProperty("active", not current)
+        if (text != "" and current == False) or (text != "" and current == True):
+            if not current:
+                self.search_input.setProperty("active", not current)
             self.search_input.style().unpolish(self.search_input)
             self.search_input.style().polish(self.search_input)
+            print("debug satu")
+            self.table_data()
         elif text == "" and current == True:
             self.search_input.setProperty("active", not current)
             self.search_input.style().unpolish(self.search_input)
