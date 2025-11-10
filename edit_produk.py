@@ -1,8 +1,8 @@
 import sys
 
 from PySide6.QtGui import Qt, QFont, QPixmap
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QWidget, QMainWindow, QPushButton, QApplication, QFrame, \
-    QHBoxLayout, QLabel, QComboBox, QLineEdit
+from PySide6.QtWidgets import (QDialog, QVBoxLayout, QWidget, QMainWindow, QPushButton, QApplication, QFrame,
+                               QHBoxLayout, QLabel, QComboBox, QLineEdit, QGridLayout)
 
 from dialog_title_bar import DialogTitleBar
 
@@ -12,6 +12,7 @@ class EditProduk(QDialog):
 
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.setModal(True)
 
         root_layout = QVBoxLayout()
         root_widget = QWidget()
@@ -64,7 +65,7 @@ class EditProduk(QDialog):
 
         search_content_layout = QVBoxLayout()
 
-        label_satu = self._create_label_and_icon(
+        label_satu = self.create_label_and_icon(
             "data/cari_label.svg",
             "Cari Produk : "
         )
@@ -130,12 +131,34 @@ class EditProduk(QDialog):
 
         main_layout.addLayout(search_layout)
 
+        data_layout = QHBoxLayout()
+
+        frame_data = QFrame()
+        frame_data.setFixedSize(999, 200)
+        data_conten_layout = QGridLayout()
+
+        self.data_nama = WidgetData(
+            "data/produk tangan.svg",
+            "Nama Produk : "
+        )
+        data_conten_layout.addWidget(self.data_nama, 0, 0)
+
+        self.data_beli = WidgetData(
+            "data/harga beli.svg",
+            "Harga Beli : "
+        )
+        data_conten_layout.addWidget(self.data_beli, 1, 0)
+
+        frame_data.setLayout(data_conten_layout)
+        data_layout.addWidget(frame_data)
+        main_layout.addLayout(data_layout)
+
         main_layout.addStretch()
 
         root_widget.setLayout(main_layout)
         root_layout.addWidget(root_widget)
         self.setLayout(root_layout)
-        self.setMinimumSize(1000, 500)
+        self.setMinimumSize(1050, 700)
         self.setStyleSheet("""
             border : 2px solid #90EE90;
             background-color: #000000;
@@ -167,7 +190,7 @@ class EditProduk(QDialog):
         return button
 
     @staticmethod
-    def _create_label_and_icon(icon_path, text) -> QFrame:
+    def create_label_and_icon(icon_path, text) -> QFrame:
 
         frame = QFrame()
         frame.setStyleSheet("""
@@ -223,6 +246,30 @@ class LineEdit(QLineEdit):
 
     def data(self):
         return self.text().strip()
+
+    def write_text(self, text):
+        self.setText(text)
+
+class WidgetData(QWidget):
+    def __init__(self, icon_path, text_label, data = None):
+        super().__init__()
+
+        root_layout = QVBoxLayout()
+        root_layout.setContentsMargins(0,0,0,0)
+
+        label = EditProduk.create_label_and_icon(icon_path, text_label)
+        root_layout.addWidget(label)
+
+        self.editline = LineEdit("")
+        root_layout.addWidget(self.editline)
+
+        self.setLayout(root_layout)
+
+    def get_data(self):
+        return self.editline.data()
+
+    def set_data(self, data):
+        self.editline.write_text(data)
 
 class MainWindow(QMainWindow):
     def __init__(self, parent=None):
