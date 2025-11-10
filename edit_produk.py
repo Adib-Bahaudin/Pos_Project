@@ -21,6 +21,38 @@ class EditProduk(QDialog):
         title_bar = DialogTitleBar("Edit Produk", self)
         main_layout.addWidget(title_bar)
 
+        main_layout.addSpacing(20)
+
+        header_layout = QHBoxLayout()
+
+        header_layout.addStretch()
+
+        header_icon = QLabel()
+        header_icon.setFixedSize(60,60)
+        header_icon.setPixmap(QPixmap("data/edit produk.svg"))
+        header_icon.setStyleSheet("""
+            border : none;
+        """)
+        header_icon.setScaledContents(True)
+        header_layout.addWidget(header_icon)
+
+        header_label = QLabel()
+        header_label.setText("Formulir Edit Produk")
+        header_label.setStyleSheet("""
+                    color: #FFFFFF;
+                    font-size: 22px;
+                    border: none;
+                    font-weight: bold;
+                    letter-spacing: 1px;
+                """)
+        header_layout.addWidget(header_label)
+
+        header_layout.addStretch()
+
+        main_layout.addLayout(header_layout)
+
+        main_layout.addSpacing(20)
+
         search_layout = QHBoxLayout()
 
         frame_search = QFrame()
