@@ -28,6 +28,7 @@ class DialogTitleBar(QWidget):
         label = QLabel()
         label.setText(text)
         label.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
+        label.setFixedHeight(35)
         main_layout.addWidget(label)
 
         main_layout.addStretch()
