@@ -143,11 +143,29 @@ class EditProduk(QDialog):
         )
         data_conten_layout.addWidget(self.data_nama, 0, 0)
 
+        self.data_stok = WidgetData(
+            "data/stok.svg",
+            "Stok Saat Ini"
+        )
+        data_conten_layout.addWidget(self.data_stok, 0, 1)
+
+        self.sku = WidgetData(
+            "data/barcode.svg",
+            "SKU"
+        )
+        data_conten_layout.addWidget(self.sku, 0, 2)
+
         self.data_beli = WidgetData(
             "data/harga beli.svg",
             "Harga Beli : "
         )
         data_conten_layout.addWidget(self.data_beli, 1, 0)
+
+        self.harga_jual = WidgetData(
+            "data/hargajual.svg",
+            "Harga Jual"
+        )
+        data_conten_layout.addWidget(self.harga_jual, 1, 1)
 
         frame_data.setLayout(data_conten_layout)
         data_layout.addWidget(frame_data)
@@ -251,7 +269,7 @@ class LineEdit(QLineEdit):
         self.setText(text)
 
 class WidgetData(QWidget):
-    def __init__(self, icon_path, text_label, data = None):
+    def __init__(self, icon_path, text_label):
         super().__init__()
 
         root_layout = QVBoxLayout()
@@ -268,8 +286,8 @@ class WidgetData(QWidget):
     def get_data(self):
         return self.editline.data()
 
-    def set_data(self, data):
-        self.editline.write_text(data)
+    def set_data(self, data_input):
+        self.editline.write_text(data_input)
 
 class MainWindow(QMainWindow):
     def __init__(self, parent=None):
