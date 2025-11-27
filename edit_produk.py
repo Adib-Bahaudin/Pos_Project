@@ -114,7 +114,7 @@ class EditProduk(QDialog):
         combo_box.addItems(["Satuan", "Paket"])
         search_main_layout.addWidget(combo_box)
 
-        self.search_line_edit = LineEdit("Cari SKU atau Nama Produk...")
+        self.search_line_edit = LineEdit("Cari Produk Dengan SKU...")
         search_main_layout.addWidget(self.search_line_edit)
 
         search_btn = self._create_button(
@@ -130,6 +130,34 @@ class EditProduk(QDialog):
         search_layout.addWidget(frame_search)
 
         main_layout.addLayout(search_layout)
+
+        main_layout.addSpacing(20)
+
+        info_layout = QHBoxLayout()
+        info_layout.setSpacing(0)
+        info_layout.setContentsMargins(20,10,10,0)
+
+        info_label = QLabel("Hasil Data Produk :   ")
+        info_label.setStyleSheet("""
+            color: #ffffff;
+            border: none;
+        """)
+        info_label.setFont(QFont("Segoe UI", 12))
+
+        info_layout.addWidget(info_label)
+
+        return_label = self.create_label_and_icon(
+            "data/warning_.svg",
+            "Error - Data tidak ditemukan"
+        )
+        return_label.hide()
+
+        info_layout.addWidget(return_label)
+
+        info_layout.addStretch()
+
+        main_layout.addLayout(info_layout)
+
 
         data_layout = QHBoxLayout()
 
