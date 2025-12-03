@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (QDialog, QVBoxLayout, QWidget, QPushButton, QFram
 
 from dialog_title_bar import DialogTitleBar
 from fungsi import ScreenSize
+from database import DatabaseManager
 
 
 class EditProduk(QDialog):
@@ -122,13 +123,14 @@ class EditProduk(QDialog):
         self.search_line_edit = LineEdit("Cari Produk Dengan SKU...")
         search_main_layout.addWidget(self.search_line_edit)
 
-        search_btn = self._create_button(
+        self.search_btn = self._create_button(
             "CARI",
             100,
             "#00aaff",
             "#ffffff"
         )
-        search_main_layout.addWidget(search_btn)
+        self.search_btn.clicked.connect()
+        search_main_layout.addWidget(self.search_btn)
 
         search_content_layout.addLayout(search_main_layout)
         frame_search.setLayout(search_content_layout)
@@ -249,6 +251,12 @@ class EditProduk(QDialog):
             border : 2px solid #90EE90;
             background-color: #000000;
         """)
+
+    def _search(self):
+        index = self.combo_box.currentIndex()
+        if index == 0:
+            data = DatabaseManager()
+            data.get_produk_satuan(1,0)
 
     def _on_change(self):
         index = self.combo_box.currentIndex()

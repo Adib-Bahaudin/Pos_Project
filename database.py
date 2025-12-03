@@ -450,7 +450,7 @@ class DatabaseManager:
             result = cursor.fetchone()[0]
             return result
 
-    def get_search_produk(self, index, keyword, limit=1, offset=0):
+    def get_search_produk(self, index, keyword, limit=1, offset=0, lock=False):
         keyword = f"%{keyword}%"
         conn = sqlite3.connect(self.db_name)
         conn.row_factory = sqlite3.Row
