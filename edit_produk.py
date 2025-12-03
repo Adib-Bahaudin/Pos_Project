@@ -153,13 +153,13 @@ class EditProduk(QDialog):
 
         info_layout.addWidget(info_label)
 
-        return_label = self.create_label_and_icon(
+        self.return_label = self.create_label_and_icon(
             "data/warning_.svg",
             "Error - Data tidak ditemukan"
         )
-        return_label.hide()
+        self.return_label.hide()
 
-        info_layout.addWidget(return_label)
+        info_layout.addWidget(self.return_label)
 
         info_layout.addStretch()
 
@@ -256,8 +256,13 @@ class EditProduk(QDialog):
         index = self.combo_box.currentIndex()
         text = self.search_line_edit.data()
         if index == 0:
-            data = DatabaseManager()
-            print(data.get_search_produk(index,text,1,0, True))
+            base = DatabaseManager()
+            data = base.get_search_produk(index,text,1,0, True)
+            if data:
+                print(data)
+                self.data_nama.set_data("halo")
+            else:
+                self.return_label.show()
 
     def _on_change(self):
         index = self.combo_box.currentIndex()
