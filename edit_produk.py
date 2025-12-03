@@ -211,10 +211,10 @@ class EditProduk(QDialog):
         tombol_bawah_layout.addStretch()
 
         tombol_ok = self._create_button(
-            "SELESAI",
-            150,
-            "#90EE90",
-            "#ffffff"
+            "SUBMIT",
+            120,
+            "#FFD700",
+            "#E0115F"
 
         )
         tombol_bawah_layout.addWidget(tombol_ok)
