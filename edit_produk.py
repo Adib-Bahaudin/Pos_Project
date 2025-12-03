@@ -77,10 +77,10 @@ class EditProduk(QDialog):
 
         search_main_layout = QHBoxLayout()
 
-        combo_box = QComboBox()
-        combo_box.setFixedSize(150,45)
-        combo_box.setCursor(Qt.CursorShape.PointingHandCursor)
-        combo_box.setStyleSheet("""
+        self.combo_box = QComboBox()
+        self.combo_box.setFixedSize(150,45)
+        self.combo_box.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.combo_box.setStyleSheet("""
             QComboBox {
                 background-color: #1a1a1a;
                 border: 2px solid #333333;
@@ -115,8 +115,9 @@ class EditProduk(QDialog):
                 padding: 5px;
             }
         """)
-        combo_box.addItems(["Satuan", "Paket"])
-        search_main_layout.addWidget(combo_box)
+        self.combo_box.addItems(["Satuan", "Paket"])
+        self.combo_box.currentIndexChanged.connect(self._on_change)
+        search_main_layout.addWidget(self.combo_box)
 
         self.search_line_edit = LineEdit("Cari Produk Dengan SKU...")
         search_main_layout.addWidget(self.search_line_edit)
@@ -181,6 +182,13 @@ class EditProduk(QDialog):
         )
         data_conten_layout.addWidget(self.data_stok, 0, 1)
 
+        self.nama_satuan = WidgetData(
+            "data/nama_icon.svg",
+            "Nama Satuan"
+        )
+        self.nama_satuan.hide()
+        data_conten_layout.addWidget(self.nama_satuan, 0, 1)
+
         self.sku = WidgetData(
             "data/barcode.svg",
             "SKU"
@@ -192,6 +200,13 @@ class EditProduk(QDialog):
             "Harga Beli : "
         )
         data_conten_layout.addWidget(self.data_beli, 1, 0)
+
+        self.konversi = WidgetData(
+            "data/konversi_icon.svg",
+            "Konversi ke Satuan"
+        )
+        self.konversi.hide()
+        data_conten_layout.addWidget(self.konversi, 1, 0)
 
         self.harga_jual = WidgetData(
             "data/hargajual.svg",
@@ -234,6 +249,19 @@ class EditProduk(QDialog):
             border : 2px solid #90EE90;
             background-color: #000000;
         """)
+
+    def _on_change(self):
+        index = self.combo_box.currentIndex()
+        if index == 1:
+            self.data_beli.hide()
+            self.data_stok.hide()
+            self.konversi.show()
+            self.nama_satuan.show()
+        else:
+            self.konversi.hide()
+            self.nama_satuan.hide()
+            self.data_beli.show()
+            self.data_stok.show()
 
     @staticmethod
     def _create_button(text, width, color_1, color_2) -> QPushButton:
