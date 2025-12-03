@@ -456,8 +456,15 @@ class DatabaseManager:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
+        if lock:
+            where = "WHERE ps.sku LIKE ?"
+            params = [keyword, limit, offset]
+        else:
+            where = "WHERE ps.sku LIKE ? OR ps.nama_barang LIKE ?"
+            params = [keyword, keyword, limit, offset]
+
         if index == 0:
-            cursor.execute("""
+            cursor.execute(f"""
                 SELECT 
                     ps.sku,
                     ps.nama_barang,
@@ -467,17 +474,17 @@ class DatabaseManager:
                     hb.harga AS harga_beli
                 FROM produk_satuan ps
                 LEFT JOIN harga_beli hb ON ps.id = hb.id_satuan
-                WHERE ps.sku LIKE ? OR ps.nama_barang LIKE ?
+                {where}
                 ORDER BY nama_barang ASC 
                 LIMIT ? OFFSET ?
-            """, (keyword, keyword, limit, offset))
+            """, params)
 
             result = [dict(r) for r in cursor.fetchall()]
 
             conn.close()
             return result
         else:
-            cursor.execute("""
+            cursor.execute(f"""
                 SELECT
                     pp.sku,
                     pp.nama_paket AS nama_barang,
@@ -487,10 +494,10 @@ class DatabaseManager:
                 FROM produk_paket pp
                 LEFT JOIN detail_paket dp ON pp.id = dp.id_paket
                 LEFT JOIN produk_satuan ps ON ps.id = dp.id_produk
-                WHERE pp.sku LIKE ? OR pp.nama_paket LIKE ?
+                {where}
                 ORDER BY nama_barang ASC
                 LIMIT ? OFFSET ?
-            """, (keyword, keyword, limit, offset))
+            """, params)
 
             result = [dict(r) for r in cursor.fetchall()]
 

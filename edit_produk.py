@@ -256,7 +256,7 @@ class EditProduk(QDialog):
         index = self.combo_box.currentIndex()
         if index == 0:
             data = DatabaseManager()
-            data.get_produk_satuan(1,0)
+            data.get_search_produk(index,"",1,1, True)
 
     def _on_change(self):
         index = self.combo_box.currentIndex()
