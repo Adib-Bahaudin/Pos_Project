@@ -456,14 +456,15 @@ class DatabaseManager:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
-        if lock:
-            where = "WHERE ps.sku LIKE ?"
-            params = [keyword, limit, offset]
-        else:
-            where = "WHERE ps.sku LIKE ? OR ps.nama_barang LIKE ?"
-            params = [keyword, keyword, limit, offset]
-
         if index == 0:
+
+            if lock:
+                where = "WHERE ps.sku LIKE ?"
+                params = [keyword, limit, offset]
+            else:
+                where = "WHERE ps.sku LIKE ? OR ps.nama_barang LIKE ?"
+                params = [keyword, keyword, limit, offset]
+
             cursor.execute(f"""
                 SELECT 
                     ps.sku,
@@ -479,11 +480,15 @@ class DatabaseManager:
                 LIMIT ? OFFSET ?
             """, params)
 
-            result = [dict(r) for r in cursor.fetchall()]
-
-            conn.close()
-            return result
         else:
+
+            if lock:
+                where = "WHERE pp.sku LIKE ?"
+                params = [keyword, limit, offset]
+            else:
+                where = "WHERE pp.sku LIKE ? OR pp.nama_paket LIKE ?"
+                params = [keyword, keyword, limit, offset]
+
             cursor.execute(f"""
                 SELECT
                     pp.sku,
@@ -499,10 +504,10 @@ class DatabaseManager:
                 LIMIT ? OFFSET ?
             """, params)
 
-            result = [dict(r) for r in cursor.fetchall()]
+        result = [dict(r) for r in cursor.fetchall()]
 
-            conn.close()
-            return result
+        conn.close()
+        return result
 
     def get_search_row(self, index, keyword):
         keyword = f"%{keyword}%"

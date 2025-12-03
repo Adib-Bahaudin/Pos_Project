@@ -129,7 +129,7 @@ class EditProduk(QDialog):
             "#00aaff",
             "#ffffff"
         )
-        self.search_btn.clicked.connect()
+        self.search_btn.clicked.connect(self._on_search)
         search_main_layout.addWidget(self.search_btn)
 
         search_content_layout.addLayout(search_main_layout)
@@ -252,11 +252,12 @@ class EditProduk(QDialog):
             background-color: #000000;
         """)
 
-    def _search(self):
+    def _on_search(self):
         index = self.combo_box.currentIndex()
+        text = self.search_line_edit.data()
         if index == 0:
             data = DatabaseManager()
-            data.get_search_produk(index,"",1,1, True)
+            print(data.get_search_produk(index,text,1,0, True))
 
     def _on_change(self):
         index = self.combo_box.currentIndex()
