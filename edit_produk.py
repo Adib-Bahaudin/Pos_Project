@@ -201,6 +201,27 @@ class EditProduk(QDialog):
 
         main_layout.addStretch()
 
+        tombol_bawah_widget = QFrame()
+        tombol_bawah_widget.setStyleSheet("""
+            border-top: none;
+        """)
+        tombol_bawah_layout = QHBoxLayout()
+        tombol_bawah_layout.setContentsMargins(15,15,15,15)
+
+        tombol_bawah_layout.addStretch()
+
+        tombol_ok = self._create_button(
+            "SELESAI",
+            150,
+            "#90EE90",
+            "#ffffff"
+
+        )
+        tombol_bawah_layout.addWidget(tombol_ok)
+        tombol_bawah_widget.setLayout(tombol_bawah_layout)
+
+        main_layout.addWidget(tombol_bawah_widget)
+
         root_widget.setLayout(main_layout)
         root_layout.addWidget(root_widget)
         self.setLayout(root_layout)
