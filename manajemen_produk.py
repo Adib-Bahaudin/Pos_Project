@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 )
 
 from barang_baru import TambahBarangBaru
+from edit_produk import EditProduk
 from database import DatabaseManager
 
 
@@ -121,10 +122,10 @@ class ManajemenProduk(QWidget):
         layout.setSpacing(10)
         layout.addStretch()
 
-        button_edit = self._create_action_button("Edit Produk", "#ff8000")
+        self.button_edit = self._create_action_button("Edit Produk", "#ff8000")
         self.button_baru = self._create_action_button("Produk Baru", "#00ff00")
 
-        layout.addWidget(button_edit)
+        layout.addWidget(self.button_edit)
         layout.addWidget(self.button_baru)
         layout.addStretch()
 
@@ -360,6 +361,7 @@ class ManajemenProduk(QWidget):
         """Setup signal-slot connections"""
         self.product_selector.currentIndexChanged.connect(self._switch_product_view)
         self.button_baru.clicked.connect(self._show_tambah_barang_dialog)
+        self.button_edit.clicked.connect(self._show_edit_dialog)
 
     def reset_click(self):
         self.search_input.setText("")
@@ -401,6 +403,10 @@ class ManajemenProduk(QWidget):
                     coversion= data["per_satuan"],
                 )
                 self.table_data()
+
+    def _show_edit_dialog(self):
+        dialog = EditProduk(self)
+        dialog.exec()
 
     def handle_shortcut(self):
         focused = QApplication.focusWidget()

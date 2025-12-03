@@ -1,10 +1,10 @@
-import sys
-
 from PySide6.QtGui import Qt, QFont, QPixmap
-from PySide6.QtWidgets import (QDialog, QVBoxLayout, QWidget, QMainWindow, QPushButton, QApplication, QFrame,
+from PySide6.QtWidgets import (QDialog, QVBoxLayout, QWidget, QPushButton, QFrame,
                                QHBoxLayout, QLabel, QComboBox, QLineEdit, QGridLayout)
 
 from dialog_title_bar import DialogTitleBar
+from fungsi import ScreenSize
+
 
 class EditProduk(QDialog):
     def __init__(self, parent=None):
@@ -13,6 +13,10 @@ class EditProduk(QDialog):
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setModal(True)
+
+        screen_size = ScreenSize()
+        x, y = screen_size.get_centered_position(1050, 700)
+        self.move(x, y)
 
         root_layout = QVBoxLayout()
         root_widget = QWidget()
@@ -337,28 +341,3 @@ class WidgetData(QWidget):
 
     def set_data(self, data_input):
         self.editline.write_text(data_input)
-
-class MainWindow(QMainWindow):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-        main_layout = QVBoxLayout()
-
-        self.setLayout(main_layout)
-
-        button = QPushButton("EDIT PRODUK")
-        button.setFixedSize(200, 200)
-        button.clicked.connect(self.show_dialog)
-        main_layout.addWidget(button)
-
-        self.setCentralWidget(button)
-
-    def show_dialog(self):
-        dialog = EditProduk(self)
-        dialog.exec()
-
-if __name__ == "__main__":
-    app = QApplication([])
-    window = MainWindow()
-    window.show()
-    sys.exit(app.exec())
