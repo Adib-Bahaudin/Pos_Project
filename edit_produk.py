@@ -1,6 +1,6 @@
-from PySide6.QtGui import Qt, QFont, QPixmap
+from PySide6.QtGui import Qt, QFont, QPixmap, QShortcut, QKeySequence
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QWidget, QPushButton, QFrame,
-                               QHBoxLayout, QLabel, QComboBox, QLineEdit, QGridLayout)
+                               QHBoxLayout, QLabel, QComboBox, QLineEdit, QGridLayout, QApplication)
 
 from dialog_title_bar import DialogTitleBar
 from fungsi import ScreenSize
@@ -18,6 +18,9 @@ class EditProduk(QDialog):
         screen_size = ScreenSize()
         x, y = screen_size.get_centered_position(1050, 700)
         self.move(x, y)
+
+        shortcut = QShortcut(QKeySequence("Return"), self)
+        shortcut.activated.connect(self._on_handle_shortcut)
 
         root_layout = QVBoxLayout()
         root_widget = QWidget()
@@ -252,20 +255,34 @@ class EditProduk(QDialog):
             background-color: #000000;
         """)
 
+    def _on_handle_shortcut(self):
+        focused = QApplication.focusWidget()
+
+        if focused == self.search_line_edit:
+            self._on_search()
+
     def _on_search(self):
         index = self.combo_box.currentIndex()
         text = self.search_line_edit.data()
+        self._on_reset()
+        base = DatabaseManager()
+
         if index == 0:
-            base = DatabaseManager()
             data = base.get_search_produk(index,text,1,0, True)
             if data:
-                print(data)
-                self.data_nama.set_data("halo")
+                self.return_label.hide()
+                data = data[0]
+                self.data_nama.set_data(data["nama_barang"])
+                self.data_stok.set_data(str(data["stock"]))
+                self.sku.set_data(data['sku'])
+                self.harga_jual.set_data(str(data['harga_jual']))
+                self.data_beli.set_data(str(data['harga_beli']))
             else:
                 self.return_label.show()
 
     def _on_change(self):
         index = self.combo_box.currentIndex()
+        self._on_reset()
         if index == 1:
             self.data_beli.hide()
             self.data_stok.hide()
@@ -276,6 +293,15 @@ class EditProduk(QDialog):
             self.nama_satuan.hide()
             self.data_beli.show()
             self.data_stok.show()
+
+    def _on_reset(self):
+        self.data_nama.set_data("")
+        self.data_stok.set_data("")
+        self.sku.set_data("")
+        self.harga_jual.set_data("")
+        self.data_beli.set_data("")
+        self.nama_satuan.set_data("")
+        self.konversi.set_data("")
 
     @staticmethod
     def _create_button(text, width, color_1, color_2) -> QPushButton:
