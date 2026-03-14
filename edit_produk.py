@@ -159,14 +159,6 @@ class EditProduk(QDialog):
 
         info_layout.addWidget(info_label)
 
-        self.return_label = self.create_label_and_icon(
-            "data/warning_.svg",
-            "Error - Data tidak ditemukan"
-        )
-        self.return_label.hide()
-
-        info_layout.addWidget(self.return_label)
-
         info_layout.addStretch()
 
         main_layout.addLayout(info_layout)
@@ -291,7 +283,6 @@ class EditProduk(QDialog):
 
         if index == 0:
             if data:
-                self.return_label.hide()
                 data = data[0]
                 self.data_terpilih = data
                 self.data_nama.set_data(data["nama_barang"])
@@ -301,12 +292,10 @@ class EditProduk(QDialog):
                 self.data_beli.set_data(str(data['harga_beli'] if data['harga_beli'] is not None else 0))
                 self._set_status("Data ditemukan. silahkan ubah lalu klik submit.", False)
             else:
-                #self.return_label.show()
                 self._set_status("Produk satuan tidak ditemukan.")
 
         else:
             if data:
-                #self.return_label.hide()
                 data = data[0]
                 self.data_terpilih = data
                 self.data_nama.set_data(data["nama_barang"])
@@ -316,7 +305,6 @@ class EditProduk(QDialog):
                 self.harga_jual.set_data(str(data['harga_jual']))
                 self._set_status("Data ditemukan. silahkan ubah lalu klik submit.", False)
             else:
-                #self.return_label.show()
                 self._set_status("Produk Paket Tidak Ditemukan")
 
     def _on_change(self):
