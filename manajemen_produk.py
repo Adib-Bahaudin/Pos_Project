@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 
 from barang_baru import TambahBarangBaru
 from edit_produk import EditProduk
+from hapus_produk import HapusProdukDialog
 from database import DatabaseManager
 
 
@@ -102,13 +103,13 @@ class ManajemenProduk(QWidget):
         layout.setSpacing(10)
         layout.addStretch()
 
-        button_tambah = self._create_action_button("Tambah Produk", "#00ff00")
-        button_hapus = self._create_action_button("Hapus Produk", "#ff0000")
-        button_return = self._create_action_button("Return Produk", "#00aaff")
+        self.button_tambah = self._create_action_button("Tambah Produk", "#00ff00")
+        self.button_hapus = self._create_action_button("Hapus Produk", "#ff0000")
+        self.button_return = self._create_action_button("Return Produk", "#00aaff")
 
-        layout.addWidget(button_tambah)
-        layout.addWidget(button_hapus)
-        layout.addWidget(button_return)
+        layout.addWidget(self.button_tambah)
+        layout.addWidget(self.button_hapus)
+        layout.addWidget(self.button_return)
         layout.addStretch()
 
         widget.setLayout(layout)
@@ -362,6 +363,7 @@ class ManajemenProduk(QWidget):
         self.product_selector.currentIndexChanged.connect(self._switch_product_view)
         self.button_baru.clicked.connect(self._show_tambah_barang_dialog)
         self.button_edit.clicked.connect(self._show_edit_dialog)
+        self.button_hapus.clicked.connect(self._show_hapus_dialog)
 
     def reset_click(self):
         self.search_input.setText("")
@@ -407,6 +409,12 @@ class ManajemenProduk(QWidget):
     def _show_edit_dialog(self):
         dialog = EditProduk(self)
         dialog.exec()
+
+    def _show_hapus_dialog(self):
+        dialog = HapusProdukDialog(self)
+        result = dialog.exec()
+        if result == HapusProdukDialog.DialogCode.Accepted:
+            self.table_data()
 
     def handle_shortcut(self):
         focused = QApplication.focusWidget()

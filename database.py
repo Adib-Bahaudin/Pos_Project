@@ -528,9 +528,239 @@ class DatabaseManager:
             cursor.execute("""
                 SELECT COUNT(*) FROM produk_paket
                 WHERE sku LIKE ? OR nama_paket LIKE ?
-            """)
+            """, (keyword, keyword))
 
             result = cursor.fetchone()[0]
 
             conn.close()
             return result
+
+    def get_produk_for_delete(self, jenis, sku):
+        """Ambil detail produk berdasarkan jenis dan SKU untuk proses hapus."""
+        conn = sqlite3.connect(self.db_name)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        if jenis == "satuan":
+            cursor.execute("""
+                SELECT
+                    ps.id,
+                    ps.sku,
+                    ps.nama_barang,
+                    ps.stok,
+                    ps.harga_jual,
+                    hb.harga AS harga_beli
+                FROM produk_satuan ps
+                LEFT JOIN harga_beli hb ON hb.id_satuan = ps.id
+                WHERE ps.sku = ?
+            """, (sku,))
+        else:
+            cursor.execute("""
+                SELECT
+                    pp.id,
+                    pp.sku,
+                    pp.nama_paket AS nama_barang,
+                    pp.harga_jual,
+                    dp.jumlah,
+                    ps.nama_barang AS nama_satuan
+                FROM produk_paket pp
+                LEFT JOIN detail_paket dp ON pp.id = dp.id_paket
+                LEFT JOIN produk_satuan ps ON ps.id = dp.id_produk
+                WHERE pp.sku = ?
+            """, (sku,))
+
+        rows = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+
+        if not rows:
+            return None
+
+        if jenis == "satuan":
+            return rows[0]
+
+        item = rows[0]
+        nama_satuan = item.get("nama_satuan")
+        jumlah = item.get("jumlah")
+        item["keterangan"] = f"{nama_satuan} {jumlah} pcs" if nama_satuan and jumlah else "-"
+        return item
+
+    def delete_produk_bersih(self, jenis, sku):
+        """
+        Hapus produk satuan/paket sampai data referensinya bersih.
+
+        Returns:
+            dict: ringkasan hasil penghapusan.
+        """
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+
+        result = {
+            "deleted": False,
+            "deleted_transaksi_detail": 0,
+            "deleted_produk_paket": 0,
+            "deleted_produk_satuan": 0,
+        }
+
+        try:
+            if jenis == "satuan":
+                cursor.execute("SELECT id FROM produk_satuan WHERE sku = ?", (sku,))
+                row = cursor.fetchone()
+                if not row:
+                    conn.rollback()
+                    return result
+
+                id_satuan = row[0]
+
+                cursor.execute("SELECT id_paket FROM detail_paket WHERE id_produk = ?", (id_satuan,))
+                paket_ids = [r[0] for r in cursor.fetchall()]
+
+                if paket_ids:
+                    placeholders = ",".join("?" for _ in paket_ids)
+
+                    cursor.execute(
+                        f"DELETE FROM transaksi_detail WHERE jenis_produk = 'paket' AND id_produk IN ({placeholders})",
+                        paket_ids,
+                    )
+                    result["deleted_transaksi_detail"] += cursor.rowcount
+
+                    cursor.execute(f"DELETE FROM detail_paket WHERE id_paket IN ({placeholders})", paket_ids)
+
+                    cursor.execute(f"DELETE FROM produk_paket WHERE id IN ({placeholders})", paket_ids)
+                    result["deleted_produk_paket"] = cursor.rowcount
+
+                cursor.execute(
+                    "DELETE FROM transaksi_detail WHERE jenis_produk = 'satuan' AND id_produk = ?",
+                    (id_satuan,),
+                )
+                result["deleted_transaksi_detail"] += cursor.rowcount
+
+                cursor.execute("DELETE FROM detail_paket WHERE id_produk = ?", (id_satuan,))
+                cursor.execute("DELETE FROM harga_beli WHERE id_satuan = ?", (id_satuan,))
+
+                cursor.execute("DELETE FROM produk_satuan WHERE id = ?", (id_satuan,))
+                result["deleted_produk_satuan"] = cursor.rowcount
+                result["deleted"] = cursor.rowcount > 0
+            else:
+                cursor.execute("SELECT id FROM produk_paket WHERE sku = ?", (sku,))
+                row = cursor.fetchone()
+                if not row:
+                    conn.rollback()
+                    return result
+
+                id_paket = row[0]
+
+                cursor.execute(
+                    "DELETE FROM transaksi_detail WHERE jenis_produk = 'paket' AND id_produk = ?",
+                    (id_paket,),
+                )
+                result["deleted_transaksi_detail"] = cursor.rowcount
+
+                cursor.execute("DELETE FROM detail_paket WHERE id_paket = ?", (id_paket,))
+
+                cursor.execute("DELETE FROM produk_paket WHERE id = ?", (id_paket,))
+                result["deleted_produk_paket"] = cursor.rowcount
+                result["deleted"] = cursor.rowcount > 0
+
+            self._sync_transaksi_after_delete(cursor)
+
+            conn.commit()
+            return result
+        except sqlite3.Error:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
+    @staticmethod
+    def _sync_transaksi_after_delete(cursor):
+        """Sinkronisasi total transaksi dan laba setelah detail transaksi terhapus."""
+        cursor.execute("""
+            UPDATE transaksi
+            SET total = COALESCE((
+                SELECT SUM(sub_total)
+                FROM transaksi_detail td
+                WHERE td.id_transaksi = transaksi.id
+            ), 0)
+        """)
+
+        cursor.execute("DELETE FROM laba_transaksi")
+
+        cursor.execute("""
+            INSERT INTO laba_transaksi (
+                id_transaksi,
+                tanggal,
+                pendapatan_kotor,
+                total_hpp,
+                laba_kotor,
+                pajak_20_persen,
+                laba_bersih
+            )
+            SELECT
+                t.id,
+                t.tanggal,
+                t.total,
+                COALESCE(SUM(
+                    CASE
+                        WHEN td.jenis_produk = 'satuan' THEN td.jumlah * COALESCE(hb.harga, 0)
+                        WHEN td.jenis_produk = 'paket' THEN td.jumlah * COALESCE((
+                            SELECT SUM(dp.jumlah * COALESCE(hb2.harga, 0))
+                            FROM detail_paket dp
+                            LEFT JOIN harga_beli hb2 ON dp.id_produk = hb2.id_satuan
+                            WHERE dp.id_paket = td.id_produk
+                        ), 0)
+                    END
+                ), 0),
+                t.total - COALESCE(SUM(
+                    CASE
+                        WHEN td.jenis_produk = 'satuan' THEN td.jumlah * COALESCE(hb.harga, 0)
+                        WHEN td.jenis_produk = 'paket' THEN td.jumlah * COALESCE((
+                            SELECT SUM(dp.jumlah * COALESCE(hb2.harga, 0))
+                            FROM detail_paket dp
+                            LEFT JOIN harga_beli hb2 ON dp.id_produk = hb2.id_satuan
+                            WHERE dp.id_paket = td.id_produk
+                        ), 0)
+                    END
+                ), 0),
+                CAST((t.total - COALESCE(SUM(
+                    CASE
+                        WHEN td.jenis_produk = 'satuan' THEN td.jumlah * COALESCE(hb.harga, 0)
+                        WHEN td.jenis_produk = 'paket' THEN td.jumlah * COALESCE((
+                            SELECT SUM(dp.jumlah * COALESCE(hb2.harga, 0))
+                            FROM detail_paket dp
+                            LEFT JOIN harga_beli hb2 ON dp.id_produk = hb2.id_satuan
+                            WHERE dp.id_paket = td.id_produk
+                        ), 0)
+                    END
+                ), 0)) * 0.2 AS INTEGER),
+                (t.total - COALESCE(SUM(
+                    CASE
+                        WHEN td.jenis_produk = 'satuan' THEN td.jumlah * COALESCE(hb.harga, 0)
+                        WHEN td.jenis_produk = 'paket' THEN td.jumlah * COALESCE((
+                            SELECT SUM(dp.jumlah * COALESCE(hb2.harga, 0))
+                            FROM detail_paket dp
+                            LEFT JOIN harga_beli hb2 ON dp.id_produk = hb2.id_satuan
+                            WHERE dp.id_paket = td.id_produk
+                        ), 0)
+                    END
+                ), 0)) - CAST((t.total - COALESCE(SUM(
+                    CASE
+                        WHEN td.jenis_produk = 'satuan' THEN td.jumlah * COALESCE(hb.harga, 0)
+                        WHEN td.jenis_produk = 'paket' THEN td.jumlah * COALESCE((
+                            SELECT SUM(dp.jumlah * COALESCE(hb2.harga, 0))
+                            FROM detail_paket dp
+                            LEFT JOIN harga_beli hb2 ON dp.id_produk = hb2.id_satuan
+                            WHERE dp.id_paket = td.id_produk
+                        ), 0)
+                    END
+                ), 0)) * 0.2 AS INTEGER)
+            FROM transaksi t
+            LEFT JOIN transaksi_detail td ON t.id = td.id_transaksi
+            LEFT JOIN harga_beli hb ON td.id_produk = hb.id_satuan AND td.jenis_produk = 'satuan'
+            WHERE EXISTS (SELECT 1 FROM transaksi_detail te WHERE te.id_transaksi = t.id)
+            GROUP BY t.id
+        """)
+
+        cursor.execute("""
+            DELETE FROM transaksi
+            WHERE id NOT IN (SELECT DISTINCT id_transaksi FROM transaksi_detail)
+        """)
