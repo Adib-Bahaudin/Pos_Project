@@ -408,7 +408,9 @@ class ManajemenProduk(QWidget):
 
     def _show_edit_dialog(self):
         dialog = EditProduk(self)
-        dialog.exec()
+        result = dialog.exec()
+        if result == EditProduk.DialogCode.Accepted:
+            self.table_data()
 
     def _show_hapus_dialog(self):
         dialog = HapusProdukDialog(self)
