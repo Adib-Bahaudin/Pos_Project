@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QPushButton,
     QFrame,
-    QApplication,
+    QApplication, QWidget,
 )
 
 from dialog_title_bar import DialogTitleBar
@@ -37,14 +37,7 @@ class HapusProdukDialog(QDialog):
         self.current_data = None
 
         root_layout = QVBoxLayout()
-        root_widget = QFrame()
-        root_widget.setStyleSheet("""
-            QFrame {
-                background-color: #000000;
-                border: 2px solid #ff4d4d;
-                border-radius: 12px;
-            }
-        """)
+        root_widget = QWidget()
 
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -143,6 +136,10 @@ class HapusProdukDialog(QDialog):
 
         self.setLayout(root_layout)
         self.setMinimumSize(760, 520)
+        self.setStyleSheet("""
+            border: 2px solid #ff4d4d;
+            background-color: #000000;
+        """)
 
     @staticmethod
     def _input_style() -> str:
