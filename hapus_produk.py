@@ -1,4 +1,4 @@
-from PySide6.QtGui import Qt, QFont, QShortcut, QKeySequence
+from PySide6.QtGui import Qt, QFont, QShortcut, QKeySequence, QPixmap
 from PySide6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -27,7 +27,7 @@ class HapusProdukDialog(QDialog):
         self.setModal(True)
 
         screen_size = ScreenSize()
-        x, y = screen_size.get_centered_position(760, 520)
+        x, y = screen_size.get_centered_position(900, 690)
         self.move(x, y)
 
         shortcut = QShortcut(QKeySequence("Return"), self)
@@ -48,11 +48,53 @@ class HapusProdukDialog(QDialog):
 
         form_layout = QVBoxLayout()
         form_layout.setContentsMargins(20, 8, 20, 0)
-        form_layout.setSpacing(12)
+        form_layout.setSpacing(0)
+
+        header_layout = QVBoxLayout()
+        header_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        icon_delete = QLabel()
+        icon_delete.setFixedSize(80, 80)
+        icon_delete.setPixmap(QPixmap("data/icon_delete_big.png"))
+        icon_delete.setScaledContents(True)
+        icon_delete.setStyleSheet("border:none;")
+        header_layout.addWidget(icon_delete, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        title = QLabel("Hapus Produk")
+        title.setStyleSheet("""
+        color:#ff4d4d;
+        font-size:22px;
+        font-weight:bold;
+        border:none;
+        """)
+        header_layout.addWidget(title, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        subtitle = QLabel("Tindakan ini tidak dapat dibatalkan")
+        subtitle.setStyleSheet("""
+        color:#aaaaaa;
+        font-size:12px;
+        border:none;
+        """)
+        header_layout.addWidget(subtitle, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        form_layout.addLayout(header_layout)
+
+        form_layout.addSpacing(30)
 
         info = QLabel("Pilih jenis produk, cari SKU, lalu ketik HAPUS untuk verifikasi.")
         info.setStyleSheet("color: #ffffff; border: none; font-size: 14px;")
         form_layout.addWidget(info)
+
+        search_frame = QFrame()
+        search_frame.setStyleSheet("""
+            QFrame{
+                background:#111111;
+                border:2px solid #ff4d4d;
+                border-radius:10px;
+            }
+        """)
+
+        search_layout = QVBoxLayout()
 
         row_search = QHBoxLayout()
 
@@ -73,18 +115,41 @@ class HapusProdukDialog(QDialog):
         self.button_cari.clicked.connect(self._on_search)
         row_search.addWidget(self.button_cari)
 
-        form_layout.addLayout(row_search)
+        search_title = QLabel("Cari Produk")
+        search_title.setStyleSheet("""
+            color:#ffffff;
+            font-size:14px;
+            font-weight:bold;
+            border:none;
+        """)
+
+        search_layout.addWidget(search_title)
+        search_layout.addLayout(row_search)
+
+        search_frame.setLayout(search_layout)
+
+        form_layout.addWidget(search_frame)
+
+        form_layout.addSpacing(12)
 
         detail_frame = QFrame()
         detail_frame.setStyleSheet("""
-            QFrame {
-                border: 1px solid #444444;
-                border-radius: 10px;
-                background-color: #111111;
+            QFrame{
+                background:#111111;
+                border:2px solid #ff4d4d;
+                border-radius:10px;
             }
         """)
         detail_layout = QVBoxLayout()
         detail_layout.setContentsMargins(12, 10, 12, 10)
+        detail_title = QLabel("Detail Produk")
+        detail_title.setStyleSheet("""
+            color:#ffffff;
+            font-weight:bold;
+            border:none;
+        """)
+
+        detail_layout.addWidget(detail_title)
         detail_layout.setSpacing(6)
 
         self.label_detail = QLabel("Data produk belum dimuat.")
@@ -95,11 +160,33 @@ class HapusProdukDialog(QDialog):
         detail_frame.setLayout(detail_layout)
         form_layout.addWidget(detail_frame)
 
+        form_layout.addSpacing(12)
+
         verify_row = QHBoxLayout()
-        verify_label = QLabel("Verifikasi:")
+        verify_label = QLabel("Verifikasi: ")
         verify_label.setStyleSheet("color: #ffffff; border: none;")
         verify_label.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
         verify_row.addWidget(verify_label)
+
+        warning_layout = QHBoxLayout()
+
+        icon_warning = QLabel()
+        icon_warning.setFixedSize(24, 24)
+        icon_warning.setPixmap(QPixmap("data/warning_.svg"))
+        icon_warning.setScaledContents(True)
+        icon_warning.setStyleSheet("border:none;")
+
+        warning_layout.addWidget(icon_warning)
+
+        warning_text = QLabel("   Ketik HAPUS untuk mengkonfirmasi")
+        warning_text.setStyleSheet("""
+            color:#ff4d4d;
+            border:none;
+        """)
+
+        warning_layout.addWidget(warning_text)
+
+        form_layout.addLayout(warning_layout)
 
         self.input_verifikasi = QLineEdit()
         self.input_verifikasi.setPlaceholderText("Ketik HAPUS")
@@ -111,7 +198,7 @@ class HapusProdukDialog(QDialog):
 
         self.label_status = QLabel("")
         self.label_status.setStyleSheet("color: #ff9999; border: none;")
-        form_layout.addWidget(self.label_status)
+        form_layout.addWidget(self.label_status, alignment=Qt.AlignmentFlag.AlignCenter)
 
         main_layout.addLayout(form_layout)
         main_layout.addStretch()
@@ -135,7 +222,7 @@ class HapusProdukDialog(QDialog):
         root_layout.addWidget(root_widget)
 
         self.setLayout(root_layout)
-        self.setMinimumSize(760, 520)
+        self.setMinimumSize(900, 690)
         self.setStyleSheet("""
             border: 2px solid #ff4d4d;
             background-color: #000000;
@@ -223,7 +310,7 @@ class HapusProdukDialog(QDialog):
 
         self.current_data = data
         self.button_hapus.setEnabled(True)
-        self._set_status("Produk ditemukan. Lanjutkan verifikasi untuk hapus.", error=False)
+        self._set_status("", error=False)
 
         if self._jenis_value() == "satuan":
             detail = (
