@@ -262,13 +262,13 @@ class EditProduk(QDialog):
             self._on_search()
 
     def _on_search(self):
+        base = DatabaseManager()
         index = self.combo_box.currentIndex()
         text = self.search_line_edit.data()
+        data = base.get_search_produk(index, text, 1, 0, True)
         self._on_reset()
-        base = DatabaseManager()
 
         if index == 0:
-            data = base.get_search_produk(index,text,1,0, True)
             if data:
                 self.return_label.hide()
                 data = data[0]
@@ -277,6 +277,18 @@ class EditProduk(QDialog):
                 self.sku.set_data(data['sku'])
                 self.harga_jual.set_data(str(data['harga_jual']))
                 self.data_beli.set_data(str(data['harga_beli']))
+            else:
+                self.return_label.show()
+        else:
+            if data:
+                self.return_label.hide()
+                data = data[0]
+                print(data)
+                self.data_nama.set_data(data["nama_barang"])
+                self.nama_satuan.set_data(data['nama'])
+                self.sku.set_data(data['sku'])
+                self.konversi.set_data(str(data['jumlah']))
+                self.harga_jual.set_data(str(data['harga_jual']))
             else:
                 self.return_label.show()
 
