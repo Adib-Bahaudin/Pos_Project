@@ -1,4 +1,4 @@
-from PySide6.QtGui import Qt, QFont, QPixmap, QShortcut, QKeySequence
+from PySide6.QtGui import Qt, QFont, QPixmap, QShortcut, QKeySequence, QIntValidator
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QWidget, QPushButton, QFrame,
                                QHBoxLayout, QLabel, QComboBox, QLineEdit, QGridLayout, QApplication)
 
@@ -15,6 +15,9 @@ class EditProduk(QDialog):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setModal(True)
 
+        self.db = DatabaseManager()
+        self.data_terpilih = None
+
         screen_size = ScreenSize()
         x, y = screen_size.get_centered_position(1050, 700)
         self.move(x, y)
@@ -25,7 +28,7 @@ class EditProduk(QDialog):
         root_layout = QVBoxLayout()
         root_widget = QWidget()
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(0,0,0,0)
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
         title_bar = DialogTitleBar("Edit Produk", self)
         main_layout.addWidget(title_bar)
@@ -37,7 +40,7 @@ class EditProduk(QDialog):
         header_layout.addStretch()
 
         header_icon = QLabel()
-        header_icon.setFixedSize(60,60)
+        header_icon.setFixedSize(60, 60)
         header_icon.setPixmap(QPixmap("data/edit produk.svg"))
         header_icon.setStyleSheet("""
             border : none;
@@ -82,7 +85,7 @@ class EditProduk(QDialog):
         search_main_layout = QHBoxLayout()
 
         self.combo_box = QComboBox()
-        self.combo_box.setFixedSize(150,45)
+        self.combo_box.setFixedSize(150, 45)
         self.combo_box.setCursor(Qt.CursorShape.PointingHandCursor)
         self.combo_box.setStyleSheet("""
             QComboBox {
@@ -145,7 +148,7 @@ class EditProduk(QDialog):
 
         info_layout = QHBoxLayout()
         info_layout.setSpacing(0)
-        info_layout.setContentsMargins(20,10,10,0)
+        info_layout.setContentsMargins(20, 10, 10, 0)
 
         info_label = QLabel("Hasil Data Produk :   ")
         info_label.setStyleSheet("""
@@ -168,6 +171,11 @@ class EditProduk(QDialog):
 
         main_layout.addLayout(info_layout)
 
+        self.status_label = QLabel("")
+        self.status_label.setStyleSheet("color: #ff9999; border: none;")
+        self.status_label.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
+        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        main_layout.addWidget(self.status_label)
 
         data_layout = QHBoxLayout()
 
@@ -185,6 +193,7 @@ class EditProduk(QDialog):
             "data/stok.svg",
             "Stok Saat Ini"
         )
+        self.data_stok.set_validator(QIntValidator(0, 999999999))
         data_conten_layout.addWidget(self.data_stok, 0, 1)
 
         self.nama_satuan = WidgetData(
@@ -204,12 +213,14 @@ class EditProduk(QDialog):
             "data/harga beli.svg",
             "Harga Beli : "
         )
+        self.data_beli.set_validator(QIntValidator(0, 999999999))
         data_conten_layout.addWidget(self.data_beli, 1, 0)
 
         self.konversi = WidgetData(
             "data/konversi_icon.svg",
             "Konversi ke Satuan"
         )
+        self.konversi.set_validator(QIntValidator(1, 999999999))
         self.konversi.hide()
         data_conten_layout.addWidget(self.konversi, 1, 0)
 
@@ -217,6 +228,7 @@ class EditProduk(QDialog):
             "data/hargajual.svg",
             "Harga Jual"
         )
+        self.harga_jual.set_validator(QIntValidator(0, 999999999))
         data_conten_layout.addWidget(self.harga_jual, 1, 1)
 
         frame_data.setLayout(data_conten_layout)
@@ -230,18 +242,18 @@ class EditProduk(QDialog):
             border-top: none;
         """)
         tombol_bawah_layout = QHBoxLayout()
-        tombol_bawah_layout.setContentsMargins(15,15,15,15)
+        tombol_bawah_layout.setContentsMargins(15, 15, 15, 15)
 
         tombol_bawah_layout.addStretch()
 
-        tombol_ok = self._create_button(
+        self.tombol_ok = self._create_button(
             "SUBMIT",
             120,
             "#FFD700",
             "#E0115F"
-
         )
-        tombol_bawah_layout.addWidget(tombol_ok)
+        self.tombol_ok.clicked.connect(self._on_submit)
+        tombol_bawah_layout.addWidget(self.tombol_ok)
         tombol_bawah_widget.setLayout(tombol_bawah_layout)
 
         main_layout.addWidget(tombol_bawah_widget)
@@ -255,46 +267,62 @@ class EditProduk(QDialog):
             background-color: #000000;
         """)
 
+    def _set_status(self, text, is_error=True):
+        color = "#ff9999" if is_error else "#90EE90"
+        self.status_label.setStyleSheet(f"color: {color}; border: none;")
+        self.status_label.setText(text)
+
     def _on_handle_shortcut(self):
         focused = QApplication.focusWidget()
 
         if focused == self.search_line_edit:
             self._on_search()
+        else:
+            self._on_submit()
 
     def _on_search(self):
-        base = DatabaseManager()
         index = self.combo_box.currentIndex()
         text = self.search_line_edit.data()
-        data = base.get_search_produk(index, text, 1, 0, True)
+        data = self.db.get_search_produk(index, text, 1, 0, True)
         self._on_reset()
+        self.data_terpilih = None
 
         if index == 0:
             if data:
                 self.return_label.hide()
                 data = data[0]
+                self.data_terpilih = data
                 self.data_nama.set_data(data["nama_barang"])
                 self.data_stok.set_data(str(data["stock"]))
                 self.sku.set_data(data['sku'])
                 self.harga_jual.set_data(str(data['harga_jual']))
-                self.data_beli.set_data(str(data['harga_beli']))
+                self.data_beli.set_data(str(data['harga_beli'] if data['harga_beli'] is not None else 0))
+                self._set_status("Data ditemukan. Silakan ubah lalu klik submit.", False)
             else:
                 self.return_label.show()
+                self._set_status("Produk satuan tidak ditemukan.")
         else:
             if data:
                 self.return_label.hide()
                 data = data[0]
-                print(data)
+                self.data_terpilih = data
                 self.data_nama.set_data(data["nama_barang"])
-                self.nama_satuan.set_data(data['nama'])
+                self.nama_satuan.set_data(data['nama'] if data['nama'] else "")
                 self.sku.set_data(data['sku'])
-                self.konversi.set_data(str(data['jumlah']))
+                self.konversi.set_data(str(data['jumlah'] if data['jumlah'] else ""))
                 self.harga_jual.set_data(str(data['harga_jual']))
+                self._set_status("Data ditemukan. Silakan ubah lalu klik submit.", False)
             else:
                 self.return_label.show()
+                self._set_status("Produk paket tidak ditemukan.")
 
     def _on_change(self):
         index = self.combo_box.currentIndex()
         self._on_reset()
+        self.data_terpilih = None
+        self._set_status("")
+        self.return_label.hide()
+
         if index == 1:
             self.data_beli.hide()
             self.data_stok.hide()
@@ -314,6 +342,79 @@ class EditProduk(QDialog):
         self.data_beli.set_data("")
         self.nama_satuan.set_data("")
         self.konversi.set_data("")
+
+    def _on_submit(self):
+        if not self.data_terpilih:
+            self._set_status("Cari produk terlebih dahulu sebelum submit.")
+            return
+
+        index = self.combo_box.currentIndex()
+
+        nama_produk = self.data_nama.get_data()
+        sku_baru = self.sku.get_data()
+        harga_jual = self.harga_jual.get_data()
+
+        if index == 0:
+            stok = self.data_stok.get_data()
+            harga_beli = self.data_beli.get_data()
+
+            valid, pesan = self.validate_fields_not_empty(
+                nama_produk=nama_produk,
+                sku=sku_baru,
+                harga_jual=harga_jual,
+                harga_beli=harga_beli,
+                stok=stok,
+            )
+            if not valid:
+                self._set_status(pesan)
+                return
+
+            payload = {
+                "nama_barang": nama_produk,
+                "sku": sku_baru,
+                "harga_jual": int(harga_jual),
+                "harga_beli": int(harga_beli),
+                "stok": int(stok),
+            }
+            result = self.db.update_produk("satuan", self.data_terpilih["sku"], payload)
+        else:
+            nama_satuan = self.nama_satuan.get_data()
+            jumlah = self.konversi.get_data()
+
+            valid, pesan = self.validate_fields_not_empty(
+                nama_produk=nama_produk,
+                sku=sku_baru,
+                harga_jual=harga_jual,
+                nama_satuan=nama_satuan,
+                jumlah=jumlah,
+            )
+            if not valid:
+                self._set_status(pesan)
+                return
+
+            payload = {
+                "nama_barang": nama_produk,
+                "sku": sku_baru,
+                "harga_jual": int(harga_jual),
+                "nama_satuan": nama_satuan,
+                "jumlah": int(jumlah),
+            }
+            result = self.db.update_produk("paket", self.data_terpilih["sku"], payload)
+
+        if result.get("updated"):
+            self._set_status("Produk berhasil diperbarui.", False)
+            self.accept()
+        else:
+            self._set_status(result.get("error") or "Gagal memperbarui produk")
+
+    @staticmethod
+    def validate_fields_not_empty(**fields):
+        empty_fields = [name for name, value in fields.items() if not value or str(value).strip() == ""]
+
+        if empty_fields:
+            message = f"Field berikut tidak boleh kosong: {', '.join(empty_fields)}"
+            return False, message
+        return True, ""
 
     @staticmethod
     def _create_button(text, width, color_1, color_2) -> QPushButton:
@@ -349,7 +450,7 @@ class EditProduk(QDialog):
             background-color: transparent;
         """)
         content_layout = QHBoxLayout()
-        content_layout.setContentsMargins(0,0,0,0)
+        content_layout.setContentsMargins(0, 0, 0, 0)
 
         icon_label = QLabel()
         icon_label.setFixedSize(20, 20)
@@ -367,6 +468,7 @@ class EditProduk(QDialog):
 
         frame.setLayout(content_layout)
         return frame
+
 
 class LineEdit(QLineEdit):
     def __init__(self, placeholder_text=""):
@@ -401,12 +503,13 @@ class LineEdit(QLineEdit):
     def write_text(self, text):
         self.setText(text)
 
+
 class WidgetData(QWidget):
     def __init__(self, icon_path, text_label):
         super().__init__()
 
         root_layout = QVBoxLayout()
-        root_layout.setContentsMargins(0,0,0,0)
+        root_layout.setContentsMargins(0, 0, 0, 0)
 
         label = EditProduk.create_label_and_icon(icon_path, text_label)
         root_layout.addWidget(label)
@@ -421,3 +524,6 @@ class WidgetData(QWidget):
 
     def set_data(self, data_input):
         self.editline.write_text(data_input)
+
+    def set_validator(self, validator):
+        self.editline.setValidator(validator)

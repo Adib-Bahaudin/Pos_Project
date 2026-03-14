@@ -584,6 +584,142 @@ class DatabaseManager:
         item["keterangan"] = f"{nama_satuan} {jumlah} pcs" if nama_satuan and jumlah else "-"
         return item
 
+    def update_produk(self, jenis, sku_lama, data_baru):
+        """Update produk satuan/paket berdasarkan SKU lama dengan validasi unik."""
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+
+        result = {
+            "updated": False,
+            "error": None,
+        }
+
+        try:
+            if jenis == "satuan":
+                cursor.execute("SELECT id FROM produk_satuan WHERE sku = ?", (sku_lama,))
+                row = cursor.fetchone()
+                if not row:
+                    result["error"] = "Produk tidak ditemukan"
+                    conn.rollback()
+                    return result
+
+                id_satuan = row[0]
+
+                cursor.execute(
+                    "SELECT 1 FROM produk_satuan WHERE nama_barang = ? AND id != ?",
+                    (data_baru["nama_barang"], id_satuan),
+                )
+                if cursor.fetchone():
+                    result["error"] = "Nama produk sudah digunakan"
+                    conn.rollback()
+                    return result
+
+                cursor.execute(
+                    "SELECT 1 FROM produk_satuan WHERE sku = ? AND id != ?",
+                    (data_baru["sku"], id_satuan),
+                )
+                if cursor.fetchone():
+                    result["error"] = "SKU sudah digunakan"
+                    conn.rollback()
+                    return result
+
+                cursor.execute(
+                    """
+                    UPDATE produk_satuan
+                    SET sku = ?, nama_barang = ?, harga_jual = ?, stok = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        data_baru["sku"],
+                        data_baru["nama_barang"],
+                        data_baru["harga_jual"],
+                        data_baru["stok"],
+                        id_satuan,
+                    ),
+                )
+
+                cursor.execute(
+                    "UPDATE harga_beli SET harga = ? WHERE id_satuan = ?",
+                    (data_baru["harga_beli"], id_satuan),
+                )
+
+                if cursor.rowcount == 0:
+                    cursor.execute(
+                        "INSERT INTO harga_beli (id_satuan, harga) VALUES (?, ?)",
+                        (id_satuan, data_baru["harga_beli"]),
+                    )
+            else:
+                cursor.execute("SELECT id FROM produk_paket WHERE sku = ?", (sku_lama,))
+                row = cursor.fetchone()
+                if not row:
+                    result["error"] = "Produk tidak ditemukan"
+                    conn.rollback()
+                    return result
+
+                id_paket = row[0]
+
+                cursor.execute(
+                    "SELECT 1 FROM produk_paket WHERE nama_paket = ? AND id != ?",
+                    (data_baru["nama_barang"], id_paket),
+                )
+                if cursor.fetchone():
+                    result["error"] = "Nama paket sudah digunakan"
+                    conn.rollback()
+                    return result
+
+                cursor.execute(
+                    "SELECT 1 FROM produk_paket WHERE sku = ? AND id != ?",
+                    (data_baru["sku"], id_paket),
+                )
+                if cursor.fetchone():
+                    result["error"] = "SKU sudah digunakan"
+                    conn.rollback()
+                    return result
+
+                cursor.execute(
+                    "SELECT id FROM produk_satuan WHERE nama_barang = ?",
+                    (data_baru["nama_satuan"],),
+                )
+                row_satuan = cursor.fetchone()
+                if not row_satuan:
+                    result["error"] = "Nama satuan tidak ditemukan"
+                    conn.rollback()
+                    return result
+
+                cursor.execute(
+                    """
+                    UPDATE produk_paket
+                    SET sku = ?, nama_paket = ?, harga_jual = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        data_baru["sku"],
+                        data_baru["nama_barang"],
+                        data_baru["harga_jual"],
+                        id_paket,
+                    ),
+                )
+
+                cursor.execute(
+                    "DELETE FROM detail_paket WHERE id_paket = ?",
+                    (id_paket,),
+                )
+                cursor.execute(
+                    "INSERT INTO detail_paket (id_paket, id_produk, jumlah) VALUES (?,?,?)",
+                    (id_paket, row_satuan[0], data_baru["jumlah"]),
+                )
+
+            self._sync_transaksi_after_delete(cursor)
+            conn.commit()
+            result["updated"] = True
+            return result
+        except sqlite3.Error as error:
+            conn.rollback()
+            result["error"] = str(error)
+            return result
+        finally:
+            conn.close()
+
     def delete_produk_bersih(self, jenis, sku):
         """
         Hapus produk satuan/paket sampai data referensinya bersih.
