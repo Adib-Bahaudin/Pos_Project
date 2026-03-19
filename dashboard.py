@@ -28,6 +28,7 @@ class Dashboard(QWidget):
     def __init__(self, data):
         super().__init__()
 
+        self.user_data = data
         self.user_role = data.get('role')
         self.manajemen_widget = None
         self.transaksi_widget = None
@@ -358,7 +359,7 @@ class Dashboard(QWidget):
         elif self.button_transaksi_left.isChecked():
             self.button_transaksi_right.setMinimumWidth(self.BUTTON_EXPANDED_WIDTH)
             if not self.transaksi_widget:
-                self.transaksi_widget = PenjualanWindow()
+                self.transaksi_widget = PenjualanWindow(self.user_data)
                 if self.main_stack.indexOf(self.transaksi_widget) == -1:
                     self.main_stack.addWidget(self.transaksi_widget)
             self.main_stack.setCurrentWidget(self.transaksi_widget)

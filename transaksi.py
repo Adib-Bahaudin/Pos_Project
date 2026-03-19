@@ -1,17 +1,34 @@
-from PySide6.QtCore import QSize
-from PySide6.QtGui import QFont, Qt
+import sqlite3
+
+from PySide6.QtCore import QSize, QStringListModel
+from PySide6.QtGui import QFont, Qt, QIcon
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout,
     QFrame, QLabel, QLineEdit, QComboBox, QPushButton, QTableWidget, QAbstractItemView, QHeaderView, QGridLayout,
-    QTextEdit
+    QTextEdit, QCompleter, QTableWidgetItem, QSpinBox, QAbstractSpinBox, QScrollArea
 )
 
+from database import DatabaseManager
 
 class PenjualanWindow(QWidget):
-    def __init__(self):
+    SEARCH_LIMIT = 12
+    MAX_QTY = 9999
+
+    def __init__(self, user_data=None, db_manager=None):
         super().__init__()
+        self.user_data = user_data or {}
+        self.db_manager = db_manager or DatabaseManager()
+        self.diskon_nominal = 0
+        self.pembulatan_nominal = 0
+        self.cart_items = []
+        self.search_suggestions = []
+        self.search_lookup = {}
+
         self.setup_ui()
+        self._setup_search_completer()
+        self._refresh_search_suggestions()
+        self._update_cart_summary()
 
     def setup_ui(self):
         root_layout = QHBoxLayout(self)
@@ -46,8 +63,7 @@ class PenjualanWindow(QWidget):
 
         layout.addWidget(header)
         layout.addWidget(search_card)
-        layout.addWidget(cart_card)
-        layout.addStretch()
+        layout.addWidget(cart_card, 1)
         return widget
 
     def _create_right_panel(self) -> QWidget:
@@ -88,10 +104,12 @@ class PenjualanWindow(QWidget):
         badge_layout.setContentsMargins(0, 0, 0, 0)
         badge_layout.setSpacing(4)
 
-        badge_nama = QLabel("NAMA KASIR : ADIB")
+        username = str(self.user_data.get("username") or "Guest").upper()
+        badge_nama = QLabel(f"NAMA KASIR : {username}")
         badge_nama.setObjectName("smallBadge")
 
-        badge_role = QLabel("SUPER USER")
+        role = self._format_role(self.user_data.get("role"))
+        badge_role = QLabel(role)
         badge_role.setObjectName("smallBadge")
 
         badge_layout.addWidget(badge_nama)
@@ -116,12 +134,14 @@ class PenjualanWindow(QWidget):
 
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Ketik nama produk / SKU lalu tekan Enter...")
+        self.search_input.textChanged.connect(self._handle_search_text_changed)
         self.search_input.returnPressed.connect(self._add_product_from_search)
         search_row.addWidget(self.search_input, 1)
 
         self.product_filter = QComboBox()
         self.product_filter.addItems(["Semua Produk", "Produk Satuan", "Produk Paket"])
         self.product_filter.setFixedWidth(170)
+        self.product_filter.currentIndexChanged.connect(self._handle_search_filter_changed)
         search_row.addWidget(self.product_filter)
 
         self.button_add_product = QPushButton("Tambah ke Keranjang")
@@ -139,7 +159,11 @@ class PenjualanWindow(QWidget):
         """)
         search_row.addWidget(self.button_add_product)
 
+        self.search_hint_label = QLabel("Cari produk berdasarkan SKU atau nama produk.")
+        self.search_hint_label.setStyleSheet("color: #98a3af; font-size: 12px;")
+
         layout.addLayout(search_row)
+        layout.addWidget(self.search_hint_label)
         return card
 
     def _create_cart_card(self) -> QWidget:
@@ -156,6 +180,7 @@ class PenjualanWindow(QWidget):
         self.cart_table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
         self.cart_table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.cart_table.verticalHeader().setVisible(False)
+        self.cart_table.verticalHeader().setDefaultSectionSize(56)
         self.cart_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.cart_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         self.cart_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
@@ -163,8 +188,24 @@ class PenjualanWindow(QWidget):
         self.cart_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
         self.cart_table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
         self.cart_table.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
+        self.cart_table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.cart_table.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.cart_table.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
         self.cart_table.setMinimumHeight(100)
-        layout.addWidget(self.cart_table, 1)
+
+        table_scroll = QScrollArea()
+        table_scroll.setWidgetResizable(True)
+        table_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        table_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        table_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        table_wrapper = QWidget()
+        table_wrapper_layout = QVBoxLayout(table_wrapper)
+        table_wrapper_layout.setContentsMargins(0, 0, 0, 0)
+        table_wrapper_layout.addWidget(self.cart_table)
+        table_scroll.setWidget(table_wrapper)
+
+        layout.addWidget(table_scroll, 1)
 
         footer = QHBoxLayout()
         footer.setSpacing(10)
@@ -257,7 +298,9 @@ class PenjualanWindow(QWidget):
             padding: 0px 12px;
         """
         )
+        self.payment_input.textChanged.connect(self._update_change_display)
         payment_layout.addWidget(self.payment_input)
+
         form_layout.addWidget(bayar_label, 1, 0)
         form_layout.addLayout(payment_layout, 1, 1)
 
@@ -359,12 +402,328 @@ class PenjualanWindow(QWidget):
         layout.addLayout(button_grid)
         return card
 
+    def _setup_search_completer(self):
+        self.search_model = QStringListModel(self)
+        self.search_completer = QCompleter(self.search_model, self)
+        self.search_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.search_completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.search_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        self.search_completer.activated.connect(self._handle_completer_activated)
+        self.search_input.setCompleter(self.search_completer)
+
+    def _handle_search_text_changed(self, text: str):
+        self._refresh_search_suggestions(text)
+        text = text.strip()
+        if text:
+            jumlah = len(self.search_suggestions)
+            self.search_hint_label.setText(f"{jumlah} saran produk ditemukan.")
+        else:
+            self.search_hint_label.setText("Cari produk berdasarkan SKU atau nama produk.")
+
+    def _handle_search_filter_changed(self):
+        self._refresh_search_suggestions(self.search_input.text())
+
+    def _handle_completer_activated(self, selected_text: str):
+        product = self.search_lookup.get(selected_text)
+        if not product:
+            return
+
+        self.search_input.setText(product["nama_barang"])
+        self._add_product_to_cart(product)
+        self.search_hint_label.setText(f"Produk {product['nama_barang']} ditambahkan ke keranjang.")
+
+    def _refresh_search_suggestions(self, keyword: str = ""):
+        keyword = keyword.strip()
+        self.search_suggestions = self._search_products(keyword, self.SEARCH_LIMIT)
+        self.search_lookup = {
+            self._build_suggestion_text(item): item
+            for item in self.search_suggestions
+        }
+        self.search_model.setStringList(list(self.search_lookup.keys()))
+
+        if keyword and self.search_suggestions:
+            self.search_completer.complete()
+
+    def _search_products(self, keyword: str, limit: int):
+        keyword = keyword.strip()
+        filter_index = self.product_filter.currentIndex()
+        filter_keyword = f"%{keyword}%" if keyword else "%"
+        conn = sqlite3.connect(self.db_manager.db_name)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        query_parts = []
+        params = []
+
+        if filter_index in (0, 1):
+            query_parts.append(
+                """
+                SELECT
+                    sku,
+                    nama_barang,
+                    harga_jual,
+                    stok,
+                    'satuan' AS tipe
+                FROM produk_satuan
+                WHERE sku LIKE ? OR nama_barang LIKE ?
+                """
+            )
+            params.extend([filter_keyword, filter_keyword])
+
+        if filter_index in (0, 2):
+            query_parts.append(
+                """
+                SELECT
+                    sku,
+                    nama_paket AS nama_barang,
+                    harga_jual,
+                    NULL AS stok,
+                    'paket' AS tipe
+                FROM produk_paket
+                WHERE sku LIKE ? OR nama_paket LIKE ?
+                """
+            )
+            params.extend([filter_keyword, filter_keyword])
+
+        if not query_parts:
+            conn.close()
+            return []
+
+        final_query = " UNION ALL ".join(query_parts) + " ORDER BY nama_barang ASC, sku ASC LIMIT ?"
+        params.append(limit)
+        cursor.execute(final_query, params)
+        result = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        return result
+
+    def _find_exact_product(self, keyword: str):
+        keyword = keyword.strip().casefold()
+        if not keyword:
+            return None
+
+        for item in self._search_products(keyword, self.SEARCH_LIMIT):
+            sku = str(item["sku"]).strip().casefold()
+            nama = str(item["nama_barang"]).strip().casefold()
+            if keyword in {sku, nama}:
+                return item
+
+        for item in self.search_suggestions:
+            sku = str(item["sku"]).strip().casefold()
+            nama = str(item["nama_barang"]).strip().casefold()
+            if keyword in {sku, nama}:
+                return item
+
+        return self.search_suggestions[0] if self.search_suggestions else None
+
     def _add_product_from_search(self):
         keyword = self.search_input.text().strip().lower()
         if not keyword:
+            self.search_hint_label.setText("Masukkan SKU atau nama produk terlebih dahulu.")
             return
 
-        print(keyword)
+        product = self._find_exact_product(keyword)
+        if not product:
+            self.search_hint_label.setText("Produk tidak ditemukan untuk kata kunci tersebut.")
+            return
+
+        if product["tipe"] == "satuan" and int(product.get("stok") or 0) <= 0:
+            self.search_hint_label.setText(f"Stok produk {product['nama_barang']} sedang habis.")
+            return
+
+        self._add_product_to_cart(product)
+        self.search_input.clear()
+        self._refresh_search_suggestions()
+        self.search_hint_label.setText(f"Produk {product['nama_barang']} ditambahkan ke keranjang.")
+
+    def _add_product_to_cart(self, product: dict):
+        existing_index = self._get_cart_index(product["sku"], product["tipe"])
+        if existing_index is not None:
+            item = self.cart_items[existing_index]
+            next_qty = item["qty"] + 1
+            max_qty = item.get("max_qty", self.MAX_QTY)
+            if next_qty > max_qty:
+                self.search_hint_label.setText(
+                    f"Qty maksimum untuk {item['nama_barang']} adalah {max_qty}."
+                )
+                return
+
+            item["qty"] = next_qty
+            qty_widget = self.cart_table.cellWidget(existing_index, 4)
+            if qty_widget is not None:
+                spinbox = qty_widget.findChild(QSpinBox)
+                if spinbox is not None:
+                    spinbox.blockSignals(True)
+                    spinbox.setValue(next_qty)
+                    spinbox.blockSignals(False)
+            self._refresh_row(existing_index)
+            self._update_cart_summary()
+            return
+
+        max_qty = int(product.get("stok") or self.MAX_QTY)
+        cart_item = {
+            "sku": product["sku"],
+            "nama_barang": product["nama_barang"],
+            "tipe": str(product["tipe"]).title(),
+            "harga_jual": int(product["harga_jual"] or 0),
+            "qty": 1,
+            "max_qty": max(1, max_qty),
+        }
+        self.cart_items.append(cart_item)
+        self._append_cart_row(cart_item)
+        self._update_cart_summary()
+
+    def _get_cart_index(self, sku: str, tipe: str):
+        tipe_title = str(tipe).title()
+        for index, item in enumerate(self.cart_items):
+            if item["sku"] == sku and item["tipe"] == tipe_title:
+                return index
+        return None
+
+    def _append_cart_row(self, item: dict):
+        row = self.cart_table.rowCount()
+        self.cart_table.insertRow(row)
+        self._set_table_label(row, 0, item["sku"])
+        self._set_table_label(row, 1, item["nama_barang"])
+        self._set_table_label(row, 2, item["tipe"])
+        self._set_table_label(row, 3, self._format_currency(item["harga_jual"]))
+        self.cart_table.setCellWidget(row, 4, self._create_qty_editor(row, item))
+        self._set_table_label(row, 5, self._format_currency(item["harga_jual"] * item["qty"]))
+        self.cart_table.setCellWidget(row, 6, self._create_delete_button(row, item["nama_barang"]))
+
+    def _refresh_row(self, row: int):
+        if row >= len(self.cart_items):
+            return
+        item = self.cart_items[row]
+        subtotal = item["harga_jual"] * item["qty"]
+        self._set_table_label(row, 5, self._format_currency(subtotal))
+
+    def _create_qty_editor(self, row: int, item: dict) -> QWidget:
+        wrapper = QWidget()
+        layout = QHBoxLayout(wrapper)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        spinbox = QSpinBox()
+        spinbox.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.UpDownArrows)
+        spinbox.setRange(1, item.get("max_qty", self.MAX_QTY))
+        spinbox.setValue(item["qty"])
+        spinbox.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        spinbox.setFixedWidth(82)
+        spinbox.valueChanged.connect(lambda value, current_row=row: self._update_cart_qty(current_row, value))
+
+        layout.addWidget(spinbox)
+        return wrapper
+
+    def _create_delete_button(self, row: int, product_name: str) -> QWidget:
+        wrapper = QWidget()
+        layout = QHBoxLayout(wrapper)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        button = QPushButton()
+        button.setToolTip(f"Hapus {product_name}")
+        button.setCursor(Qt.CursorShape.PointingHandCursor)
+        button.setFixedSize(34, 34)
+        button.setIcon(QIcon("data/icon_delete_big.png"))
+        button.setIconSize(QSize(18, 18))
+        button.setObjectName("deleteCartButton")
+        button.clicked.connect(lambda _=False, current_row=row: self._remove_cart_item(current_row))
+
+        layout.addWidget(button)
+        return wrapper
+
+    def _update_cart_qty(self, row: int, value: int):
+        if row >= len(self.cart_items):
+            return
+
+        item = self.cart_items[row]
+        max_qty = item.get("max_qty", self.MAX_QTY)
+        qty = max(1, min(value, max_qty))
+        item["qty"] = qty
+        self._refresh_row(row)
+        self._update_cart_summary()
+        self.search_hint_label.setText(f"Qty {item['nama_barang']} diperbarui menjadi {qty}.")
+
+    def _remove_cart_item(self, row: int):
+        if row >= len(self.cart_items):
+            return
+
+        nama_barang = self.cart_items[row]["nama_barang"]
+        self.cart_items.pop(row)
+        self.cart_table.removeRow(row)
+        self._rebuild_cart_actions()
+        self._update_cart_summary()
+        self.search_hint_label.setText(f"Produk {nama_barang} dihapus dari keranjang.")
+
+    def _rebuild_cart_actions(self):
+        for row, item in enumerate(self.cart_items):
+            qty_widget = self.cart_table.cellWidget(row, 4)
+            if qty_widget is not None:
+                spinbox = qty_widget.findChild(QSpinBox)
+                if spinbox is not None:
+                    try:
+                        spinbox.valueChanged.disconnect()
+                    except RuntimeError:
+                        pass
+                    except TypeError:
+                        pass
+                    spinbox.valueChanged.connect(
+                        lambda value, current_row=row: self._update_cart_qty(current_row, value)
+                    )
+
+            action_widget = self.cart_table.cellWidget(row, 6)
+            if action_widget is not None:
+                button = action_widget.findChild(QPushButton)
+                if button is not None:
+                    try:
+                        button.clicked.disconnect()
+                    except RuntimeError:
+                        pass
+                    except TypeError:
+                        pass
+                    button.clicked.connect(
+                        lambda _=False, current_row=row: self._remove_cart_item(current_row)
+                    )
+
+    def _set_table_label(self, row: int, column: int, value: str):
+        item = self.cart_table.item(row, column)
+        if item is None:
+            item = QTableWidgetItem(value)
+            item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.cart_table.setItem(row, column, item)
+        else:
+            item.setText(value)
+
+    def _update_cart_summary(self):
+        subtotal = sum(item["harga_jual"] * item["qty"] for item in self.cart_items)
+        total = max(0, subtotal - self.diskon_nominal + self.pembulatan_nominal)
+
+        self.summary_subtotal.setText(self._format_currency(subtotal))
+        self.summary_discount.setText(self._format_currency(self.diskon_nominal))
+        self.summary_rounding.setText(self._format_currency(self.pembulatan_nominal))
+        self.summary_total.setText(self._format_currency(total))
+
+        total_item = sum(item["qty"] for item in self.cart_items)
+        if total_item:
+            self.cart_info_label.setText(
+                f"{len(self.cart_items)} produk • {total_item} item di keranjang."
+            )
+        else:
+            self.cart_info_label.setText("Keranjang masih kosong.")
+
+        self._update_change_display()
+
+    def _update_change_display(self):
+        total = sum(item["harga_jual"] * item["qty"] for item in self.cart_items)
+        total = max(0, total - self.diskon_nominal + self.pembulatan_nominal)
+        bayar = self._parse_currency_input(self.payment_input.text())
+        kembali = bayar - total
+        self.change_label.setText(f"Kembalian: {self._format_currency(kembali)}")
+
+    @staticmethod
+    def _parse_currency_input(value: str) -> int:
+        digits = "".join(ch for ch in value if ch.isdigit())
+        return int(digits) if digits else 0
 
     @staticmethod
     def _build_card() -> QFrame:
@@ -373,9 +732,15 @@ class PenjualanWindow(QWidget):
         return card
 
     def _clear_cart(self):
+        self.cart_items.clear()
         self.cart_table.setRowCount(0)
         self.diskon_nominal = 0
         self.pembulatan_nominal = 0
+        self.summary_discount.setText(self._format_currency(0))
+        self.summary_rounding.setText(self._format_currency(0))
+        self._update_cart_summary()
+        self.search_hint_label.setText("Keranjang dikosongkan.")
+
 
     @staticmethod
     def _create_summary_row(parent_layout: QVBoxLayout, label_text: str, value_text: str) -> QLabel:
@@ -393,6 +758,21 @@ class PenjualanWindow(QWidget):
         layout.addWidget(value)
         parent_layout.addWidget(row)
         return value
+
+    @staticmethod
+    def _format_currency(value: int) -> str:
+        prefix = "-" if value < 0 else ""
+        nominal = f"{abs(int(value)):,}".replace(",", ".")
+        return f"{prefix}Rp {nominal}"
+
+    @staticmethod
+    def _format_role(role_value) -> str:
+        role_text = str(role_value or "User").replace("_", " ").strip()
+        return role_text.upper()
+
+    @staticmethod
+    def _build_suggestion_text(item: dict) -> str:
+        return f"{item['nama_barang']} • {item['sku']} • {str(item['tipe']).title()}"
 
     @staticmethod
     def _get_stylesheet() -> str:
@@ -439,6 +819,16 @@ class PenjualanWindow(QWidget):
                     font-weight: 700;
                     padding: 0 16px;
                 }
+                QPushButton#deleteCartButton {
+                    min-height: 34px;
+                    background-color: #241316;
+                    border: 1px solid #59242a;
+                    padding: 0;
+                }
+                QPushButton#deleteCartButton:hover {
+                    background-color: #3b1c20;
+                }
+
                 QTableWidget {
                     background-color: #0a0f14;
                     border: 1px solid #202a35;
