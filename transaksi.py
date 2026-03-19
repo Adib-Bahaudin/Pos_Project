@@ -11,8 +11,6 @@ from PySide6.QtWidgets import (
 class PenjualanWindow(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Sistem Penjualan (POS)")
-        self.resize(1000, 600)  # Ukuran awal window
         self.setup_ui()
 
     def setup_ui(self):
