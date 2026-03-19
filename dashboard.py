@@ -10,6 +10,7 @@ from database import DatabaseManager
 from manajemen_produk import ManajemenProduk
 from error import ErrorWindow
 from welcome import WelcomeWindow
+from transaksi import PenjualanWindow
 
 
 class Dashboard(QWidget):
@@ -29,6 +30,7 @@ class Dashboard(QWidget):
 
         self.user_role = data.get('role')
         self.manajemen_widget = None
+        self.transaksi_widget = None
 
         self._setup_ui()
         self._setup_connections()
@@ -355,7 +357,11 @@ class Dashboard(QWidget):
             self.main_stack.setCurrentWidget(self.manajemen_widget)
         elif self.button_transaksi_left.isChecked():
             self.button_transaksi_right.setMinimumWidth(self.BUTTON_EXPANDED_WIDTH)
-            self.main_stack.setCurrentWidget(self.error_widget)
+            if not self.transaksi_widget:
+                self.transaksi_widget = PenjualanWindow()
+                if self.main_stack.indexOf(self.transaksi_widget) == -1:
+                    self.main_stack.addWidget(self.transaksi_widget)
+            self.main_stack.setCurrentWidget(self.transaksi_widget)
 
     def _reset_all_button_widths(self):
         """Reset semua lebar tombol sidebar kanan ke ukuran default"""
