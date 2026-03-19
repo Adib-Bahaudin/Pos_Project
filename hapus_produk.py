@@ -347,8 +347,8 @@ class HapusProdukDialog(QDialog):
 
         ringkas = (
             f"Produk berhasil dihapus. "
-            f"Detail transaksi terhapus: {result['deleted_transaksi_detail']}, "
-            f"Produk paket terhapus: {result['deleted_produk_paket']}."
+            f"Produk paket terhapus: {result['deleted_produk_paket']}. "
+            f"Histori transaksi tidak diubah."
         )
         self._set_status(ringkas, error=False)
         self.accept()
