@@ -185,7 +185,8 @@ class PenjualanWindow(QWidget):
         self.cart_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         self.cart_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         self.cart_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        self.cart_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+        self.cart_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
+        self.cart_table.setColumnWidth(4, 100)
         self.cart_table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
         self.cart_table.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
         self.cart_table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
@@ -620,7 +621,12 @@ class PenjualanWindow(QWidget):
         spinbox.setRange(1, item.get("max_qty", self.MAX_QTY))
         spinbox.setValue(item["qty"])
         spinbox.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        spinbox.setFixedWidth(82)
+        spinbox.setFixedSize(75, 33)
+        spinbox.setStyleSheet("""
+            QSpinBox {
+                padding: 0px 12px;
+            }
+        """)
         spinbox.valueChanged.connect(lambda value, current_row=row: self._update_cart_qty(current_row, value))
 
         layout.addWidget(spinbox)
@@ -818,6 +824,28 @@ class PenjualanWindow(QWidget):
                 }
                 QLineEdit:focus, QComboBox:focus, QDoubleSpinBox:focus, QTextEdit:focus, QSpinBox:focus {
                     border: 2px solid #00c2ff;
+                }
+                QSpinBox::up-button {
+                    subcontrol-origin: border;
+                    subcontrol-position: top right;
+                    width: 20px;
+                    border-left: 1px solid #2a3745;
+                    }
+                QSpinBox::down-button {
+                    subcontrol-origin: border;
+                    subcontrol-position: bottom right;
+                    width: 20px;
+                    border-left: 1px solid #2a3745;
+                }
+                QSpinBox::up-arrow {
+                    image: url(data/icon_up.svg);
+                    width: 10px;
+                    height: 10px;
+                }
+                QSpinBox::down-arrow {
+                    image: url(data/icon_down.svg);
+                    width: 10px;
+                    height: 10px;
                 }
                 QComboBox::drop-down {
                     border: none;
