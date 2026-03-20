@@ -80,12 +80,28 @@ class InitDatabase:
         """)
 
         cursor.execute("""
+            INSERT INTO customer (nama, nomer_hp, alamat)
+            VALUES ('Pelanggan Umum', '', '')
+        """)
+
+        cursor.execute("""
             CREATE TABLE "transaksi" (
 	            "id" INTEGER,
 	            "id_customer" INTEGER DEFAULT 1,
+                "id_kasir" INTEGER,
+                "nama_kasir" TEXT,
+                "nama_customer" TEXT,
+                "subtotal" INTEGER DEFAULT 0,
+                "diskon_nominal" INTEGER DEFAULT 0,
+                "diskon_persen" REAL DEFAULT 0,
+                "pembulatan" INTEGER DEFAULT 0,
 	            "total"	INTEGER DEFAULT 0,
+                "metode_bayar" TEXT,
+                "nominal_bayar" INTEGER DEFAULT 0,
+                "nominal_kembali" INTEGER DEFAULT 0,
+                "catatan" TEXT,
 	            "tanggal" INTEGER DEFAULT (DATETIME('now', 'localtime')),
-	            PRIMARY KEY("id" AUTOINCREMENT)
+	            PRIMARY KEY("id" AUTOINCREMENT),
                 FOREIGN KEY("id_customer") REFERENCES "customer"("id")
             )
         """)
