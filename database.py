@@ -450,6 +450,59 @@ class DatabaseManager:
             result = cursor.fetchone()[0]
             return result
 
+    def search_products(self, keyword: str, limit: int, filter_index: int = 0):
+        keyword = keyword.strip()
+        filter_keyword = f"%{keyword}%" if keyword else "%"
+
+        conn = sqlite3.connect(self.db_name)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        query_parts = []
+        params = []
+
+        if filter_index in (0, 1):
+            query_parts.append(
+                """
+                SELECT
+                    sku,
+                    nama_barang,
+                    harga_jual,
+                    stok,
+                    'satuan' AS tipe
+                FROM produk_satuan
+                WHERE sku LIKE ? OR nama_barang LIKE ?
+                """
+            )
+            params.extend([filter_keyword, filter_keyword])
+
+        if filter_index in (0, 2):
+            query_parts.append(
+                """
+                SELECT
+                    sku,
+                    nama_paket AS nama_barang,
+                    harga_jual,
+                    NULL AS stok,
+                    'paket' AS tipe
+                FROM produk_paket
+                WHERE sku LIKE ? OR nama_paket LIKE ?
+                """
+            )
+            params.extend([filter_keyword, filter_keyword])
+
+        if not query_parts:
+            conn.close()
+            return []
+
+        final_query = " UNION ALL ".join(query_parts) + " ORDER BY nama_barang ASC, sku ASC LIMIT ?"
+        params.append(limit)
+        cursor.execute(final_query, params)
+        result = [dict(row) for row in cursor.fetchall()]
+
+        conn.close()
+        return result
+
     def get_search_produk(self, index, keyword, limit=1, offset=0, lock=False):
         keyword = f"%{keyword}%"
         conn = sqlite3.connect(self.db_name)
