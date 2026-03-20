@@ -180,7 +180,8 @@ class PenjualanWindow(QWidget):
         self.cart_table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
         self.cart_table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.cart_table.verticalHeader().setVisible(False)
-        self.cart_table.verticalHeader().setDefaultSectionSize(56)
+        self.cart_table.verticalHeader().setDefaultSectionSize(50)
+        self.cart_table.setStyleSheet("QTableWidget::item { padding: 0px; }")
         self.cart_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.cart_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         self.cart_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
@@ -642,7 +643,7 @@ class PenjualanWindow(QWidget):
         button.setToolTip(f"Hapus {product_name}")
         button.setCursor(Qt.CursorShape.PointingHandCursor)
         button.setFixedSize(34, 34)
-        button.setIcon(QIcon("data/icon_delete_big.png"))
+        button.setIcon(QIcon("data/tong_sampah_putih.svg"))
         button.setIconSize(QSize(18, 18))
         button.setObjectName("deleteCartButton")
         button.clicked.connect(lambda _=False, current_row=row: self._remove_cart_item(current_row))
@@ -861,8 +862,9 @@ class PenjualanWindow(QWidget):
                 }
                 QPushButton#deleteCartButton {
                     min-height: 34px;
+                    max-height: 34px;
                     background-color: #241316;
-                    border: 1px solid #59242a;
+                    border: 2px solid #59242a;
                     padding: 0;
                 }
                 QPushButton#deleteCartButton:hover {
