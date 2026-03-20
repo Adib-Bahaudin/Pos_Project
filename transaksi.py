@@ -1,6 +1,6 @@
 import sqlite3
 
-from PySide6.QtCore import QSize, QStringListModel
+from PySide6.QtCore import QSize, QStringListModel, QTimer
 from PySide6.QtGui import QFont, Qt, QIcon
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
@@ -412,6 +412,18 @@ class PenjualanWindow(QWidget):
         self.search_input.setCompleter(self.search_completer)
 
     def _handle_search_text_changed(self, text: str):
+        if text in self.search_lookup:
+            return
+
+        if not text:
+            self.search_model.setStringList([])
+            self.search_lookup.clear()
+            self.search_hint_label.setText("Cari produk berdasarkan SKU atau nama produk.")
+
+            if self.search_completer.popup():
+                self.search_completer.popup().hide()
+            return
+
         self._refresh_search_suggestions(text)
         text = text.strip()
         if text:
@@ -428,9 +440,9 @@ class PenjualanWindow(QWidget):
         if not product:
             return
 
-        self.search_input.setText(product["nama_barang"])
         self._add_product_to_cart(product)
         self.search_hint_label.setText(f"Produk {product['nama_barang']} ditambahkan ke keranjang.")
+        QTimer.singleShot(0, self.search_input.clear)
 
     def _refresh_search_suggestions(self, keyword: str = ""):
         keyword = keyword.strip()
