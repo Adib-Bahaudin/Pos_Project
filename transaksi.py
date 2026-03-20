@@ -300,7 +300,7 @@ class PenjualanWindow(QWidget):
             padding: 0px 12px;
         """
         )
-        self.payment_input.textChanged.connect(self._update_change_display)
+        self.payment_input.textChanged.connect(self._format_payment_input)
         payment_layout.addWidget(self.payment_input)
 
         form_layout.addWidget(bayar_label, 1, 0)
@@ -743,6 +743,30 @@ class PenjualanWindow(QWidget):
     def _parse_currency_input(value: str) -> int:
         digits = "".join(ch for ch in value if ch.isdigit())
         return int(digits) if digits else 0
+
+    def _format_payment_input(self, text: str):
+        digits = "".join(filter(str.isdigit, text))
+
+        if not digits:
+            self.payment_input.blockSignals(True)
+            self.payment_input.clear()
+            self.payment_input.blockSignals(False)
+            self._update_change_display()
+            return
+
+        formatted_text = f"{int(digits):,}".replace(",", ".")
+
+        if formatted_text != text:
+            cursor_pos_from_right = len(text) - self.payment_input.cursorPosition()
+
+            self.payment_input.blockSignals(True)
+            self.payment_input.setText(formatted_text)
+            self.payment_input.blockSignals(False)
+
+            new_cursor_pos = max(0, len(formatted_text) - cursor_pos_from_right)
+            self.payment_input.setCursorPosition(new_cursor_pos)
+
+        self._update_change_display()
 
     @staticmethod
     def _build_card() -> QFrame:
