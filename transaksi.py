@@ -4,10 +4,142 @@ from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout,
     QFrame, QLabel, QLineEdit, QComboBox, QPushButton, QTableWidget, QAbstractItemView, QHeaderView, QGridLayout,
-    QTextEdit, QCompleter, QTableWidgetItem, QSpinBox, QAbstractSpinBox, QScrollArea
+    QTextEdit, QCompleter, QTableWidgetItem, QSpinBox, QAbstractSpinBox, QScrollArea, QMessageBox
 )
 
 from database import DatabaseManager
+
+
+class DiscountPopup(QWidget):
+    def __init__(self, parent_window):
+        super().__init__(parent_window, Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)
+        self.parent_window = parent_window
+        self.setObjectName("discountPopup")
+        self.setFixedWidth(320)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(10)
+
+        title = QLabel("Atur Diskon")
+        title.setStyleSheet("font-size: 16px; font-weight: 700; color: #ffffff;")
+        layout.addWidget(title)
+
+        description = QLabel("Isi salah satu field. Field lain akan nonaktif otomatis.")
+        description.setWordWrap(True)
+        description.setStyleSheet("color: #98a3af; font-size: 12px;")
+        layout.addWidget(description)
+
+        percent_label = QLabel("Diskon Persen")
+        percent_label.setObjectName("formLabel")
+        layout.addWidget(percent_label)
+
+        self.percent_input = QLineEdit()
+        self.percent_input.setPlaceholderText("Contoh: 10")
+        self.percent_input.textChanged.connect(self._handle_percent_changed)
+        layout.addWidget(self.percent_input)
+
+        nominal_label = QLabel("Diskon Nominal")
+        nominal_label.setObjectName("formLabel")
+        layout.addWidget(nominal_label)
+
+        self.nominal_input = QLineEdit()
+        self.nominal_input.setPlaceholderText("Contoh: 50.000")
+        self.nominal_input.textChanged.connect(self._handle_nominal_changed)
+        layout.addWidget(self.nominal_input)
+
+        button_row = QHBoxLayout()
+        button_row.setSpacing(8)
+
+        clear_button = QPushButton("Reset")
+        clear_button.setObjectName("ghostButton")
+        clear_button.clicked.connect(self._reset_inputs)
+        button_row.addWidget(clear_button)
+
+        apply_button = QPushButton("Terapkan")
+        apply_button.setObjectName("primaryButton")
+        apply_button.clicked.connect(self._apply_discount)
+        button_row.addWidget(apply_button)
+
+        layout.addLayout(button_row)
+
+        self.setStyleSheet("""
+            QWidget#discountPopup {
+                background-color: #111827;
+                border: 2px solid #263241;
+                border-radius: 16px;
+            }
+        """)
+
+    def sync_with_state(self):
+        self.percent_input.blockSignals(True)
+        self.nominal_input.blockSignals(True)
+
+        if self.parent_window.diskon_mode == "percent" and self.parent_window.diskon_persen > 0:
+            self.percent_input.setText(self.parent_window._format_percent_input(self.parent_window.diskon_persen))
+            self.nominal_input.clear()
+        elif self.parent_window.diskon_mode == "nominal" and self.parent_window.diskon_nominal_input > 0:
+            self.percent_input.clear()
+            self.nominal_input.setText(
+                self.parent_window._format_number_grouping(self.parent_window.diskon_nominal_input)
+            )
+        else:
+            self.percent_input.clear()
+            self.nominal_input.clear()
+
+        self.percent_input.blockSignals(False)
+        self.nominal_input.blockSignals(False)
+        self._sync_field_state()
+
+    def _handle_percent_changed(self, text: str):
+        digits = "".join(ch for ch in text if ch.isdigit())
+        formatted = str(min(100, int(digits))) if digits else ""
+
+        if formatted != text:
+            self.percent_input.blockSignals(True)
+            self.percent_input.setText(formatted)
+            self.percent_input.blockSignals(False)
+
+        self._sync_field_state()
+
+    def _handle_nominal_changed(self, text: str):
+        formatted = self.parent_window._format_number_grouping_from_text(text)
+        if formatted != text:
+            self.nominal_input.blockSignals(True)
+            self.nominal_input.setText(formatted)
+            self.nominal_input.blockSignals(False)
+
+        self._sync_field_state()
+
+    def _sync_field_state(self):
+        percent_value = self.parent_window._parse_currency_input(self.percent_input.text())
+        nominal_value = self.parent_window._parse_currency_input(self.nominal_input.text())
+
+        self.percent_input.setEnabled(nominal_value == 0)
+        self.nominal_input.setEnabled(percent_value == 0)
+
+        if percent_value == 0 and nominal_value == 0:
+            self.percent_input.setEnabled(True)
+            self.nominal_input.setEnabled(True)
+
+    def _reset_inputs(self):
+        self.percent_input.clear()
+        self.nominal_input.clear()
+        self.parent_window._clear_discount()
+        self.close()
+
+    def _apply_discount(self):
+        percent_value = self.parent_window._parse_currency_input(self.percent_input.text())
+        nominal_value = self.parent_window._parse_currency_input(self.nominal_input.text())
+
+        if percent_value > 0:
+            self.parent_window._apply_discount(mode="percent", value=percent_value)
+        elif nominal_value > 0:
+            self.parent_window._apply_discount(mode="nominal", value=nominal_value)
+        else:
+            self.parent_window._clear_discount()
+
+        self.close()
 
 class PenjualanWindow(QWidget):
     SEARCH_LIMIT = 12
@@ -17,11 +149,15 @@ class PenjualanWindow(QWidget):
         super().__init__()
         self.user_data = user_data or {}
         self.db_manager = db_manager or DatabaseManager()
+        self.diskon_mode = None
+        self.diskon_persen = 0
         self.diskon_nominal = 0
+        self.diskon_nominal_input = 0
         self.pembulatan_nominal = 0
         self.cart_items = []
         self.search_suggestions = []
         self.search_lookup = {}
+        self.discount_popup = None
 
         self.setup_ui()
         self._setup_search_completer()
@@ -352,6 +488,7 @@ class PenjualanWindow(QWidget):
                 background-color: #ffd27a;
             }
         """)
+        self.button_discount.clicked.connect(self._show_discount_popup)
 
         self.button_rounding = QPushButton("Pembulatan")
         self.button_rounding.setObjectName("secondaryButton")
@@ -390,6 +527,7 @@ class PenjualanWindow(QWidget):
                 color: #02140a;
             }
         """)
+        self.button_pay.clicked.connect(self._process_payment)
 
         button_grid = QGridLayout()
         button_grid.setHorizontalSpacing(10)
@@ -668,8 +806,9 @@ class PenjualanWindow(QWidget):
             item.setText(value)
 
     def _update_cart_summary(self):
-        subtotal = sum(item["harga_jual"] * item["qty"] for item in self.cart_items)
-        total = max(0, subtotal - self.diskon_nominal + self.pembulatan_nominal)
+        subtotal = self._get_cart_subtotal()
+        self._recalculate_discount()
+        total = self._get_final_total()
 
         self.summary_subtotal.setText(self._format_currency(subtotal))
         self.summary_discount.setText(self._format_currency(self.diskon_nominal))
@@ -687,11 +826,36 @@ class PenjualanWindow(QWidget):
         self._update_change_display()
 
     def _update_change_display(self):
-        total = sum(item["harga_jual"] * item["qty"] for item in self.cart_items)
-        total = max(0, total - self.diskon_nominal + self.pembulatan_nominal)
+        total = self._get_final_total()
         bayar = self._parse_currency_input(self.payment_input.text())
         kembali = bayar - total
         self.change_label.setText(f"Kembalian: {self._format_currency(kembali)}")
+
+    def _get_cart_subtotal(self) -> int:
+        return sum(item["harga_jual"] * item["qty"] for item in self.cart_items)
+
+    def _get_final_total(self) -> int:
+        subtotal = self._get_cart_subtotal()
+        return max(0, subtotal - self.diskon_nominal + self.pembulatan_nominal)
+
+    def _recalculate_discount(self):
+        subtotal = self._get_cart_subtotal()
+        if subtotal <= 0:
+            self.diskon_nominal = 0
+            if self.diskon_mode == "nominal":
+                self.diskon_nominal_input = 0
+            return
+
+        if self.diskon_mode == "percent" and self.diskon_persen > 0:
+            calculated = int(subtotal * (self.diskon_persen / 100))
+            self.diskon_nominal = min(subtotal, calculated)
+        elif self.diskon_mode == "nominal" and self.diskon_nominal_input > 0:
+            self.diskon_nominal = min(subtotal, self.diskon_nominal_input)
+        else:
+            self.diskon_nominal = 0
+            self.diskon_mode = None
+
+        self._update_discount_button_label()
 
     @staticmethod
     def _parse_currency_input(value: str) -> int:
@@ -722,6 +886,142 @@ class PenjualanWindow(QWidget):
 
         self._update_change_display()
 
+    def _show_discount_popup(self):
+        if not self.cart_items:
+            self.search_hint_label.setText("Tambahkan produk ke keranjang sebelum memberikan diskon.")
+            return
+
+        if self.discount_popup is None:
+            self.discount_popup = DiscountPopup(self)
+
+        self.discount_popup.sync_with_state()
+        popup_pos = self.button_discount.mapToGlobal(self.button_discount.rect().bottomLeft())
+        self.discount_popup.move(popup_pos.x(), popup_pos.y() + 8)
+        self.discount_popup.show()
+        self.discount_popup.raise_()
+        self.discount_popup.activateWindow()
+
+    def _apply_discount(self, mode: str, value: int):
+        subtotal = self._get_cart_subtotal()
+        if subtotal <= 0:
+            self.search_hint_label.setText("Diskon tidak dapat diterapkan karena keranjang masih kosong.")
+            return
+
+        if mode == "percent":
+            self.diskon_mode = "percent"
+            self.diskon_persen = max(0, min(100, int(value)))
+            self.diskon_nominal_input = 0
+        elif mode == "nominal":
+            self.diskon_mode = "nominal"
+            self.diskon_nominal_input = max(0, int(value))
+            self.diskon_persen = 0
+        else:
+            self._clear_discount()
+            return
+
+        self._update_cart_summary()
+        if self.diskon_mode == "percent":
+            self.search_hint_label.setText(
+                f"Diskon {self.diskon_persen}% diterapkan sebesar {self._format_currency(self.diskon_nominal)}."
+            )
+        else:
+            self.search_hint_label.setText(
+                f"Diskon nominal {self._format_currency(self.diskon_nominal)} berhasil diterapkan."
+            )
+
+    def _clear_discount(self):
+        self.diskon_mode = None
+        self.diskon_persen = 0
+        self.diskon_nominal = 0
+        self.diskon_nominal_input = 0
+        self._update_discount_button_label()
+        self._update_cart_summary()
+        self.search_hint_label.setText("Diskon direset.")
+
+    def _update_discount_button_label(self):
+        if self.diskon_mode == "percent" and self.diskon_persen > 0:
+            self.button_discount.setText(f"Diskon ({self.diskon_persen}%)")
+        elif self.diskon_mode == "nominal" and self.diskon_nominal_input > 0:
+            self.button_discount.setText(
+                f"Diskon ({self._format_currency(self.diskon_nominal_input)})"
+            )
+        else:
+            self.button_discount.setText("Diskon")
+
+    def _build_transaction_payload(self) -> dict:
+        subtotal = self._get_cart_subtotal()
+        total = self._get_final_total()
+        bayar = self._parse_currency_input(self.payment_input.text())
+        return {
+            "items": [
+                {
+                    "sku": item["sku"],
+                    "tipe": str(item["tipe"]).lower(),
+                    "qty": item["qty"],
+                    "harga_jual": item["harga_jual"],
+                }
+                for item in self.cart_items
+            ],
+            "subtotal": subtotal,
+            "diskon_nominal": self.diskon_nominal,
+            "diskon_persen": self.diskon_persen if self.diskon_mode == "percent" else 0,
+            "pembulatan": self.pembulatan_nominal,
+            "total": total,
+            "nominal_bayar": bayar,
+            "kembalian": bayar - total,
+            "metode_bayar": self.payment_method.currentText(),
+            "customer_name": self.customer_input.text().strip() or "Pelanggan Umum",
+            "cashier_name": str(self.user_data.get("username") or "Guest").strip(),
+            "notes": self.notes_input.toPlainText().strip(),
+        }
+
+    def _process_payment(self):
+        if not self.cart_items:
+            QMessageBox.warning(self, "Transaksi", "Keranjang masih kosong.")
+            return
+
+        total = self._get_final_total()
+        method = self.payment_method.currentText()
+        bayar = self._parse_currency_input(self.payment_input.text())
+
+        if method != "Tunai" and bayar == 0:
+            bayar = total
+            self.payment_input.setText(self._format_number_grouping(bayar))
+
+        if bayar < total:
+            QMessageBox.warning(
+                self,
+                "Transaksi",
+                "Nominal pembayaran kurang dari total tagihan.",
+            )
+            return
+
+        payload = self._build_transaction_payload()
+        payload["nominal_bayar"] = bayar
+        payload["kembalian"] = bayar - total
+
+        try:
+            transaction_id = self.db_manager.save_sale_transaction(payload)
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                "Transaksi Gagal",
+                f"Gagal menyimpan transaksi ke database.\n{exc}",
+            )
+            return
+
+        QMessageBox.information(
+            self,
+            "Transaksi Berhasil",
+            (
+                f"Transaksi #{transaction_id} berhasil disimpan.\n"
+                f"Total: {self._format_currency(total)}\n"
+                f"Bayar: {self._format_currency(bayar)}\n"
+                f"Kembalian: {self._format_currency(bayar - total)}"
+            ),
+        )
+        self._reset_transaction_form()
+
     @staticmethod
     def _build_card() -> QFrame:
         card = QFrame()
@@ -731,12 +1031,23 @@ class PenjualanWindow(QWidget):
     def _clear_cart(self):
         self.cart_items.clear()
         self.cart_table.setRowCount(0)
+        self.diskon_mode = None
+        self.diskon_persen = 0
         self.diskon_nominal = 0
+        self.diskon_nominal_input = 0
         self.pembulatan_nominal = 0
-        self.summary_discount.setText(self._format_currency(0))
-        self.summary_rounding.setText(self._format_currency(0))
+        self._update_discount_button_label()
         self._update_cart_summary()
         self.search_hint_label.setText("Keranjang dikosongkan.")
+
+    def _reset_transaction_form(self):
+        self._clear_cart()
+        self.payment_input.clear()
+        self.customer_input.clear()
+        self.notes_input.clear()
+        self.payment_method.setCurrentIndex(0)
+        self.change_label.setText("Kembalian: Rp 0")
+        self.search_hint_label.setText("Transaksi berhasil disimpan dan form direset.")
 
 
     @staticmethod
@@ -761,6 +1072,20 @@ class PenjualanWindow(QWidget):
         prefix = "-" if value < 0 else ""
         nominal = f"{abs(int(value)):,}".replace(",", ".")
         return f"{prefix}Rp {nominal}"
+
+    @staticmethod
+    def _format_number_grouping(value: int) -> str:
+        return f"{max(0, int(value)):,}".replace(",", ".")
+
+    def _format_number_grouping_from_text(self, text: str) -> str:
+        digits = "".join(ch for ch in text if ch.isdigit())
+        if not digits:
+            return ""
+        return self._format_number_grouping(int(digits))
+
+    @staticmethod
+    def _format_percent_input(value: float) -> str:
+        return str(max(0, min(100, int(value))))
 
     @staticmethod
     def _format_role(role_value) -> str:
@@ -847,6 +1172,23 @@ class PenjualanWindow(QWidget):
                 }
                 QPushButton#deleteCartButton:hover {
                     background-color: #3b1c20;
+                }
+                QPushButton#ghostButton {
+                    background-color: #17202a;
+                    color: #dbe8f4;
+                    border: 2px solid #2a3745;
+                }
+                QPushButton#ghostButton:hover {
+                    background-color: #dbe8f4;
+                    color: #17202a;
+                }
+                QPushButton#primaryButton {
+                    background-color: #00c853;
+                    color: #ffffff;
+                }
+                QPushButton#primaryButton:hover {
+                    background-color: #ffffff;
+                    color: #00c853;
                 }
 
                 QTableWidget {

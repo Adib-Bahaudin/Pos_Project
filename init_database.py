@@ -83,9 +83,19 @@ class InitDatabase:
             CREATE TABLE "transaksi" (
 	            "id" INTEGER,
 	            "id_customer" INTEGER DEFAULT 1,
+                "subtotal" INTEGER DEFAULT 0,
+                "diskon_nominal" INTEGER DEFAULT 0,
+                "diskon_persen" REAL DEFAULT 0,
+                "pembulatan" INTEGER DEFAULT 0,
+                "metode_bayar" TEXT DEFAULT 'Tunai',
+                "nominal_bayar" INTEGER DEFAULT 0,
+                "kembalian" INTEGER DEFAULT 0,
+                "catatan" TEXT,
+	            "nama_customer" TEXT,
+                "nama_kasir" TEXT,
 	            "total"	INTEGER DEFAULT 0,
 	            "tanggal" INTEGER DEFAULT (DATETIME('now', 'localtime')),
-	            PRIMARY KEY("id" AUTOINCREMENT)
+	            PRIMARY KEY("id" AUTOINCREMENT),
                 FOREIGN KEY("id_customer") REFERENCES "customer"("id")
             )
         """)

@@ -27,11 +27,52 @@ class DatabaseManager:
         if not os.path.exists(self.db_name):
             InitDatabase()
 
+        self._ensure_transaction_schema()
+
     @staticmethod
     def hash_key(key):
         """Menghasilkan hash SHA-512 dari key"""
         pwd_hash = key
         return hashlib.sha512(pwd_hash.encode()).hexdigest()
+
+    def _ensure_transaction_schema(self):
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+
+        cursor.execute("PRAGMA table_info(transaksi)")
+        columns = {row[1] for row in cursor.fetchall()}
+
+        expected_columns = {
+            "subtotal": "INTEGER DEFAULT 0",
+            "diskon_nominal": "INTEGER DEFAULT 0",
+            "diskon_persen": "REAL DEFAULT 0",
+            "pembulatan": "INTEGER DEFAULT 0",
+            "metode_bayar": "TEXT DEFAULT 'Tunai'",
+            "nominal_bayar": "INTEGER DEFAULT 0",
+            "kembalian": "INTEGER DEFAULT 0",
+            "catatan": "TEXT",
+            "nama_customer": "TEXT",
+            "nama_kasir": "TEXT",
+        }
+
+        for column_name, column_type in expected_columns.items():
+            if column_name not in columns:
+                cursor.execute(
+                    f"ALTER TABLE transaksi ADD COLUMN {column_name} {column_type}"
+                )
+
+        cursor.execute("SELECT id FROM customer WHERE nama = ?", ("Pelanggan Umum",))
+        if cursor.fetchone() is None:
+            cursor.execute(
+                """
+                INSERT INTO customer (nama, nomer_hp, alamat)
+                VALUES (?, ?, ?)
+                """,
+                ("Pelanggan Umum", "", ""),
+            )
+
+        conn.commit()
+        conn.close()
 
     def register_user(self, username, key, role):
         """
@@ -502,6 +543,216 @@ class DatabaseManager:
 
         conn.close()
         return result
+
+    def save_sale_transaction(self, payload: dict) -> int:
+        items = payload.get("items") or []
+        if not items:
+            raise ValueError("Keranjang kosong, transaksi tidak dapat disimpan.")
+
+        subtotal = int(payload.get("subtotal") or 0)
+        diskon_nominal = max(0, int(payload.get("diskon_nominal") or 0))
+        diskon_persen = float(payload.get("diskon_persen") or 0)
+        pembulatan = int(payload.get("pembulatan") or 0)
+        total = max(0, int(payload.get("total") or 0))
+        nominal_bayar = max(0, int(payload.get("nominal_bayar") or 0))
+        kembalian = int(payload.get("kembalian") or 0)
+        metode_bayar = str(payload.get("metode_bayar") or "Tunai").strip() or "Tunai"
+        customer_name = str(payload.get("customer_name") or "Pelanggan Umum").strip() or "Pelanggan Umum"
+        cashier_name = str(payload.get("cashier_name") or "").strip()
+        notes = str(payload.get("notes") or "").strip()
+
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+
+        try:
+            customer_id = self._get_or_create_customer(cursor, customer_name)
+
+            cursor.execute(
+                """
+                INSERT INTO transaksi (
+                    id_customer,
+                    subtotal,
+                    diskon_nominal,
+                    diskon_persen,
+                    pembulatan,
+                    metode_bayar,
+                    nominal_bayar,
+                    kembalian,
+                    catatan,
+                    nama_customer,
+                    nama_kasir,
+                    total
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    customer_id,
+                    subtotal,
+                    diskon_nominal,
+                    diskon_persen,
+                    pembulatan,
+                    metode_bayar,
+                    nominal_bayar,
+                    kembalian,
+                    notes,
+                    customer_name,
+                    cashier_name,
+                    total,
+                ),
+            )
+            transaction_id = cursor.lastrowid
+
+            for item in items:
+                product_type = str(item.get("tipe") or "").strip().lower()
+                product_id = self._get_product_id_by_sku(cursor, product_type, item.get("sku"))
+                qty = max(1, int(item.get("qty") or 1))
+                price = max(0, int(item.get("harga_jual") or 0))
+
+                cursor.execute(
+                    """
+                    INSERT INTO transaksi_detail (
+                        id_transaksi,
+                        jenis_produk,
+                        id_produk,
+                        jumlah,
+                        harga
+                    ) VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (transaction_id, product_type, product_id, qty, price),
+                )
+
+            cursor.execute(
+                """
+                UPDATE transaksi
+                SET subtotal = ?,
+                    diskon_nominal = ?,
+                    diskon_persen = ?,
+                    pembulatan = ?,
+                    metode_bayar = ?,
+                    nominal_bayar = ?,
+                    kembalian = ?,
+                    catatan = ?,
+                    nama_customer = ?,
+                    nama_kasir = ?,
+                    total = ?
+                WHERE id = ?
+                """,
+                (
+                    subtotal,
+                    diskon_nominal,
+                    diskon_persen,
+                    pembulatan,
+                    metode_bayar,
+                    nominal_bayar,
+                    kembalian,
+                    notes,
+                    customer_name,
+                    cashier_name,
+                    total,
+                    transaction_id,
+                ),
+            )
+
+            self._recalculate_profit_for_transaction(cursor, transaction_id)
+
+            conn.commit()
+            return transaction_id
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
+    @staticmethod
+    def _get_or_create_customer(cursor, customer_name: str):
+        cursor.execute("SELECT id FROM customer WHERE nama = ?", (customer_name,))
+        result = cursor.fetchone()
+        if result:
+            return result[0]
+
+        cursor.execute(
+            """
+            INSERT INTO customer (nama, nomer_hp, alamat)
+            VALUES (?, ?, ?)
+            """,
+            (customer_name, "", ""),
+        )
+        return cursor.lastrowid
+
+    @staticmethod
+    def _get_product_id_by_sku(cursor, product_type: str, sku: str) -> int:
+        if product_type == "satuan":
+            cursor.execute("SELECT id FROM produk_satuan WHERE sku = ?", (sku,))
+        elif product_type == "paket":
+            cursor.execute("SELECT id FROM produk_paket WHERE sku = ?", (sku,))
+        else:
+            raise ValueError(f"Jenis produk tidak dikenali: {product_type}")
+
+        result = cursor.fetchone()
+        if result is None:
+            raise ValueError(f"Produk dengan SKU {sku} tidak ditemukan.")
+
+        return int(result[0])
+
+    def _recalculate_profit_for_transaction(self, cursor, transaction_id: int):
+        cursor.execute("DELETE FROM laba_transaksi WHERE id_transaksi = ?", (transaction_id,))
+
+        cursor.execute(
+            """
+            SELECT
+                t.id,
+                t.tanggal,
+                t.total,
+                COALESCE(SUM(
+                    CASE
+                        WHEN td.jenis_produk = 'satuan' THEN td.jumlah * COALESCE(hb.harga, 0)
+                        WHEN td.jenis_produk = 'paket' THEN td.jumlah * COALESCE((
+                            SELECT SUM(dp.jumlah * COALESCE(hb2.harga, 0))
+                            FROM detail_paket dp
+                            LEFT JOIN harga_beli hb2 ON dp.id_produk = hb2.id_satuan
+                            WHERE dp.id_paket = td.id_produk
+                        ), 0)
+                    END
+                ), 0) AS total_hpp
+            FROM transaksi t
+            LEFT JOIN transaksi_detail td ON t.id = td.id_transaksi
+            LEFT JOIN harga_beli hb
+                ON td.id_produk = hb.id_satuan AND td.jenis_produk = 'satuan'
+            WHERE t.id = ?
+            GROUP BY t.id, t.tanggal, t.total
+            """,
+            (transaction_id,),
+        )
+        result = cursor.fetchone()
+        if result is None:
+            return
+
+        _, tanggal, total, total_hpp = result
+        laba_kotor = int(total) - int(total_hpp)
+        pajak = int(laba_kotor * 0.2)
+        laba_bersih = laba_kotor - pajak
+
+        cursor.execute(
+            """
+            INSERT INTO laba_transaksi (
+                id_transaksi,
+                tanggal,
+                pendapatan_kotor,
+                total_hpp,
+                laba_kotor,
+                pajak_20_persen,
+                laba_bersih
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                transaction_id,
+                tanggal,
+                int(total),
+                int(total_hpp),
+                laba_kotor,
+                pajak,
+                laba_bersih,
+            ),
+        )
 
     def get_search_produk(self, index, keyword, limit=1, offset=0, lock=False):
         keyword = f"%{keyword}%"
