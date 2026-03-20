@@ -1,5 +1,3 @@
-import sqlite3
-
 from PySide6.QtCore import QSize, QStringListModel, QTimer
 from PySide6.QtGui import QFont, Qt, QIcon
 from PySide6.QtSvgWidgets import QSvgWidget
@@ -448,7 +446,11 @@ class PenjualanWindow(QWidget):
 
     def _refresh_search_suggestions(self, keyword: str = ""):
         keyword = keyword.strip()
-        self.search_suggestions = self._search_products(keyword, self.SEARCH_LIMIT)
+        self.search_suggestions = self.db_manager.search_products(
+            keyword=keyword,
+            limit=self.SEARCH_LIMIT,
+            filter_index=self.product_filter.currentIndex(),
+        )
         self.search_lookup = {
             self._build_suggestion_text(item): item
             for item in self.search_suggestions
@@ -458,64 +460,16 @@ class PenjualanWindow(QWidget):
         if keyword and self.search_suggestions:
             self.search_completer.complete()
 
-    def _search_products(self, keyword: str, limit: int):
-        keyword = keyword.strip()
-        filter_index = self.product_filter.currentIndex()
-        filter_keyword = f"%{keyword}%" if keyword else "%"
-        conn = sqlite3.connect(self.db_manager.db_name)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-
-        query_parts = []
-        params = []
-
-        if filter_index in (0, 1):
-            query_parts.append(
-                """
-                SELECT
-                    sku,
-                    nama_barang,
-                    harga_jual,
-                    stok,
-                    'satuan' AS tipe
-                FROM produk_satuan
-                WHERE sku LIKE ? OR nama_barang LIKE ?
-                """
-            )
-            params.extend([filter_keyword, filter_keyword])
-
-        if filter_index in (0, 2):
-            query_parts.append(
-                """
-                SELECT
-                    sku,
-                    nama_paket AS nama_barang,
-                    harga_jual,
-                    NULL AS stok,
-                    'paket' AS tipe
-                FROM produk_paket
-                WHERE sku LIKE ? OR nama_paket LIKE ?
-                """
-            )
-            params.extend([filter_keyword, filter_keyword])
-
-        if not query_parts:
-            conn.close()
-            return []
-
-        final_query = " UNION ALL ".join(query_parts) + " ORDER BY nama_barang ASC, sku ASC LIMIT ?"
-        params.append(limit)
-        cursor.execute(final_query, params)
-        result = [dict(row) for row in cursor.fetchall()]
-        conn.close()
-        return result
-
     def _find_exact_product(self, keyword: str):
         keyword = keyword.strip().casefold()
         if not keyword:
             return None
 
-        for item in self._search_products(keyword, self.SEARCH_LIMIT):
+        for item in self.db_manager.search_products(
+            keyword=keyword,
+            limit=self.SEARCH_LIMIT,
+            filter_index=self.product_filter.currentIndex(),
+        ):
             sku = str(item["sku"]).strip().casefold()
             nama = str(item["nama_barang"]).strip().casefold()
             if keyword in {sku, nama}:
