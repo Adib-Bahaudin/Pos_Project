@@ -745,7 +745,7 @@ class PenjualanWindow(QWidget):
         return int(digits) if digits else 0
 
     def _format_payment_input(self, text: str):
-        digits = "".join(filter(str.isdigit, text))
+        digits = "".join(ch for ch in text if ch.isdigit())
 
         if not digits:
             self.payment_input.blockSignals(True)
