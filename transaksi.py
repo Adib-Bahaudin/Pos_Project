@@ -23,6 +23,7 @@ class PenjualanWindow(QWidget):
         self.diskon_nominal_input = 0
         self.diskon_persen = 0
         self.discount_mode = None
+        self.is_rounding_active = False
         self.pembulatan_nominal = 0
         self.cart_items = []
         self.search_suggestions = []
@@ -411,6 +412,7 @@ class PenjualanWindow(QWidget):
 
     def _setup_payment_actions(self):
         self.button_discount.clicked.connect(self._show_discount_popup)
+        self.button_rounding.clicked.connect(self._apply_rounding)
         self.button_pay.clicked.connect(self._process_payment)
 
     def _setup_search_completer(self):
@@ -679,9 +681,44 @@ class PenjualanWindow(QWidget):
         else:
             item.setText(value)
 
+    def _calculate_rounding_amount(self, current_total: int) -> int:
+        remainder = current_total % 1000
+        if remainder == 0:
+            return 0
+        if 1 <= remainder <= 250:
+            return -remainder
+        elif 251 <= remainder <= 750:
+            return 500 - remainder
+        elif 751 <= remainder <= 999:
+            return 1000 - remainder
+        return 0
+
+    def _apply_rounding(self):
+        if not self.cart_items:
+            self.search_hint_label.setText("Keranjang kosong, tidak dapat melakukan pembulatan.")
+            return
+
+        self.is_rounding_active = not getattr(self, "is_rounding_active", False)
+        self._update_cart_summary()
+
+        if self.is_rounding_active:
+            status = "penambahan biaya" if self.pembulatan_nominal > 0 else "pengurangan biaya"
+            self.search_hint_label.setText(
+                f"Pembulatan aktif ({status}): {self._format_currency(abs(self.pembulatan_nominal))}"
+            )
+        else:
+            self.search_hint_label.setText("Pembulatan dinonaktifkan.")
+
     def _update_cart_summary(self):
         subtotal = self._get_cart_subtotal()
         self.diskon_nominal = self._calculate_discount_amount(subtotal)
+        
+        current_total = max(0, subtotal - self.diskon_nominal)
+        if getattr(self, "is_rounding_active", False):
+            self.pembulatan_nominal = self._calculate_rounding_amount(current_total)
+        else:
+            self.pembulatan_nominal = 0
+            
         total = self._calculate_final_total(subtotal)
 
         self.summary_subtotal.setText(self._format_currency(subtotal))
@@ -747,6 +784,7 @@ class PenjualanWindow(QWidget):
         self.diskon_nominal = 0
         self.diskon_nominal_input = 0
         self.diskon_persen = 0
+        self.is_rounding_active = False
         self.pembulatan_nominal = 0
         self.summary_discount.setText(self._format_discount_summary())
         self.summary_rounding.setText(self._format_currency(0))
