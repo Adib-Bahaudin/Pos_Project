@@ -43,6 +43,11 @@ class DialogTitleBar(QWidget):
                 background-color: #ff0000;
                 color: #ffffff;
                 border-radius: 5px;
+                padding: 0px;
+                min-width: 20px;
+                min-height: 20px;
+                max-width: 20px;
+                max-height: 20px;
             }
             QPushButton:hover {
                 background-color: #cc0000;

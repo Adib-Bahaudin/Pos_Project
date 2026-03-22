@@ -1,31 +1,33 @@
 from PySide6.QtGui import QIntValidator, Qt
 from PySide6.QtWidgets import (
-    QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QPushButton, QGridLayout
+    QDialog, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QPushButton, QGridLayout
 )
+from dialog_title_bar import DialogTitleBar
 
 
-class DiscountPopup(QWidget):
+class DiscountPopup(QDialog):
     def __init__(self, parent, discount_state: dict, apply_callback):
-        super().__init__(parent, Qt.WindowType.Popup)
+        super().__init__(parent)
+        self.setWindowFlag(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
+        #self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.apply_callback = apply_callback
-        self.setWindowTitle("Atur Diskon")
         self.setObjectName("discountPopup")
         self.setMinimumWidth(360)
 
-        layout = QVBoxLayout(self)
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(2, 2, 2, 2)
+        main_layout.setSpacing(0)
+
+        self.title_bar = DialogTitleBar("Atur Diskon Transaksi", self)
+        main_layout.addWidget(self.title_bar)
+
+        content_widget = QWidget()
+        content_widget.setObjectName("contentWidget")
+        main_layout.addWidget(content_widget)
+
+        layout = QVBoxLayout(content_widget)
         layout.setContentsMargins(18, 18, 18, 18)
         layout.setSpacing(12)
-
-        title = QLabel("Atur Diskon Transaksi")
-        title.setStyleSheet("font-size: 16px; font-weight: 700; color: #ffffff;")
-        layout.addWidget(title)
-
-        helper = QLabel(
-            "Isi salah satu kolom saja. Saat satu kolom terisi, kolom lainnya otomatis nonaktif."
-        )
-        helper.setWordWrap(True)
-        helper.setStyleSheet("color: #9db0c1; font-size: 12px;")
-        layout.addWidget(helper)
 
         form = QGridLayout()
         form.setHorizontalSpacing(10)
@@ -85,23 +87,25 @@ class DiscountPopup(QWidget):
         self.apply_button.clicked.connect(self._apply_discount)
 
         self.setStyleSheet("""
-            QWidget#discountPopup {
+            QDialog#discountPopup {
                 background-color: #0d1117;
-                border: 2px solid #243342;
-                border-radius: 16px;
+                border: 2px solid #00ff00;
             }
-            QWidget#discountPopup QLineEdit {
+            QWidget#contentWidget {
+                background-color: transparent;
+            }
+            QDialog#discountPopup QLineEdit {
                 background-color: #111827;
                 border: 2px solid #263241;
                 border-radius: 10px;
                 padding: 8px 12px;
                 color: #ffffff;
             }
-            QWidget#discountPopup QLineEdit:disabled {
+            QDialog#discountPopup QLineEdit:disabled {
                 color: #6b7b8c;
                 background-color: #0b1016;
             }
-            QWidget#discountPopup QPushButton {
+            QDialog#discountPopup QPushButton {
                 min-height: 34px;
                 padding: 0px 14px;
                 border-radius: 10px;
