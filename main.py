@@ -11,6 +11,7 @@ from dashboard import Dashboard
 from fungsi import ScreenSize
 from login import LoginPage
 from database import DatabaseManager
+from sejarah_transaksi import SejarahTransaksiWindow
 
 
 class TitleBar(QWidget):
@@ -166,6 +167,7 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.dashboard_widget = None
+        self.sejarah_window_class = SejarahTransaksiWindow
         self.login = False
         self.data_login = {"id": None, "username": None, "role": None}
 

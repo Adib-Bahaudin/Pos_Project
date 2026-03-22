@@ -24,10 +24,29 @@ class DatabaseManager:
     def __init__(self, db_name="db_BarokahCopy.db"):
         self.db_name = db_name
 
-        if not os.path.exists(self.db_name):
+        if not os.path.exists(self.db_name) or not self._has_core_tables():
             InitDatabase()
 
         self._ensure_transaction_schema()
+
+    def _has_core_tables(self):
+        """Cek apakah database sudah memiliki tabel inti yang dibutuhkan aplikasi."""
+        try:
+            conn = sqlite3.connect(self.db_name)
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT name
+                FROM sqlite_master
+                WHERE type = 'table'
+                  AND name IN ('users', 'transaksi', 'transaksi_detail', 'customer')
+                """
+            )
+            tables = {row[0] for row in cursor.fetchall()}
+            conn.close()
+            return len(tables) == 4
+        except sqlite3.Error:
+            return False
 
     @staticmethod
     def hash_key(key):
@@ -1093,5 +1112,341 @@ class DatabaseManager:
         except sqlite3.Error:
             conn.rollback()
             raise
+        finally:
+            conn.close()
+
+    @staticmethod
+    def _normalize_history_filters(filters_dict=None):
+        filters = dict(filters_dict or {})
+        filters.setdefault("date_from", "")
+        filters.setdefault("date_to", "")
+        filters.setdefault("kasir_id", None)
+        filters.setdefault("payment_method", "")
+        filters.setdefault("amount_min", None)
+        filters.setdefault("amount_max", None)
+        filters.setdefault("search_keyword", "")
+        filters.setdefault("limit", 20)
+        filters.setdefault("offset", 0)
+        filters.setdefault("sort_by", "tanggal")
+        filters.setdefault("sort_direction", "DESC")
+        filters.setdefault("user_scope_id", None)
+        return filters
+
+    def _build_history_where_clause(self, filters_dict):
+        filters = self._normalize_history_filters(filters_dict)
+        clauses = []
+        params = []
+
+        if filters["date_from"]:
+            clauses.append("date(t.tanggal) >= date(?)")
+            params.append(filters["date_from"])
+
+        if filters["date_to"]:
+            clauses.append("date(t.tanggal) <= date(?)")
+            params.append(filters["date_to"])
+
+        if filters["kasir_id"] not in (None, "", "Semua Kasir"):
+            clauses.append("t.id_kasir = ?")
+            params.append(filters["kasir_id"])
+
+        if filters["user_scope_id"] not in (None, ""):
+            clauses.append("t.id_kasir = ?")
+            params.append(filters["user_scope_id"])
+
+        if filters["payment_method"] not in ("", None, "Semua Metode"):
+            clauses.append("COALESCE(t.metode_bayar, '') = ?")
+            params.append(filters["payment_method"])
+
+        if filters["amount_min"] not in (None, ""):
+            clauses.append("COALESCE(t.total, 0) >= ?")
+            params.append(int(filters["amount_min"]))
+
+        if filters["amount_max"] not in (None, ""):
+            clauses.append("COALESCE(t.total, 0) <= ?")
+            params.append(int(filters["amount_max"]))
+
+        keyword = str(filters["search_keyword"] or "").strip()
+        if keyword:
+            keyword_like = f"%{keyword}%"
+            clauses.append(
+                """
+                (
+                    CAST(t.id AS TEXT) LIKE ?
+                    OR COALESCE(t.nama_customer, '') LIKE ?
+                    OR COALESCE(t.nama_kasir, '') LIKE ?
+                    OR EXISTS (
+                        SELECT 1
+                        FROM transaksi_detail td2
+                        LEFT JOIN produk_satuan ps2
+                            ON td2.jenis_produk = 'satuan'
+                           AND ps2.id = td2.id_produk
+                        LEFT JOIN produk_paket pp2
+                            ON td2.jenis_produk = 'paket'
+                           AND pp2.id = td2.id_produk
+                        WHERE td2.id_transaksi = t.id
+                          AND COALESCE(
+                              CASE
+                                  WHEN td2.jenis_produk = 'satuan' THEN ps2.nama_barang
+                                  ELSE pp2.nama_paket
+                              END,
+                              ''
+                          ) LIKE ?
+                    )
+                )
+                """
+            )
+            params.extend([keyword_like, keyword_like, keyword_like, keyword_like])
+
+        where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        return where_sql, params
+
+    @staticmethod
+    def _resolve_history_sort(sort_by, sort_direction):
+        allowed_columns = {
+            "id": "t.id",
+            "tanggal": "t.tanggal",
+            "kasir": "kasir_name",
+            "customer": "customer_name",
+            "items": "item_count",
+            "total": "t.total",
+            "metode": "payment_method",
+        }
+        order_column = allowed_columns.get(sort_by, "t.tanggal")
+        direction = "ASC" if str(sort_direction).upper() == "ASC" else "DESC"
+        return order_column, direction
+
+    def get_cashier_list(self):
+        """Ambil daftar kasir untuk dropdown filter histori."""
+        conn = sqlite3.connect(self.db_name)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(
+                """
+                SELECT id, nama, role
+                FROM users
+                ORDER BY nama COLLATE NOCASE ASC
+                """
+            )
+            return [dict(row) for row in cursor.fetchall()]
+        except sqlite3.Error:
+            return []
+        finally:
+            conn.close()
+
+    def get_transaction_history(self, filters_dict=None):
+        """Ambil histori transaksi dengan filter, sorting, dan pagination."""
+        filters = self._normalize_history_filters(filters_dict)
+        where_sql, params = self._build_history_where_clause(filters)
+        order_column, direction = self._resolve_history_sort(
+            filters["sort_by"], filters["sort_direction"]
+        )
+
+        conn = sqlite3.connect(self.db_name)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        try:
+            count_query = f"""
+                SELECT COUNT(*)
+                FROM transaksi t
+                {where_sql}
+            """
+            cursor.execute(count_query, params)
+            total_count = int(cursor.fetchone()[0] or 0)
+
+            query = f"""
+                SELECT
+                    t.id,
+                    t.tanggal,
+                    t.id_kasir,
+                    COALESCE(u.nama, t.nama_kasir, 'Kasir Tidak Diketahui') AS kasir_name,
+                    COALESCE(t.nama_customer, c.nama, 'Pelanggan Umum') AS customer_name,
+                    COALESCE(t.subtotal, 0) AS subtotal,
+                    COALESCE(t.diskon_nominal, 0) AS diskon_nominal,
+                    COALESCE(t.diskon_persen, 0) AS diskon_persen,
+                    COALESCE(t.pembulatan, 0) AS pembulatan,
+                    COALESCE(t.total, 0) AS total,
+                    COALESCE(t.metode_bayar, 'Tidak Diketahui') AS payment_method,
+                    COALESCE(t.nominal_bayar, 0) AS amount_paid,
+                    COALESCE(t.nominal_kembali, 0) AS change_amount,
+                    COALESCE(t.catatan, '') AS notes,
+                    COUNT(td.id) AS item_count,
+                    COALESCE(SUM(td.jumlah), 0) AS total_quantity,
+                    COALESCE(
+                        GROUP_CONCAT(
+                            DISTINCT CASE
+                                WHEN td.jenis_produk = 'satuan' THEN ps.nama_barang
+                                ELSE pp.nama_paket
+                            END
+                        ),
+                        ''
+                    ) AS item_names
+                FROM transaksi t
+                LEFT JOIN customer c ON c.id = t.id_customer
+                LEFT JOIN users u ON u.id = t.id_kasir
+                LEFT JOIN transaksi_detail td ON td.id_transaksi = t.id
+                LEFT JOIN produk_satuan ps
+                    ON td.jenis_produk = 'satuan'
+                   AND ps.id = td.id_produk
+                LEFT JOIN produk_paket pp
+                    ON td.jenis_produk = 'paket'
+                   AND pp.id = td.id_produk
+                {where_sql}
+                GROUP BY t.id
+                ORDER BY {order_column} {direction}, t.id DESC
+                LIMIT ? OFFSET ?
+            """
+            cursor.execute(query, [*params, int(filters["limit"]), int(filters["offset"])])
+            rows = []
+            for row in cursor.fetchall():
+                record = dict(row)
+                item_names = [name.strip() for name in (record.get("item_names") or "").split(",") if name.strip()]
+                preview_items = ", ".join(item_names[:3])
+                if len(item_names) > 3:
+                    preview_items += "..."
+                record["items_preview"] = preview_items or f"{record.get('total_quantity', 0)} item"
+                rows.append(record)
+
+            return {"rows": rows, "total_count": total_count}
+        finally:
+            conn.close()
+
+    def get_transaction_detail_with_items(self, transaction_id):
+        """Ambil detail lengkap transaksi beserta item dan laba."""
+        conn = sqlite3.connect(self.db_name)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(
+                """
+                SELECT
+                    t.id,
+                    t.tanggal,
+                    t.id_customer,
+                    t.id_kasir,
+                    COALESCE(u.nama, t.nama_kasir, 'Kasir Tidak Diketahui') AS kasir_name,
+                    COALESCE(t.nama_customer, c.nama, 'Pelanggan Umum') AS customer_name,
+                    COALESCE(t.subtotal, 0) AS subtotal,
+                    COALESCE(t.diskon_nominal, 0) AS diskon_nominal,
+                    COALESCE(t.diskon_persen, 0) AS diskon_persen,
+                    COALESCE(t.pembulatan, 0) AS pembulatan,
+                    COALESCE(t.total, 0) AS total,
+                    COALESCE(t.metode_bayar, 'Tidak Diketahui') AS payment_method,
+                    COALESCE(t.nominal_bayar, 0) AS amount_paid,
+                    COALESCE(t.nominal_kembali, 0) AS change_amount,
+                    COALESCE(t.catatan, '') AS notes,
+                    COALESCE(lt.pendapatan_kotor, 0) AS pendapatan_kotor,
+                    COALESCE(lt.total_hpp, 0) AS total_hpp,
+                    COALESCE(lt.laba_kotor, 0) AS laba_kotor,
+                    COALESCE(lt.pajak_20_persen, 0) AS pajak_20_persen,
+                    COALESCE(lt.laba_bersih, 0) AS laba_bersih
+                FROM transaksi t
+                LEFT JOIN customer c ON c.id = t.id_customer
+                LEFT JOIN users u ON u.id = t.id_kasir
+                LEFT JOIN laba_transaksi lt ON lt.id_transaksi = t.id
+                WHERE t.id = ?
+                """,
+                (transaction_id,),
+            )
+            header = cursor.fetchone()
+            if not header:
+                return {}
+
+            cursor.execute(
+                """
+                SELECT
+                    td.id,
+                    td.id_transaksi,
+                    td.jenis_produk,
+                    td.id_produk,
+                    COALESCE(
+                        CASE
+                            WHEN td.jenis_produk = 'satuan' THEN ps.sku
+                            ELSE pp.sku
+                        END,
+                        '-'
+                    ) AS sku,
+                    COALESCE(
+                        CASE
+                            WHEN td.jenis_produk = 'satuan' THEN ps.nama_barang
+                            ELSE pp.nama_paket
+                        END,
+                        'Produk Dihapus'
+                    ) AS product_name,
+                    COALESCE(td.jumlah, 0) AS quantity,
+                    COALESCE(td.harga, 0) AS price,
+                    COALESCE(td.sub_total, td.jumlah * td.harga, 0) AS subtotal
+                FROM transaksi_detail td
+                LEFT JOIN produk_satuan ps
+                    ON td.jenis_produk = 'satuan'
+                   AND ps.id = td.id_produk
+                LEFT JOIN produk_paket pp
+                    ON td.jenis_produk = 'paket'
+                   AND pp.id = td.id_produk
+                WHERE td.id_transaksi = ?
+                ORDER BY td.id ASC
+                """,
+                (transaction_id,),
+            )
+            items = [dict(row) for row in cursor.fetchall()]
+            return {"header": dict(header), "items": items}
+        finally:
+            conn.close()
+
+    def get_transaction_statistics(self, filters_dict=None):
+        """Hitung statistik histori transaksi berdasarkan filter aktif."""
+        filters = self._normalize_history_filters(filters_dict)
+        where_sql, params = self._build_history_where_clause(filters)
+
+        conn = sqlite3.connect(self.db_name)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(
+                f"""
+                SELECT
+                    COUNT(*) AS total_count,
+                    COALESCE(SUM(COALESCE(t.total, 0)), 0) AS total_revenue,
+                    COALESCE(AVG(COALESCE(t.total, 0)), 0) AS avg_transaction
+                FROM transaksi t
+                {where_sql}
+                """,
+                params,
+            )
+            summary = dict(cursor.fetchone() or {})
+
+            cursor.execute(
+                f"""
+                SELECT
+                    COALESCE(u.nama, t.nama_kasir, 'Kasir Tidak Diketahui') AS kasir_name,
+                    COUNT(*) AS trx_count
+                FROM transaksi t
+                LEFT JOIN users u ON u.id = t.id_kasir
+                {where_sql}
+                GROUP BY COALESCE(u.nama, t.nama_kasir, 'Kasir Tidak Diketahui')
+                ORDER BY trx_count DESC, kasir_name ASC
+                LIMIT 1
+                """,
+                params,
+            )
+            top_cashier = cursor.fetchone()
+
+            return {
+                "total_count": int(summary.get("total_count") or 0),
+                "total_revenue": int(summary.get("total_revenue") or 0),
+                "avg_transaction": float(summary.get("avg_transaction") or 0),
+                "top_cashier": (
+                    {
+                        "name": top_cashier["kasir_name"],
+                        "count": int(top_cashier["trx_count"] or 0),
+                    }
+                    if top_cashier
+                    else {"name": "-", "count": 0}
+                ),
+            }
         finally:
             conn.close()

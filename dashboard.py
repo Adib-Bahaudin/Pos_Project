@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
 from database import DatabaseManager
 from manajemen_produk import ManajemenProduk
 from error import ErrorWindow
+from sejarah_transaksi import SejarahTransaksiWindow
 from welcome import WelcomeWindow
 from transaksi import PenjualanWindow
 
@@ -32,6 +33,7 @@ class Dashboard(QWidget):
         self.user_role = data.get('role')
         self.manajemen_widget = None
         self.transaksi_widget = None
+        self.sejarah_widget = None
 
         self._setup_ui()
         self._setup_connections()
@@ -317,6 +319,7 @@ class Dashboard(QWidget):
 
         # Handler navigasi
         self.button_transaksi_left.toggled.connect(self._handle_navigation)
+        self.button_sejarah_left.toggled.connect(self._handle_navigation)
         self.button_manajemen_left.toggled.connect(self._handle_navigation)
 
         # Logout
@@ -356,6 +359,13 @@ class Dashboard(QWidget):
                 if self.main_stack.indexOf(self.manajemen_widget) == -1:
                     self.main_stack.addWidget(self.manajemen_widget)
             self.main_stack.setCurrentWidget(self.manajemen_widget)
+        elif self.button_sejarah_left.isChecked():
+            self.button_sejarah_right.setMinimumWidth(self.BUTTON_EXPANDED_WIDTH)
+            if not self.sejarah_widget:
+                self.sejarah_widget = SejarahTransaksiWindow(self.user_data)
+                if self.main_stack.indexOf(self.sejarah_widget) == -1:
+                    self.main_stack.addWidget(self.sejarah_widget)
+            self.main_stack.setCurrentWidget(self.sejarah_widget)
         elif self.button_transaksi_left.isChecked():
             self.button_transaksi_right.setMinimumWidth(self.BUTTON_EXPANDED_WIDTH)
             if not self.transaksi_widget:
