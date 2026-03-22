@@ -618,36 +618,58 @@ class DatabaseManager:
         return total_hpp
 
     def create_sale_transaction(self, cart_items, sale_data, user_data=None):
-        """Simpan penjualan, detail transaksi, histori customer, dan ringkasan laba."""
+        """Simpan penjualan dengan validasi dan update stok yang benar."""
+    
         if not cart_items:
             return {"success": False, "message": "Keranjang masih kosong."}
-
+    
         user_data = user_data or {}
         conn = sqlite3.connect(self.db_name)
         cursor = conn.cursor()
-
+    
         try:
+            # 1. VALIDASI STOK TERLEBIH DAHULU
+            for item in cart_items:
+                product_id = item.get("product_id")
+                qty = int(item.get("qty") or 0)
+                product_type = self._normalize_product_type(item.get("tipe"))
+            
+                if not product_id or qty <= 0:
+                    continue
+            
+                # Validasi produk ada
+                table = "produk_satuan" if product_type == "satuan" else "produk_paket"
+                cursor.execute(f"SELECT id FROM {table} WHERE id = ?", (product_id,))
+                if not cursor.fetchone():
+                    raise ValueError(
+                        f"Produk '{item.get('nama_barang', '-')}' tidak ditemukan"
+                    )
+            
+                # Validasi stok (hanya untuk satuan)
+                if product_type == "satuan":
+                    cursor.execute(
+                        "SELECT stok FROM produk_satuan WHERE id = ?",
+                        (product_id,)
+                    )
+                    row = cursor.fetchone()
+                    if not row or row[0] < qty:
+                        raise ValueError(
+                            f"Stok '{item['nama_barang']}' tidak cukup. "
+                            f"Butuh: {qty}, Ada: {row[0] if row else 0}"
+                        )
+        
+            # 2. GET OR CREATE CUSTOMER
             customer_id, customer_name = self._get_or_create_customer_id(
-                cursor,
-                sale_data.get("customer_name"),
+                cursor, sale_data.get("customer_name")
             )
-
+        
+            # 3. INSERT TRANSAKSI (lengkap, jangan UPDATE kemudian)
             cursor.execute(
                 """
                 INSERT INTO transaksi (
-                    id_customer,
-                    id_kasir,
-                    nama_kasir,
-                    nama_customer,
-                    subtotal,
-                    diskon_nominal,
-                    diskon_persen,
-                    pembulatan,
-                    total,
-                    metode_bayar,
-                    nominal_bayar,
-                    nominal_kembali,
-                    catatan
+                    id_customer, id_kasir, nama_kasir, nama_customer,
+                    subtotal, diskon_nominal, diskon_persen, pembulatan,
+                    total, metode_bayar, nominal_bayar, nominal_kembali, catatan
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
@@ -666,119 +688,63 @@ class DatabaseManager:
                     (sale_data.get("notes") or "").strip(),
                 ),
             )
-
+        
             transaction_id = cursor.lastrowid
-
+        
+            # 4. INSERT DETAIL
             for item in cart_items:
                 product_id = item.get("product_id")
-                if not product_id:
-                    raise ValueError(
-                        f"Produk {item.get('nama_barang', '-') } tidak memiliki product_id."
-                    )
-
+                qty = int(item.get("qty") or 0)
+                product_type = self._normalize_product_type(item.get("tipe"))
+            
+                if not product_id or qty <= 0:
+                    continue
+            
+                # INSERT detail (trigger database akan otomatis mengupdate stok produk satuan / paket)
                 cursor.execute(
                     """
                     INSERT INTO transaksi_detail (
-                        id_transaksi,
-                        jenis_produk,
-                        id_produk,
-                        jumlah,
-                        harga
+                        id_transaksi, jenis_produk, id_produk, jumlah, harga
                     ) VALUES (?, ?, ?, ?, ?)
                     """,
                     (
                         transaction_id,
-                        self._normalize_product_type(item.get("tipe")),
+                        product_type,
                         product_id,
-                        int(item.get("qty") or 0),
+                        qty,
                         int(item.get("harga_jual") or 0),
                     ),
                 )
-
-            subtotal = int(sale_data.get("subtotal") or 0)
-            discount_nominal = int(sale_data.get("discount_nominal") or 0)
-            discount_percent = float(sale_data.get("discount_percent") or 0)
-            rounding = int(sale_data.get("rounding") or 0)
-            total = int(sale_data.get("total") or 0)
-
-            cursor.execute(
-                """
-                UPDATE transaksi
-                SET subtotal         = ?,
-                    diskon_nominal   = ?,
-                    diskon_persen    = ?,
-                    pembulatan       = ?,
-                    total            = ?,
-                    nominal_bayar    = ?,
-                    nominal_kembali  = ?,
-                    metode_bayar     = ?,
-                    nama_customer    = ?,
-                    nama_kasir       = ?,
-                    id_kasir         = ?,
-                    catatan          = ?
-                WHERE id = ?
-                """,
-                (
-                    subtotal,
-                    discount_nominal,
-                    discount_percent,
-                    rounding,
-                    total,
-                    int(sale_data.get("amount_paid") or 0),
-                    int(sale_data.get("change_amount") or 0),
-                    sale_data.get("payment_method"),
-                    customer_name,
-                    user_data.get("username"),
-                    user_data.get("user_id"),
-                    (sale_data.get("notes") or "").strip(),
-                    transaction_id,
-                ),
-            )
-
+        
+            # 5. HITUNG & INSERT LABA
             total_hpp = self._calculate_total_hpp(cursor, cart_items)
+            total = int(sale_data.get("total") or 0)
             laba_kotor = total - total_hpp
             pajak = int(laba_kotor * 0.2) if laba_kotor > 0 else 0
             laba_bersih = laba_kotor - pajak
-
-            cursor.execute("DELETE FROM laba_transaksi WHERE id_transaksi = ?", (transaction_id,))
+        
             cursor.execute(
                 """
                 INSERT INTO laba_transaksi (
-                    id_transaksi,
-                    tanggal,
-                    pendapatan_kotor,
-                    total_hpp,
-                    laba_kotor,
-                    pajak_20_persen,
-                    laba_bersih
+                    id_transaksi, tanggal, pendapatan_kotor,
+                    total_hpp, laba_kotor, pajak_20_persen, laba_bersih
                 )
-                SELECT
-                    id,
-                    tanggal,
-                    total,
-                    ?,
-                    ?,
-                    ?,
-                    ?
-                FROM transaksi
-                WHERE id = ?
+                SELECT id, tanggal, total, ?, ?, ?, ?
+                FROM transaksi WHERE id = ?
                 """,
-                (
-                    total_hpp,
-                    laba_kotor,
-                    pajak,
-                    laba_bersih,
-                    transaction_id,
-                ),
+                (total_hpp, laba_kotor, pajak, laba_bersih, transaction_id),
             )
-
+        
+            # 6. COMMIT
             conn.commit()
+        
             return {
                 "success": True,
                 "transaction_id": transaction_id,
                 "customer_name": customer_name,
                 "message": "Transaksi berhasil disimpan.",
             }
+        
         except (sqlite3.Error, ValueError) as error:
             conn.rollback()
             return {"success": False, "message": str(error)}
