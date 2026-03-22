@@ -34,7 +34,7 @@ git clone https://github.com/Adib-Bahaudin/Pos_Project.git
 cd Pos_Project
 
 # 3️⃣ Install dependensi
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 
 # 4️⃣ Jalankan aplikasi
 python main.py
