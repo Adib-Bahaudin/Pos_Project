@@ -2,7 +2,7 @@ import os
 import sqlite3
 from datetime import datetime
 from PySide6.QtCore import Qt, QDate
-from PySide6.QtGui import QFont, QColor
+from PySide6.QtGui import QFont, QColor, QPixmap
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QHeaderView, QComboBox,
@@ -130,7 +130,7 @@ class SejarahTransaksiWindow(QWidget):
         
         header_label = QLabel("Sejarah Transaksi")
         header_label.setFont(QFont("Arial", 20, QFont.Weight.Bold))
-        header_label.setStyleSheet("color: white;")
+        header_label.setStyleSheet("color: white; background-color: transparent")
         main_layout.addWidget(header_label)
         
         self.stats_panel = self._create_stats_panel()
@@ -195,13 +195,13 @@ class SejarahTransaksiWindow(QWidget):
 
     def _create_stats_panel(self):
         frame = QFrame()
-        frame.setStyleSheet("background-color: #2b2b2b; border-radius: 8px;")
+        frame.setStyleSheet("background-color: transparent; border-radius: 8px;")
         layout = QHBoxLayout(frame)
         
-        self.lbl_stat_count = self._create_stat_card("Total Transaksi", "0")
-        self.lbl_stat_revenue = self._create_stat_card("Total Revenue", "Rp 0")
-        self.lbl_stat_avg = self._create_stat_card("Rata-rata", "Rp 0")
-        self.lbl_stat_top = self._create_stat_card("Kasir Teratas", "-")
+        self.lbl_stat_count = self._create_stat_card("Total Transaksi", "0", "#b174e7", "data/ikon_keranjang.svg")
+        self.lbl_stat_revenue = self._create_stat_card("Total Revenue", "Rp 0", "#5271ff", "data/ikon_koin.svg")
+        self.lbl_stat_avg = self._create_stat_card("Rata-rata", "Rp 0", "#b174e7", "data/ikon_keranjang.svg")
+        self.lbl_stat_top = self._create_stat_card("Kasir Teratas", "-", "#b174e7", "data/ikon_keranjang.svg")
         
         layout.addWidget(self.lbl_stat_count)
         layout.addWidget(self.lbl_stat_revenue)
@@ -210,26 +210,60 @@ class SejarahTransaksiWindow(QWidget):
         
         return frame
 
-    def _create_stat_card(self, title, initial_value):
+    def _create_stat_card(self, title, initial_value, base_color, image_path):
         container = QFrame()
-        container.setStyleSheet("border: 1px solid #444; border-radius: 4px; padding: 10px;")
+        container.setObjectName("statCard") 
+        
+        color = QColor(base_color)
+        border_color = color.darker(150).name()
+        
+        style = f"""
+            QFrame#statCard {{
+                background: qlineargradient(x1: 1, y1: 0, x2: 0, y2: 1, 
+                                            stop: 0 {base_color}, stop: 1 black);
+                border: 2px solid {border_color};
+                border-radius: 4px;
+            }}
+        """
+        container.setStyleSheet(style)
+        
         layout = QVBoxLayout(container)
+        layout.setContentsMargins(10, 10, 10, 10)
+        
+        title_layout = QHBoxLayout()
         
         lbl_title = QLabel(title)
-        lbl_title.setStyleSheet("color: #aaa; font-size: 12px;")
-        lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_title.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        lbl_title.setStyleSheet("color: #aaa; font-size: 12px; border: none; background: transparent;")
+        
+        lbl_image = QLabel()
+        pixmap = QPixmap(image_path)
+        pixmap = pixmap.scaled(24, 24, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        lbl_image.setPixmap(pixmap)
+        lbl_image.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        lbl_image.setStyleSheet("border: none; background: transparent;")
+        
+        title_layout.addWidget(lbl_title)
+        title_layout.addWidget(lbl_image)
         
         lbl_value = QLabel(initial_value)
-        lbl_value.setStyleSheet("color: white; font-size: 18px; font-weight: bold;")
+        lbl_value.setObjectName("statValue")
         lbl_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        lbl_value.setStyleSheet("color: white; font-size: 18px; font-weight: bold; border: none; background: transparent;")
         
-        layout.addWidget(lbl_title)
+        layout.addLayout(title_layout)
         layout.addWidget(lbl_value)
+        
         return container
 
     def _update_stat_card(self, card_container, new_value):
-        lbl_value = card_container.findChildren(QLabel)[1]
-        lbl_value.setText(new_value)
+        lbl_value = card_container.findChild(QLabel, "statValue")
+        if lbl_value:
+            lbl_value.setText(new_value)
+        else:
+            labels = card_container.findChildren(QLabel)
+            if len(labels) >= 3:
+                labels[2].setText(new_value)
 
     def _create_filter_panel(self):
         frame = QFrame()
