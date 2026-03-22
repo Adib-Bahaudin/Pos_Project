@@ -3,29 +3,39 @@ from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QPushButton, QGridLayout
 )
 
+from dialog_title_bar import DialogTitleBar
+
 
 class DiscountPopup(QWidget):
     def __init__(self, parent, discount_state: dict, apply_callback):
-        super().__init__(parent, Qt.WindowType.Popup)
+        super().__init__(parent, Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)
         self.apply_callback = apply_callback
         self.setWindowTitle("Atur Diskon")
         self.setObjectName("discountPopup")
-        self.setMinimumWidth(360)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.setMinimumWidth(380)
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(18, 18, 18, 18)
-        layout.setSpacing(12)
+        root_layout = QVBoxLayout(self)
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.setSpacing(0)
+
+        title_bar = DialogTitleBar("Atur Diskon", self)
+        root_layout.addWidget(title_bar)
+
+        content_layout = QVBoxLayout()
+        content_layout.setContentsMargins(18, 18, 18, 18)
+        content_layout.setSpacing(12)
 
         title = QLabel("Atur Diskon Transaksi")
         title.setStyleSheet("font-size: 16px; font-weight: 700; color: #ffffff;")
-        layout.addWidget(title)
+        content_layout.addWidget(title)
 
         helper = QLabel(
             "Isi salah satu kolom saja. Saat satu kolom terisi, kolom lainnya otomatis nonaktif."
         )
         helper.setWordWrap(True)
         helper.setStyleSheet("color: #9db0c1; font-size: 12px;")
-        layout.addWidget(helper)
+        content_layout.addWidget(helper)
 
         form = QGridLayout()
         form.setHorizontalSpacing(10)
@@ -47,12 +57,12 @@ class DiscountPopup(QWidget):
         form.addWidget(self.percent_input, 0, 1)
         form.addWidget(nominal_label, 1, 0)
         form.addWidget(self.nominal_input, 1, 1)
-        layout.addLayout(form)
+        content_layout.addLayout(form)
 
         self.preview_label = QLabel("Diskon akan diterapkan ke total transaksi.")
         self.preview_label.setStyleSheet("color: #7dfcc4; font-size: 12px;")
         self.preview_label.setWordWrap(True)
-        layout.addWidget(self.preview_label)
+        content_layout.addWidget(self.preview_label)
 
         button_row = QHBoxLayout()
         button_row.setSpacing(10)
@@ -66,7 +76,9 @@ class DiscountPopup(QWidget):
         button_row.addStretch()
         button_row.addWidget(self.cancel_button)
         button_row.addWidget(self.apply_button)
-        layout.addLayout(button_row)
+        content_layout.addLayout(button_row)
+
+        root_layout.addLayout(content_layout)
 
         current_mode = discount_state.get("mode")
         current_percent = int(discount_state.get("percent") or 0)
@@ -87,7 +99,7 @@ class DiscountPopup(QWidget):
         self.setStyleSheet("""
             QWidget#discountPopup {
                 background-color: #0d1117;
-                border: 2px solid #243342;
+                border: 2px solid #66ff66;
                 border-radius: 16px;
             }
             QWidget#discountPopup QLineEdit {
@@ -97,6 +109,9 @@ class DiscountPopup(QWidget):
                 padding: 8px 12px;
                 color: #ffffff;
             }
+            QWidget#discountPopup QLineEdit:focus {
+                border: 2px solid #66ff66;
+            }
             QWidget#discountPopup QLineEdit:disabled {
                 color: #6b7b8c;
                 background-color: #0b1016;
@@ -105,6 +120,17 @@ class DiscountPopup(QWidget):
                 min-height: 34px;
                 padding: 0px 14px;
                 border-radius: 10px;
+            }
+        """)
+
+        title_bar.setStyleSheet("""
+            QWidget {
+                background-color: #000000;
+                border-bottom: 2px solid #66ff66;
+            }
+            QLabel {
+                color: #ffffff;
+                border: none;
             }
         """)
 
@@ -151,7 +177,9 @@ class DiscountPopup(QWidget):
         if percent_value > 0:
             self.preview_label.setText(f"Diskon {percent_value}% akan dihitung dari subtotal transaksi.")
         elif nominal_value > 0:
-            self.preview_label.setText(f"Diskon nominal Rp {self._format_nominal_text(nominal_value)} akan dipotong dari subtotal.")
+            self.preview_label.setText(
+                f"Diskon nominal Rp {self._format_nominal_text(nominal_value)} akan dipotong dari subtotal."
+            )
         else:
             self.preview_label.setText("Kosongkan kedua kolom untuk menghapus diskon.")
 
