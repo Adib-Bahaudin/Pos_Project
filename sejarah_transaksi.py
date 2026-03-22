@@ -200,8 +200,8 @@ class SejarahTransaksiWindow(QWidget):
         
         self.lbl_stat_count = self._create_stat_card("Total Transaksi", "0", "#b174e7", "data/ikon_keranjang.svg")
         self.lbl_stat_revenue = self._create_stat_card("Total Revenue", "Rp 0", "#5271ff", "data/ikon_koin.svg")
-        self.lbl_stat_avg = self._create_stat_card("Rata-rata", "Rp 0", "#b174e7", "data/ikon_keranjang.svg")
-        self.lbl_stat_top = self._create_stat_card("Kasir Teratas", "-", "#b174e7", "data/ikon_keranjang.svg")
+        self.lbl_stat_avg = self._create_stat_card("Rata-rata", "Rp 0", "#ff914d", "data/ikon_rata-rata.svg")
+        self.lbl_stat_top = self._create_stat_card("Kasir Teratas", "-", "#ffde59", "data/ikon_medali.svg")
         
         layout.addWidget(self.lbl_stat_count)
         layout.addWidget(self.lbl_stat_revenue)
@@ -215,7 +215,7 @@ class SejarahTransaksiWindow(QWidget):
         container.setObjectName("statCard") 
         
         color = QColor(base_color)
-        border_color = color.darker(150).name()
+        border_color = color.darker(200).name()
         
         style = f"""
             QFrame#statCard {{
@@ -234,7 +234,7 @@ class SejarahTransaksiWindow(QWidget):
         
         lbl_title = QLabel(title)
         lbl_title.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        lbl_title.setStyleSheet("color: #aaa; font-size: 12px; border: none; background: transparent;")
+        lbl_title.setStyleSheet("color: white; font-size: 15px; border: none; background: transparent;")
         
         lbl_image = QLabel()
         pixmap = QPixmap(image_path)
