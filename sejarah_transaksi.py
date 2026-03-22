@@ -1,0 +1,482 @@
+import os
+import sqlite3
+from datetime import datetime
+from PySide6.QtCore import Qt, QDate
+from PySide6.QtGui import QFont, QColor
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+    QTableWidget, QTableWidgetItem, QHeaderView, QComboBox,
+    QDateEdit, QLineEdit, QFrame, QMessageBox,
+    QDialog, QFileDialog
+)
+from database import DatabaseManager
+
+try:
+    import openpyxl
+    from openpyxl.styles import Font
+    HAS_OPENPYXL = True
+except ImportError:
+    HAS_OPENPYXL = False
+
+try:
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import landscape, A4
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet
+    HAS_REPORTLAB = True
+except ImportError:
+    HAS_REPORTLAB = False
+
+class TransactionDetailModal(QDialog):
+    def __init__(self, db_manager, transaction_id, parent=None):
+        super().__init__(parent)
+        self.db = db_manager
+        self.transaction_id = transaction_id
+        self.setWindowTitle(f"Detail Transaksi #{transaction_id}")
+        self.setMinimumSize(600, 500)
+        self.setStyleSheet("background-color: #1e1e1e; color: white;")
+        self._setup_ui()
+        self._load_data()
+
+    def _setup_ui(self):
+        layout = QVBoxLayout(self)
+        
+        self.lbl_info = QLabel("Loading...")
+        self.lbl_info.setFont(QFont("Arial", 11))
+        layout.addWidget(self.lbl_info)
+        
+        self.table_items = QTableWidget()
+        self.table_items.setColumnCount(4)
+        self.table_items.setHorizontalHeaderLabels(["Barang", "Harga", "Qty", "Subtotal"])
+        self.table_items.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table_items.setStyleSheet("""
+            QTableWidget { background-color: #2b2b2b; color: white; border: 1px solid #444; }
+            QHeaderView::section { background-color: #1e1e1e; color: white; padding: 4px; }
+        """)
+        self.table_items.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        layout.addWidget(self.table_items)
+
+        self.lbl_laba = QLabel("")
+        self.lbl_laba.setFont(QFont("Arial", 11, QFont.Weight.Bold))
+        layout.addWidget(self.lbl_laba)
+
+        btn_layout = QHBoxLayout()
+        btn_close = QPushButton("Tutup")
+        btn_close.setStyleSheet("background-color: #dc3545; color: white; padding: 8px; border-radius: 4px;")
+        btn_close.clicked.connect(self.accept)
+        btn_layout.addStretch()
+        btn_layout.addWidget(btn_close)
+        layout.addLayout(btn_layout)
+
+    def _load_data(self):
+        data = self.db.get_transaction_detail_with_items(self.transaction_id)
+        if not data:
+            self.lbl_info.setText("Data tidak ditemukan.")
+            return
+
+        header = data['header']
+        items = data['items']
+        laba = header.get('laba')
+
+        info_text = f"<b>ID Transaksi:</b> {header.get('id', '')} <br/>"
+        info_text += f"<b>Waktu:</b> {header.get('tanggal', '')} <br/>"
+        info_text += f"<b>Kasir:</b> {header.get('nama_kasir', '')} <br/>"
+        info_text += f"<b>Customer:</b> {header.get('nama_customer', '')} <br/>"
+        info_text += f"<b>Metode Bayar:</b> {header.get('metode_bayar', '')} <br/>"
+        info_text += f"<b>Total:</b> Rp {int(header.get('total', 0)):,} <br/>"
+        
+        if header.get('catatan'):
+            info_text += f"<b>Catatan:</b> {header.get('catatan', '')}"
+
+        self.lbl_info.setText(info_text)
+
+        self.table_items.setRowCount(len(items))
+        for i, item in enumerate(items):
+            nama = item.get("nama_barang", "")
+            harga = int(item.get("harga", 0))
+            qty = int(item.get("jumlah", 0))
+            subtotal = harga * qty
+            
+            self.table_items.setItem(i, 0, QTableWidgetItem(nama))
+            self.table_items.setItem(i, 1, QTableWidgetItem(f"Rp {harga:,}"))
+            self.table_items.setItem(i, 2, QTableWidgetItem(str(qty)))
+            self.table_items.setItem(i, 3, QTableWidgetItem(f"Rp {subtotal:,}"))
+
+        if laba:
+            laba_bersih = int(laba.get('laba_bersih', 0))
+            self.lbl_laba.setText(f"Laba Bersih Transaksi: Rp {laba_bersih:,}")
+        else:
+            self.lbl_laba.setText("Laba: Tidak tersedia")
+
+class SejarahTransaksiWindow(QWidget):
+    def __init__(self, user_data=None):
+        super().__init__()
+        self.user_data = user_data or {}
+        self.user_role = self.user_data.get("role", "")
+        self.db = DatabaseManager()
+        
+        self.current_page = 1
+        self.items_per_page = 50
+        self.transactions_data = []
+        
+        self._setup_ui()
+        self._load_cashiers()
+        self.apply_filters()
+        
+    def _setup_ui(self):
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(15)
+        
+        header_label = QLabel("Sejarah Transaksi")
+        header_label.setFont(QFont("Arial", 20, QFont.Weight.Bold))
+        header_label.setStyleSheet("color: white;")
+        main_layout.addWidget(header_label)
+        
+        self.stats_panel = self._create_stats_panel()
+        main_layout.addWidget(self.stats_panel)
+        
+        self.filter_panel = self._create_filter_panel()
+        main_layout.addWidget(self.filter_panel)
+        
+        self.table = QTableWidget()
+        self.table.setColumnCount(8)
+        self.table.setHorizontalHeaderLabels([
+            "ID", "Tanggal", "Kasir", "Customer", 
+            "Metode", "Subtotal", "Diskon", "Total"
+        ])
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table.setStyleSheet("""
+            QTableWidget { background-color: #2b2b2b; color: white; gridline-color: #444; border: 1px solid #444; }
+            QHeaderView::section { background-color: #1e1e1e; color: white; padding: 4px; border: 1px solid #444; }
+        """)
+        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table.cellDoubleClicked.connect(self.show_transaction_detail_modal)
+        main_layout.addWidget(self.table)
+        
+        pagination_layout = QHBoxLayout()
+        self.btn_prev = QPushButton("◄ Previous")
+        self.btn_next = QPushButton("Next ►")
+        self.lbl_page = QLabel(f"Page {self.current_page}")
+        self.lbl_page.setStyleSheet("color: white;")
+        
+        self.btn_prev.clicked.connect(self._prev_page)
+        self.btn_next.clicked.connect(self._next_page)
+        self.btn_prev.setStyleSheet("background-color: #444; color: white; padding: 5px;")
+        self.btn_next.setStyleSheet("background-color: #444; color: white; padding: 5px;")
+        
+        pagination_layout.addWidget(self.btn_prev)
+        pagination_layout.addWidget(self.lbl_page)
+        pagination_layout.addWidget(self.btn_next)
+        pagination_layout.addStretch()
+        
+        main_layout.addLayout(pagination_layout)
+        
+        action_layout = QHBoxLayout()
+        self.btn_export_excel = QPushButton("📥 Export Excel")
+        self.btn_export_pdf = QPushButton("📄 Export PDF")
+        
+        btn_style = "background-color: #0078D7; color: white; padding: 8px; border-radius: 4px;"
+        self.btn_export_excel.setStyleSheet(btn_style)
+        self.btn_export_pdf.setStyleSheet(btn_style)
+        
+        self.btn_export_excel.clicked.connect(self.export_to_excel)
+        self.btn_export_pdf.clicked.connect(self.export_to_pdf)
+        
+        action_layout.addStretch()
+        action_layout.addWidget(self.btn_export_excel)
+        action_layout.addWidget(self.btn_export_pdf)
+        
+        main_layout.addLayout(action_layout)
+        
+        self.setStyleSheet("background-color: #1e1e1e;")
+
+    def _create_stats_panel(self):
+        frame = QFrame()
+        frame.setStyleSheet("background-color: #2b2b2b; border-radius: 8px;")
+        layout = QHBoxLayout(frame)
+        
+        self.lbl_stat_count = self._create_stat_card("Total Transaksi", "0")
+        self.lbl_stat_revenue = self._create_stat_card("Total Revenue", "Rp 0")
+        self.lbl_stat_avg = self._create_stat_card("Rata-rata", "Rp 0")
+        self.lbl_stat_top = self._create_stat_card("Kasir Teratas", "-")
+        
+        layout.addWidget(self.lbl_stat_count)
+        layout.addWidget(self.lbl_stat_revenue)
+        layout.addWidget(self.lbl_stat_avg)
+        layout.addWidget(self.lbl_stat_top)
+        
+        return frame
+
+    def _create_stat_card(self, title, initial_value):
+        container = QFrame()
+        container.setStyleSheet("border: 1px solid #444; border-radius: 4px; padding: 10px;")
+        layout = QVBoxLayout(container)
+        
+        lbl_title = QLabel(title)
+        lbl_title.setStyleSheet("color: #aaa; font-size: 12px;")
+        lbl_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        lbl_value = QLabel(initial_value)
+        lbl_value.setStyleSheet("color: white; font-size: 18px; font-weight: bold;")
+        lbl_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        layout.addWidget(lbl_title)
+        layout.addWidget(lbl_value)
+        return container
+
+    def _update_stat_card(self, card_container, new_value):
+        lbl_value = card_container.findChildren(QLabel)[1]
+        lbl_value.setText(new_value)
+
+    def _create_filter_panel(self):
+        frame = QFrame()
+        frame.setStyleSheet("background-color: #2b2b2b; border-radius: 8px;")
+        layout = QHBoxLayout(frame)
+        
+        self.date_from = QDateEdit(QDate.currentDate().addDays(-30))
+        self.date_from.setCalendarPopup(True)
+        self.date_from.setStyleSheet("background-color: #1e1e1e; color: white;")
+        
+        self.date_to = QDateEdit(QDate.currentDate())
+        self.date_to.setCalendarPopup(True)
+        self.date_to.setStyleSheet("background-color: #1e1e1e; color: white;")
+        
+        self.cb_kasir = QComboBox()
+        self.cb_kasir.setStyleSheet("background-color: #1e1e1e; color: white;")
+        
+        self.cb_metode = QComboBox()
+        self.cb_metode.addItems(["Semua", "Tunai", "Kartu", "Transfer", "Qris"])
+        self.cb_metode.setStyleSheet("background-color: #1e1e1e; color: white;")
+        
+        self.search_box = QLineEdit()
+        self.search_box.setPlaceholderText("Cari ID/Customer...")
+        self.search_box.setStyleSheet("background-color: #1e1e1e; color: white; padding: 4px;")
+        
+        self.btn_filter = QPushButton("Filter")
+        self.btn_filter.setStyleSheet("background-color: #28A745; color: white; padding: 6px 15px; border-radius: 4px;")
+        self.btn_filter.clicked.connect(lambda: self.apply_filters(reset_page=True))
+        
+        layout.addWidget(QLabel("Dari:"))
+        layout.addWidget(self.date_from)
+        layout.addWidget(QLabel("Sampai:"))
+        layout.addWidget(self.date_to)
+        layout.addWidget(QLabel("Kasir:"))
+        layout.addWidget(self.cb_kasir)
+        layout.addWidget(QLabel("Metode:"))
+        layout.addWidget(self.cb_metode)
+        layout.addWidget(self.search_box)
+        layout.addWidget(self.btn_filter)
+        
+        return frame
+
+    def _load_cashiers(self):
+        conn = sqlite3.connect(self.db.db_name)
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, nama FROM users")
+        kasir_list = cursor.fetchall()
+        conn.close()
+        
+        self.cb_kasir.addItem("Semua", None)
+        for k in kasir_list:
+            self.cb_kasir.addItem(k[1], k[0])
+            
+        if self.user_role != "Super_user":
+            idx = self.cb_kasir.findText(self.user_data.get("username", ""))
+            if idx >= 0:
+                self.cb_kasir.setCurrentIndex(idx)
+            self.cb_kasir.setEnabled(False)
+
+    def _get_filter_values(self):
+        date_from = self.date_from.date().toString("yyyy-MM-dd")
+        date_to = self.date_to.date().toString("yyyy-MM-dd")
+        kasir_id = self.cb_kasir.currentData()
+        payment_method = self.cb_metode.currentText()
+        search_keyword = self.search_box.text()
+        
+        return {
+            "date_from": date_from,
+            "date_to": date_to,
+            "kasir_id": kasir_id,
+            "payment_method": payment_method,
+            "search_keyword": search_keyword,
+            "amount_min": None,
+            "amount_max": None
+        }
+
+    def apply_filters(self, reset_page=False):
+        if reset_page:
+            self.current_page = 1
+            
+        filters = self._get_filter_values()
+        offset = (self.current_page - 1) * self.items_per_page
+        
+        self.transactions_data = self.db.get_transaction_history(filters, self.items_per_page, offset)
+        self.populate_table()
+        
+        stats = self.db.get_transaction_statistics(filters)
+        self._update_stat_card(self.lbl_stat_count, str(stats.get('total_count', 0)))
+        
+        rev = stats.get('total_revenue', 0)
+        self._update_stat_card(self.lbl_stat_revenue, f"Rp {int(rev):,}")
+        
+        avg = stats.get('avg_transaction', 0)
+        self._update_stat_card(self.lbl_stat_avg, f"Rp {int(avg):,}")
+        
+        top = stats.get('top_cashier', '-')
+        top_c = stats.get('top_cashier_count', 0)
+        self._update_stat_card(self.lbl_stat_top, f"{top} ({top_c})")
+        
+        self.lbl_page.setText(f"Page {self.current_page}")
+        self.btn_prev.setEnabled(self.current_page > 1)
+        self.btn_next.setEnabled(len(self.transactions_data) == self.items_per_page)
+
+    def populate_table(self):
+        self.table.setRowCount(len(self.transactions_data))
+        for i, row in enumerate(self.transactions_data):
+            dt_str = row.get("tanggal", "")
+            try:
+                if len(dt_str) > 10:
+                    dt_obj = datetime.fromisoformat(dt_str)
+                    dt_disp = dt_obj.strftime("%d %b %Y, %H:%M")
+                else:
+                    dt_disp = dt_str
+            except Exception:
+                dt_disp = dt_str
+
+            self.table.setItem(i, 0, QTableWidgetItem(str(row.get("id", ""))))
+            self.table.setItem(i, 1, QTableWidgetItem(dt_disp))
+            self.table.setItem(i, 2, QTableWidgetItem(row.get("nama_kasir", "")))
+            self.table.setItem(i, 3, QTableWidgetItem(row.get("nama_customer", "")))
+            
+            metode = row.get("metode_bayar", "")
+            item_metode = QTableWidgetItem(metode)
+            if "tunai" in metode.lower():
+                item_metode.setForeground(QColor("#28A745"))
+            elif "kartu" in metode.lower():
+                item_metode.setForeground(QColor("#0078D7"))
+            else:
+                item_metode.setForeground(QColor("#FFC107"))
+                
+            self.table.setItem(i, 4, item_metode)
+            self.table.setItem(i, 5, QTableWidgetItem(f"Rp {int(row.get('subtotal', 0)):,}"))
+            self.table.setItem(i, 6, QTableWidgetItem(f"Rp {int(row.get('diskon_nominal', 0)):,}"))
+            self.table.setItem(i, 7, QTableWidgetItem(f"Rp {int(row.get('total', 0)):,}"))
+
+    def _prev_page(self):
+        if self.current_page > 1:
+            self.current_page -= 1
+            self.apply_filters()
+
+    def _next_page(self):
+        if len(self.transactions_data) == self.items_per_page:
+            self.current_page += 1
+            self.apply_filters()
+
+    def show_transaction_detail_modal(self, row, col):
+        if row < 0 or row >= len(self.transactions_data):
+            return
+        t_id = self.transactions_data[row].get("id")
+        if t_id:
+            dialog = TransactionDetailModal(self.db, t_id, self)
+            dialog.exec()
+
+    def export_to_excel(self):
+        if not HAS_OPENPYXL:
+            QMessageBox.warning(self, "Error", "openpyxl belum terinstall. Silakan 'pip install -r requirements.txt'")
+            return
+            
+        filters = self._get_filter_values()
+        all_data = self.db.get_transaction_history(filters, limit=10000)
+        if not all_data:
+            QMessageBox.information(self, "Info", "Tidak ada data untuk diexport.")
+            return
+            
+        default_name = f"transaksi_{filters['date_from']}_{filters['date_to']}.xlsx"
+        path, _ = QFileDialog.getSaveFileName(self, "Save Excel", default_name, "Excel Files (*.xlsx)")
+        if not path:
+            return
+            
+        try:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Sejarah Transaksi"
+            
+            headers = ["ID", "Tanggal", "ID Kasir", "Nama Kasir", "Customer", "Subtotal", "Diskon", "Total", "Metode Bayar", "Catatan"]
+            for col, h in enumerate(headers, 1):
+                cell = ws.cell(row=1, column=col, value=h)
+                cell.font = Font(bold=True)
+                
+            for row_idx, data in enumerate(all_data, 2):
+                ws.cell(row=row_idx, column=1, value=data.get("id"))
+                ws.cell(row=row_idx, column=2, value=data.get("tanggal"))
+                ws.cell(row=row_idx, column=3, value=data.get("id_kasir"))
+                ws.cell(row=row_idx, column=4, value=data.get("nama_kasir"))
+                ws.cell(row=row_idx, column=5, value=data.get("nama_customer"))
+                ws.cell(row=row_idx, column=6, value=int(data.get("subtotal", 0)))
+                ws.cell(row=row_idx, column=7, value=int(data.get("diskon_nominal", 0)))
+                ws.cell(row=row_idx, column=8, value=int(data.get("total", 0)))
+                ws.cell(row=row_idx, column=9, value=data.get("metode_bayar"))
+                ws.cell(row=row_idx, column=10, value=data.get("catatan"))
+                
+            wb.save(path)
+            QMessageBox.information(self, "Sukses", f"Data berhasil diexport ke:\n{path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Gagal export Excel: {str(e)}")
+
+    def export_to_pdf(self):
+        if not HAS_REPORTLAB:
+            QMessageBox.warning(self, "Error", "reportlab belum terinstall. Silakan 'pip install -r requirements.txt'")
+            return
+            
+        filters = self._get_filter_values()
+        all_data = self.db.get_transaction_history(filters, limit=10000)
+        if not all_data:
+            QMessageBox.information(self, "Info", "Tidak ada data untuk diexport.")
+            return
+            
+        default_name = f"transaksi_{filters['date_from']}_{filters['date_to']}.pdf"
+        path, _ = QFileDialog.getSaveFileName(self, "Save PDF", default_name, "PDF Files (*.pdf)")
+        if not path:
+            return
+            
+        try:
+            doc = SimpleDocTemplate(path, pagesize=landscape(A4))
+            elements = []
+            styles = getSampleStyleSheet()
+            
+            title = Paragraph(f"Laporan Transaksi Kasir ({filters['date_from']} s/d {filters['date_to']})", styles['Title'])
+            elements.append(title)
+            elements.append(Spacer(1, 12))
+            
+            table_data = [["ID", "Tanggal", "Kasir", "Customer", "Subtotal", "Diskon", "Total", "Metode"]]
+            for d in all_data:
+                table_data.append([
+                    str(d.get("id", "")),
+                    str(d.get("tanggal", "")),
+                    str(d.get("nama_kasir", "")),
+                    str(d.get("nama_customer", "")),
+                    f"Rp {int(d.get('subtotal', 0)):,}",
+                    f"Rp {int(d.get('diskon_nominal', 0)):,}",
+                    f"Rp {int(d.get('total', 0)):,}",
+                    str(d.get("metode_bayar", ""))
+                ])
+                
+            t = Table(table_data)
+            t.setStyle(TableStyle([
+                ('BACKGROUND', (0,0), (-1,0), colors.grey),
+                ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+                ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+                ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+                ('BOTTOMPADDING', (0,0), (-1,0), 12),
+                ('BACKGROUND', (0,1), (-1,-1), colors.beige),
+                ('GRID', (0,0), (-1,-1), 1, colors.black)
+            ]))
+            elements.append(t)
+            doc.build(elements)
+            
+            QMessageBox.information(self, "Sukses", f"Data berhasil diexport ke:\n{path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Gagal export PDF: {str(e)}")

@@ -1095,3 +1095,166 @@ class DatabaseManager:
             raise
         finally:
             conn.close()
+
+    def get_transaction_history(self, filters: dict, limit: int = 50, offset: int = 0):
+        conn = sqlite3.connect(self.db_name)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        query = "SELECT * FROM transaksi WHERE 1=1"
+        params = []
+
+        if filters.get("date_from"):
+            query += " AND date(tanggal) >= date(?)"
+            params.append(filters["date_from"])
+        
+        if filters.get("date_to"):
+            query += " AND date(tanggal) <= date(?)"
+            params.append(filters["date_to"])
+
+        if filters.get("kasir_id") not in ("", None, "Semua"):
+            query += " AND id_kasir = ?"
+            params.append(filters["kasir_id"])
+
+        if filters.get("payment_method") not in ("", None, "Semua"):
+            query += " AND metode_bayar = ?"
+            params.append(filters["payment_method"])
+
+        if filters.get("amount_min"):
+            query += " AND total >= ?"
+            params.append(filters["amount_min"])
+
+        if filters.get("amount_max"):
+            query += " AND total <= ?"
+            params.append(filters["amount_max"])
+
+        if filters.get("search_keyword"):
+            kw = f"%{filters['search_keyword']}%"
+            query += " AND (nama_customer LIKE ? OR id LIKE ?)"
+            params.extend([kw, kw])
+
+        query += " ORDER BY id DESC LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
+
+        cursor.execute(query, params)
+        result = [dict(row) for row in cursor.fetchall()]
+
+        conn.close()
+        return result
+
+    def get_transaction_detail_with_items(self, transaction_id: int):
+        conn = sqlite3.connect(self.db_name)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        # Header
+        cursor.execute("SELECT * FROM transaksi WHERE id = ?", (transaction_id,))
+        header_row = cursor.fetchone()
+        if not header_row:
+            conn.close()
+            return None
+        
+        header = dict(header_row)
+
+        # Laba
+        cursor.execute("SELECT * FROM laba_transaksi WHERE id_transaksi = ?", (transaction_id,))
+        laba_row = cursor.fetchone()
+        if laba_row:
+            header["laba"] = dict(laba_row)
+        else:
+            header["laba"] = None
+
+        # Items
+        cursor.execute("SELECT * FROM transaksi_detail WHERE id_transaksi = ?", (transaction_id,))
+        items = [dict(row) for row in cursor.fetchall()]
+        
+        for item in items:
+            jenis = item.get("jenis_produk")
+            id_produk = item.get("id_produk")
+            if jenis == "satuan":
+                cursor.execute("SELECT nama_barang FROM produk_satuan WHERE id = ?", (id_produk,))
+            else:
+                cursor.execute("SELECT nama_paket as nama_barang FROM produk_paket WHERE id = ?", (id_produk,))
+            prod_row = cursor.fetchone()
+            if prod_row:
+                item["nama_barang"] = prod_row["nama_barang"]
+            else:
+                item["nama_barang"] = f"Unknown ({id_produk})"
+
+        conn.close()
+        
+        return {
+            "header": header,
+            "items": items
+        }
+
+    def get_transaction_statistics(self, filters: dict):
+        conn = sqlite3.connect(self.db_name)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        query = "SELECT COUNT(id) as total_count, COALESCE(SUM(total), 0) as total_revenue, COALESCE(AVG(total), 0) as avg_transaction FROM transaksi WHERE 1=1"
+        params = []
+
+        if filters.get("date_from"):
+            query += " AND date(tanggal) >= date(?)"
+            params.append(filters["date_from"])
+        
+        if filters.get("date_to"):
+            query += " AND date(tanggal) <= date(?)"
+            params.append(filters["date_to"])
+
+        if filters.get("kasir_id") not in ("", None, "Semua"):
+            query += " AND id_kasir = ?"
+            params.append(filters["kasir_id"])
+
+        if filters.get("payment_method") not in ("", None, "Semua"):
+            query += " AND metode_bayar = ?"
+            params.append(filters["payment_method"])
+
+        if filters.get("amount_min"):
+            query += " AND total >= ?"
+            params.append(filters["amount_min"])
+
+        if filters.get("amount_max"):
+            query += " AND total <= ?"
+            params.append(filters["amount_max"])
+
+        if filters.get("search_keyword"):
+            kw = f"%{filters['search_keyword']}%"
+            query += " AND (nama_customer LIKE ? OR id LIKE ?)"
+            params.extend([kw, kw])
+            
+        cursor.execute(query, params)
+        stats = dict(cursor.fetchone())
+
+        query_top = "SELECT nama_kasir, COUNT(id) as tx_count FROM transaksi WHERE 1=1"
+        
+        if filters.get("date_from"):
+            query_top += " AND date(tanggal) >= date(?)"
+        if filters.get("date_to"):
+            query_top += " AND date(tanggal) <= date(?)"
+        if filters.get("kasir_id") not in ("", None, "Semua"):
+            query_top += " AND id_kasir = ?"
+        if filters.get("payment_method") not in ("", None, "Semua"):
+            query_top += " AND metode_bayar = ?"
+        if filters.get("amount_min"):
+            query_top += " AND total >= ?"
+        if filters.get("amount_max"):
+            query_top += " AND total <= ?"
+        if filters.get("search_keyword"):
+            query_top += " AND (nama_customer LIKE ? OR id LIKE ?)"
+
+        query_top += " GROUP BY nama_kasir ORDER BY tx_count DESC LIMIT 1"
+        cursor.execute(query_top, params)
+        top_cashier_row = cursor.fetchone()
+        
+        if top_cashier_row:
+            stats["top_cashier"] = top_cashier_row["nama_kasir"]
+            stats["top_cashier_count"] = top_cashier_row["tx_count"]
+        else:
+            stats["top_cashier"] = "-"
+            stats["top_cashier_count"] = 0
+
+        conn.close()
+        return stats
