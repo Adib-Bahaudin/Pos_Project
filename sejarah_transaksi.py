@@ -268,7 +268,7 @@ class SejarahTransaksiWindow(QWidget):
 
     def _create_filter_panel(self):
         frame = QFrame()
-        frame.setStyleSheet("QFrame { background-color: #737373; border-radius: 8px; }")
+        frame.setStyleSheet("QFrame { background-color: #545454; border-radius: 8px; }")
         layout = QHBoxLayout(frame)
         
         # --- STYLESHEET KHUSUS DATE EDIT & CALENDAR POPUP ---
@@ -285,6 +285,12 @@ class SejarahTransaksiWindow(QWidget):
                 subcontrol-position: top right;
                 width: 24px;
                 border-left: 1px solid #444;
+            }
+            /* --- FIX: Menggunakan Ikon Custom --- */
+            QDateEdit::down-arrow {
+                image: url(data/icon_down.svg);
+                width: 12px;  /* Sesuaikan ukuran ikon jika dirasa kurang besar/kecil */
+                height: 12px;
             }
             QCalendarWidget QWidget {
                 background-color: #1e1e1e;
@@ -307,7 +313,7 @@ class SejarahTransaksiWindow(QWidget):
                 border-radius: 4px;
             }
             QCalendarWidget QToolButton::menu-indicator {
-                image: none; /* Hilangkan panah numpuk */
+                image: none;
             }
             QMenu {
                 background-color: #2b2b2b;
@@ -320,7 +326,7 @@ class SejarahTransaksiWindow(QWidget):
                 padding: 6px 20px;
             }
             QMenu::item:selected {
-                background-color: #0078D7; /* Biru saat di-hover */
+                background-color: #0078D7;
                 color: white;
             }
             QCalendarWidget QTableView {
@@ -333,6 +339,36 @@ class SejarahTransaksiWindow(QWidget):
                 background-color: #1e1e1e;
                 color: white;
                 border: 1px solid #444;
+            }
+        """
+
+        # --- STYLESHEET KHUSUS COMBOBOX ---
+        combo_style = """
+            QComboBox {
+                background-color: #1e1e1e; 
+                color: white; 
+                padding: 4px 8px; /* Padding sedikit lebih lebar agar teks tidak menempel border */
+                border: 1px solid #444;
+                border-radius: 4px;
+            }
+            QComboBox::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 24px;
+                border-left: 1px solid #444;
+            }
+            /* --- FIX: Menggunakan Ikon Custom --- */
+            QComboBox::down-arrow {
+                image: url(data/icon_down.svg);
+                width: 12px;
+                height: 12px;
+            }
+            /* Styling list dropdown saat Combo Box diklik agar senada */
+            QComboBox QAbstractItemView {
+                background-color: #2b2b2b;
+                color: white;
+                border: 1px solid #444;
+                selection-background-color: #0078D7;
             }
         """
 
@@ -351,33 +387,35 @@ class SejarahTransaksiWindow(QWidget):
         self.date_to = QDateEdit(QDate.currentDate())
         self.date_to.setCalendarPopup(True)
         self.date_to.setStyleSheet(date_style)
-        
+
         cal_to = CustomCalendar()
         cal_to.setHeaderTextFormat(header_format)
         self.date_to.setCalendarWidget(cal_to)
         
         self.cb_kasir = QComboBox()
-        self.cb_kasir.setStyleSheet("background-color: #1e1e1e; color: white; padding: 4px;")
+        # Terapkan stylesheet combo_style
+        self.cb_kasir.setStyleSheet(combo_style)
         
         self.cb_metode = QComboBox()
         self.cb_metode.addItems(["Semua", "Tunai", "Kartu", "Transfer", "Qris"])
-        self.cb_metode.setStyleSheet("background-color: #1e1e1e; color: white; padding: 4px;")
+        # Terapkan stylesheet combo_style
+        self.cb_metode.setStyleSheet(combo_style)
         
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Cari ID/Customer...")
-        self.search_box.setStyleSheet("background-color: #1e1e1e; color: white; padding: 4px;")
+        self.search_box.setStyleSheet("background-color: #1e1e1e; color: white; padding: 4px; border: 1px solid #444; border-radius: 4px;")
         
         self.btn_filter = QPushButton("Filter")
         self.btn_filter.setStyleSheet("background-color: #28A745; color: white; padding: 6px 15px; border-radius: 4px; font-weight: bold;")
         self.btn_filter.clicked.connect(lambda: self.apply_filters(reset_page=True))
         
-        layout.addWidget(QLabel("Dari:"))
+        layout.addWidget(QLabel("Dari:", styleSheet="color: white;"))
         layout.addWidget(self.date_from)
-        layout.addWidget(QLabel("Sampai:"))
+        layout.addWidget(QLabel("Sampai:", styleSheet="color: white;"))
         layout.addWidget(self.date_to)
-        layout.addWidget(QLabel("Kasir:"))
+        layout.addWidget(QLabel("Kasir:", styleSheet="color: white;"))
         layout.addWidget(self.cb_kasir)
-        layout.addWidget(QLabel("Metode:"))
+        layout.addWidget(QLabel("Metode:", styleSheet="color: white;"))
         layout.addWidget(self.cb_metode)
         layout.addWidget(self.search_box)
         layout.addWidget(self.btn_filter)
