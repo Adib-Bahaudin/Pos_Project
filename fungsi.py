@@ -1,5 +1,6 @@
-from PySide6.QtCore import QSize
-from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QSize, Qt
+from PySide6.QtWidgets import QApplication, QCalendarWidget
+from PySide6.QtGui import QColor
 
 
 class ScreenSize:
@@ -87,3 +88,20 @@ class ScreenSize:
             'width_percentage': self.width_percentage * 100,
             'height_percentage': self.height_percentage * 100,
         }
+
+class CustomCalendar(QCalendarWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setVerticalHeaderFormat(QCalendarWidget.NoVerticalHeader)
+
+    def paintCell(self, painter, rect, date):
+        if date.month() == self.monthShown():
+            super().paintCell(painter, rect, date)
+        else:
+            painter.save()
+            
+            painter.setPen(QColor("#555555"))
+            
+            painter.drawText(rect, Qt.AlignCenter, str(date.day()))
+            
+            painter.restore()
