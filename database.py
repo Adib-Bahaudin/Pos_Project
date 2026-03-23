@@ -1100,7 +1100,12 @@ class DatabaseManager:
         cursor = conn.cursor()
 
         query = """
-            SELECT t.*, u.nama as nama_kasir, c.nama as nama_customer
+            SELECT 
+                t.id, t.id_customer, t.id_kasir, t.subtotal, 
+                t.diskon_nominal, t.diskon_persen, t.pembulatan, 
+                t.total, t.metode_bayar, t.nominal_bayar, 
+                t.nominal_kembali, t.catatan, t.tanggal,
+                u.nama as nama_kasir, c.nama as nama_customer
             FROM transaksi t
             LEFT JOIN users u ON t.id_kasir = u.id
             LEFT JOIN customer c ON t.id_customer = c.id
@@ -1153,7 +1158,12 @@ class DatabaseManager:
 
         # Header
         cursor.execute("""
-            SELECT t.*, u.nama as nama_kasir, c.nama as nama_customer
+            SELECT 
+                t.id, t.id_customer, t.id_kasir, t.subtotal, 
+                t.diskon_nominal, t.diskon_persen, t.pembulatan, 
+                t.total, t.metode_bayar, t.nominal_bayar, 
+                t.nominal_kembali, t.catatan, t.tanggal,
+                u.nama as nama_kasir, c.nama as nama_customer
             FROM transaksi t
             LEFT JOIN users u ON t.id_kasir = u.id
             LEFT JOIN customer c ON t.id_customer = c.id
