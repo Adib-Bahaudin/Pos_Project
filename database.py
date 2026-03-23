@@ -763,8 +763,23 @@ class DatabaseManager:
             # 5. HITUNG & INSERT LABA (hapus dulu jika trigger lama sempat insert)
             cursor.execute("DELETE FROM laba_transaksi WHERE id_transaksi = ?", (transaction_id,))
             total_hpp = self._calculate_total_hpp(cursor, cart_items)
-            total = int(sale_data.get("total") or 0)
-            laba_kotor = total - total_hpp
+            cursor.execute(
+                """
+                SELECT total, diskon_nominal, diskon_persen, pembulatan
+                FROM transaksi
+                WHERE id = ?
+                """,
+                (transaction_id,),
+            )
+            transaction_totals = cursor.fetchone() or (0, 0, 0, 0)
+            total, diskon_nominal, diskon_persen, pembulatan = transaction_totals
+            laba_kotor = (
+                total
+                - total_hpp
+                - (diskon_nominal or 0)
+                - (diskon_persen or 0)
+                + (pembulatan or 0)
+            )
             pajak = int(laba_kotor * 0.2) if laba_kotor > 0 else 0
             laba_bersih = laba_kotor - pajak
         
