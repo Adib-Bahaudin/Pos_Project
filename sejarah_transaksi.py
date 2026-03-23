@@ -141,17 +141,39 @@ class SejarahTransaksiWindow(QWidget):
         main_layout.addWidget(self.filter_panel)
         
         self.table = QTableWidget()
-        self.table.setColumnCount(8)
+        self.table.setAlternatingRowColors(True)
+        self.table.setShowGrid(False)
+        self.table.setStyleSheet("""
+            QTableWidget { 
+                background-color: #2d2d2d; 
+                alternate-background-color: #545454; 
+                color: white; 
+                border: none; 
+                outline: none; 
+            }
+            QTableWidget::item:selected {
+                background-color: #0078D7;
+                color: white;
+            }
+            QHeaderView::section:horizontal {
+                background-color: #a6a6a6;
+                color: black; 
+                font-weight: bold;
+                border: none; 
+                padding: 6px; 
+            }
+        """)
+
+        self.table.setColumnCount(9) 
         self.table.setHorizontalHeaderLabels([
-            "ID", "Tanggal", "Kasir", "Customer", 
+            "No", "ID", "Tanggal", "Kasir", "Customer", 
             "Metode", "Subtotal", "Diskon", "Total"
         ])
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        self.table.setStyleSheet("""
-            QTableWidget { background-color: #2b2b2b; color: white; gridline-color: #444; border: 1px solid #444; }
-            QHeaderView::section { background-color: #1e1e1e; color: white; padding: 4px; border: 1px solid #444; }
-        """)
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.verticalHeader().setVisible(False)
+        
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.cellDoubleClicked.connect(self.show_transaction_detail_modal)
@@ -486,6 +508,7 @@ class SejarahTransaksiWindow(QWidget):
     def populate_table(self):
         self.table.setRowCount(len(self.transactions_data))
         for i, row in enumerate(self.transactions_data):
+            
             dt_str = row.get("tanggal", "")
             try:
                 if len(dt_str) > 10:
@@ -496,10 +519,14 @@ class SejarahTransaksiWindow(QWidget):
             except Exception:
                 dt_disp = dt_str
 
-            self.table.setItem(i, 0, QTableWidgetItem(str(row.get("id", ""))))
-            self.table.setItem(i, 1, QTableWidgetItem(dt_disp))
-            self.table.setItem(i, 2, QTableWidgetItem(row.get("nama_kasir", "")))
-            self.table.setItem(i, 3, QTableWidgetItem(row.get("nama_customer", "")))
+            # --- Masukkan nomor urut di kolom 0 ---
+            self.table.setItem(i, 0, QTableWidgetItem(str(i + 1)))
+            
+            # --- Geser sisa data ke kolom selanjutnya ---
+            self.table.setItem(i, 1, QTableWidgetItem(str(row.get("id", ""))))
+            self.table.setItem(i, 2, QTableWidgetItem(dt_disp))
+            self.table.setItem(i, 3, QTableWidgetItem(row.get("nama_kasir", "")))
+            self.table.setItem(i, 4, QTableWidgetItem(row.get("nama_customer", "")))
             
             metode = row.get("metode_bayar", "")
             item_metode = QTableWidgetItem(metode)
@@ -510,10 +537,10 @@ class SejarahTransaksiWindow(QWidget):
             else:
                 item_metode.setForeground(QColor("#FFC107"))
                 
-            self.table.setItem(i, 4, item_metode)
-            self.table.setItem(i, 5, QTableWidgetItem(f"Rp {int(row.get('subtotal', 0)):,}"))
-            self.table.setItem(i, 6, QTableWidgetItem(f"Rp {int(row.get('diskon_nominal', 0)):,}"))
-            self.table.setItem(i, 7, QTableWidgetItem(f"Rp {int(row.get('total', 0)):,}"))
+            self.table.setItem(i, 5, item_metode)
+            self.table.setItem(i, 6, QTableWidgetItem(f"Rp {int(row.get('subtotal', 0)):,}"))
+            self.table.setItem(i, 7, QTableWidgetItem(f"Rp {int(row.get('diskon_nominal', 0)):,}"))
+            self.table.setItem(i, 8, QTableWidgetItem(f"Rp {int(row.get('total', 0)):,}"))
 
     def _prev_page(self):
         if self.current_page > 1:
