@@ -148,56 +148,17 @@ class InitDatabase:
                     ) WHERE id = NEW.id;
                     
                 UPDATE transaksi 
-                SET total = (
-                    SELECT SUM(sub_total) 
+                SET subtotal = (
+                    SELECT COALESCE(SUM(sub_total), 0) 
                     FROM transaksi_detail 
                     WHERE id_transaksi = NEW.id_transaksi
-                ) WHERE id = NEW.id_transaksi;
-                    
-                DELETE FROM laba_transaksi WHERE id_transaksi = NEW.id_transaksi;
-                INSERT INTO laba_transaksi (
-                    id_transaksi,
-                    tanggal,
-                    pendapatan_kotor,
-                    total_hpp,
-                    laba_kotor,
-                    pajak_20_persen,
-                    laba_bersih
-                )
-                SELECT 
-                    t.id,
-                    t.tanggal,
-                    t.total as pendapatan_kotor,
-                    COALESCE(SUM(
-                        CASE
-                            WHEN td.jenis_produk = 'satuan' THEN td.jumlah * COALESCE(hb.harga, 0)
-                            WHEN td.jenis_produk = 'paket' THEN td.jumlah * COALESCE((SELECT SUM(dp.jumlah * COALESCE(hb2.harga, 0)) FROM detail_paket dp LEFT JOIN harga_beli hb2 ON dp.id_produk = hb2.id_satuan WHERE dp.id_paket = td.id_produk), 0)
-                        END
-                    ), 0) as total_hpp,
-                    t.total - COALESCE(SUM(
-                        CASE
-                            WHEN td.jenis_produk = 'satuan' THEN td.jumlah * COALESCE(hb.harga, 0)
-                            WHEN td.jenis_produk = 'paket' THEN td.jumlah * COALESCE((SELECT SUM(dp.jumlah * COALESCE(hb2.harga, 0)) FROM detail_paket dp LEFT JOIN harga_beli hb2 ON dp.id_produk = hb2.id_satuan WHERE dp.id_paket = td.id_produk), 0)
-                        END
-                    ), 0) as laba_kotor,
-                    CAST((t.total - COALESCE(SUM(
-                        CASE
-                            WHEN td.jenis_produk = 'satuan' THEN td.jumlah * COALESCE(hb.harga, 0)
-                            WHEN td.jenis_produk = 'paket' THEN td.jumlah * COALESCE((SELECT SUM(dp.jumlah * COALESCE(hb2.harga, 0)) FROM detail_paket dp LEFT JOIN harga_beli hb2 ON dp.id_produk = hb2.id_satuan WHERE dp.id_paket = td.id_produk), 0)
-                        END
-                    ), 0)) * 0.2 AS INTEGER) as pajak_20_persen,
-                    (t.total - COALESCE(SUM(
-                        CASE
-                            WHEN td.jenis_produk = 'satuan' THEN td.jumlah * COALESCE(hb.harga, 0) 
-                            WHEN td.jenis_produk = 'paket' THEN td.jumlah * COALESCE((SELECT SUM(dp.jumlah * COALESCE(hb2.harga, 0)) FROM detail_paket dp LEFT JOIN harga_beli hb2 ON dp.id_produk = hb2.id_satuan WHERE dp.id_paket = td.id_produk), 0)
-                        END
-                    ), 0)) - CAST((t.total - COALESCE(SUM(
-                        CASE
-                            WHEN td.jenis_produk = 'satuan' THEN td.jumlah * COALESCE(hb.harga, 0)
-                            WHEN td.jenis_produk = 'paket' THEN td.jumlah * COALESCE((SELECT SUM(dp.jumlah * COALESCE(hb2.harga, 0)) FROM detail_paket dp LEFT JOIN harga_beli hb2 ON dp.id_produk = hb2.id_satuan WHERE dp.id_paket = td.id_produk), 0)
-                        END
-                    ), 0)) * 0.2 AS INTEGER) as laba_bersih
-                FROM transaksi t LEFT JOIN transaksi_detail td ON t.id = td.id_transaksi LEFT JOIN harga_beli hb ON td.id_produk = hb.id_satuan AND td.jenis_produk = 'satuan' WHERE t.id = NEW.id_transaksi GROUP BY t.id;
+                ),
+                total = (
+                    SELECT COALESCE(SUM(sub_total), 0) 
+                    FROM transaksi_detail 
+                    WHERE id_transaksi = NEW.id_transaksi
+                ) - COALESCE(diskon_nominal, 0) + COALESCE(pembulatan, 0)
+                WHERE id = NEW.id_transaksi;
                     
                 UPDATE produk_satuan SET stok = stok - NEW.jumlah WHERE id = NEW.id_produk AND NEW.jenis_produk = 'satuan';
                     

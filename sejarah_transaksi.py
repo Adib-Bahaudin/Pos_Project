@@ -164,10 +164,10 @@ class SejarahTransaksiWindow(QWidget):
             }
         """)
 
-        self.table.setColumnCount(9) 
+        self.table.setColumnCount(10) 
         self.table.setHorizontalHeaderLabels([
             "No", "ID", "Tanggal", "Kasir", "Customer", 
-            "Metode", "Subtotal", "Diskon", "Total"
+            "Metode", "Subtotal", "Diskon", "Pembulatan", "Total"
         ])
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -540,7 +540,24 @@ class SejarahTransaksiWindow(QWidget):
             self.table.setItem(i, 5, item_metode)
             self.table.setItem(i, 6, QTableWidgetItem(f"Rp {int(row.get('subtotal', 0)):,}"))
             self.table.setItem(i, 7, QTableWidgetItem(f"Rp {int(row.get('diskon_nominal', 0)):,}"))
-            self.table.setItem(i, 8, QTableWidgetItem(f"Rp {int(row.get('total', 0)):,}"))
+
+            pembulatan = int(row.get('pembulatan', 0))
+            item_pembulatan = QTableWidgetItem(self._format_pembulatan(pembulatan))
+            if pembulatan > 0:
+                item_pembulatan.setForeground(QColor("#FF6B6B"))  # merah — nambah bayar
+            elif pembulatan < 0:
+                item_pembulatan.setForeground(QColor("#28A745"))  # hijau — kurang bayar
+            self.table.setItem(i, 8, item_pembulatan)
+
+            self.table.setItem(i, 9, QTableWidgetItem(f"Rp {int(row.get('total', 0)):,}"))
+
+    @staticmethod
+    def _format_pembulatan(nilai: int) -> str:
+        if nilai > 0:
+            return f"+Rp {nilai:,}"
+        elif nilai < 0:
+            return f"-Rp {abs(nilai):,}"
+        return "Rp 0"
 
     def _prev_page(self):
         if self.current_page > 1:
@@ -581,7 +598,7 @@ class SejarahTransaksiWindow(QWidget):
             ws = wb.active
             ws.title = "Sejarah Transaksi"
             
-            headers = ["ID", "Tanggal", "ID Kasir", "Nama Kasir", "Customer", "Subtotal", "Diskon", "Total", "Metode Bayar", "Catatan"]
+            headers = ["ID", "Tanggal", "ID Kasir", "Nama Kasir", "Customer", "Subtotal", "Diskon", "Pembulatan", "Total", "Metode Bayar", "Catatan"]
             for col, h in enumerate(headers, 1):
                 cell = ws.cell(row=1, column=col, value=h)
                 cell.font = Font(bold=True)
@@ -594,9 +611,10 @@ class SejarahTransaksiWindow(QWidget):
                 ws.cell(row=row_idx, column=5, value=data.get("nama_customer"))
                 ws.cell(row=row_idx, column=6, value=int(data.get("subtotal", 0)))
                 ws.cell(row=row_idx, column=7, value=int(data.get("diskon_nominal", 0)))
-                ws.cell(row=row_idx, column=8, value=int(data.get("total", 0)))
-                ws.cell(row=row_idx, column=9, value=data.get("metode_bayar"))
-                ws.cell(row=row_idx, column=10, value=data.get("catatan"))
+                ws.cell(row=row_idx, column=8, value=int(data.get("pembulatan", 0)))
+                ws.cell(row=row_idx, column=9, value=int(data.get("total", 0)))
+                ws.cell(row=row_idx, column=10, value=data.get("metode_bayar"))
+                ws.cell(row=row_idx, column=11, value=data.get("catatan"))
                 
             wb.save(path)
             QMessageBox.information(self, "Sukses", f"Data berhasil diexport ke:\n{path}")
@@ -628,8 +646,10 @@ class SejarahTransaksiWindow(QWidget):
             elements.append(title)
             elements.append(Spacer(1, 12))
             
-            table_data = [["ID", "Tanggal", "Kasir", "Customer", "Subtotal", "Diskon", "Total", "Metode"]]
+            table_data = [["ID", "Tanggal", "Kasir", "Customer", "Subtotal", "Diskon", "Pembulatan", "Total", "Metode"]]
             for d in all_data:
+                pembulatan_val = int(d.get('pembulatan', 0))
+                pembulatan_str = f"+Rp {pembulatan_val:,}" if pembulatan_val > 0 else (f"-Rp {abs(pembulatan_val):,}" if pembulatan_val < 0 else "Rp 0")
                 table_data.append([
                     str(d.get("id", "")),
                     str(d.get("tanggal", "")),
@@ -637,6 +657,7 @@ class SejarahTransaksiWindow(QWidget):
                     str(d.get("nama_customer", "")),
                     f"Rp {int(d.get('subtotal', 0)):,}",
                     f"Rp {int(d.get('diskon_nominal', 0)):,}",
+                    pembulatan_str,
                     f"Rp {int(d.get('total', 0)):,}",
                     str(d.get("metode_bayar", ""))
                 ])

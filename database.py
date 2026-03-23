@@ -81,6 +81,52 @@ class DatabaseManager:
                         ("Pelanggan Umum", "", ""),
                     )
 
+            # Migrasi trigger: ganti trigger lama agar memperhitungkan diskon & pembulatan
+            cursor.execute("DROP TRIGGER IF EXISTS handle_transaksi_detail_insert")
+            cursor.execute("""
+                CREATE TRIGGER handle_transaksi_detail_insert
+                AFTER INSERT ON transaksi_detail
+                BEGIN
+                    UPDATE transaksi_detail
+                    SET harga = (
+                        CASE 
+                            WHEN NEW.jenis_produk = 'satuan' THEN
+                                (SELECT harga_jual FROM produk_satuan WHERE id = NEW.id_produk)
+                            WHEN NEW.jenis_produk = 'paket' THEN
+                                (SELECT harga_jual FROM produk_paket WHERE id = NEW.id_produk)
+                        END
+                    ) WHERE id = NEW.id;
+
+                    UPDATE transaksi 
+                    SET subtotal = (
+                        SELECT COALESCE(SUM(sub_total), 0) 
+                        FROM transaksi_detail 
+                        WHERE id_transaksi = NEW.id_transaksi
+                    ),
+                    total = (
+                        SELECT COALESCE(SUM(sub_total), 0) 
+                        FROM transaksi_detail 
+                        WHERE id_transaksi = NEW.id_transaksi
+                    ) - COALESCE(diskon_nominal, 0) + COALESCE(pembulatan, 0)
+                    WHERE id = NEW.id_transaksi;
+
+                    UPDATE produk_satuan SET stok = stok - NEW.jumlah 
+                    WHERE id = NEW.id_produk AND NEW.jenis_produk = 'satuan';
+
+                    UPDATE produk_satuan SET stok = stok - (
+                        SELECT dp.jumlah * NEW.jumlah
+                        FROM detail_paket dp
+                        WHERE dp.id_paket = NEW.id_produk 
+                        AND dp.id_produk = produk_satuan.id
+                    ) 
+                    WHERE id IN (
+                        SELECT id_produk 
+                        FROM detail_paket 
+                        WHERE id_paket = NEW.id_produk
+                    ) AND NEW.jenis_produk = 'paket';
+                END;
+            """)
+
             conn.commit()
         finally:
             conn.close()
@@ -714,7 +760,8 @@ class DatabaseManager:
                     ),
                 )
         
-            # 5. HITUNG & INSERT LABA
+            # 5. HITUNG & INSERT LABA (hapus dulu jika trigger lama sempat insert)
+            cursor.execute("DELETE FROM laba_transaksi WHERE id_transaksi = ?", (transaction_id,))
             total_hpp = self._calculate_total_hpp(cursor, cart_items)
             total = int(sale_data.get("total") or 0)
             laba_kotor = total - total_hpp
