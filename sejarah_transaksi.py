@@ -2,7 +2,7 @@ import os
 import sqlite3
 from datetime import datetime
 from PySide6.QtCore import Qt, QDate
-from PySide6.QtGui import QFont, QColor, QPixmap
+from PySide6.QtGui import QFont, QColor, QPixmap, QTextCharFormat
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QHeaderView, QComboBox,
@@ -267,30 +267,121 @@ class SejarahTransaksiWindow(QWidget):
 
     def _create_filter_panel(self):
         frame = QFrame()
-        frame.setStyleSheet("background-color: #2b2b2b; border-radius: 8px;")
+        frame.setStyleSheet("QFrame { background-color: #737373; border-radius: 8px; }")
         layout = QHBoxLayout(frame)
+        
+        # --- STYLESHEET KHUSUS DATE EDIT & CALENDAR POPUP ---
+        date_style = """
+            /* 1. Styling dasar QDateEdit */
+            QDateEdit {
+                background-color: #1e1e1e; 
+                color: white;
+                border: 1px solid #444;
+                border-radius: 4px;
+                padding: 4px;
+            }
+            QDateEdit::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 24px;
+                border-left: 1px solid #444;
+            }
+            
+            /* 2. Styling QCalendarWidget Secara Umum */
+            QCalendarWidget QWidget {
+                background-color: #1e1e1e;
+                color: white;
+            }
+            
+            /* 3. Styling Header Navigasi Kalender (Bulan, Tahun, Prev/Next) */
+            QCalendarWidget QWidget#qt_calendar_navigationbar {
+                background-color: #2b2b2b;
+                border-bottom: 1px solid #444;
+                min-height: 30px;
+            }
+            QCalendarWidget QToolButton {
+                color: white;
+                background-color: transparent;
+                font-weight: bold;
+                padding: 4px;
+                margin: 2px;
+            }
+            QCalendarWidget QToolButton:hover {
+                background-color: #555;
+                border-radius: 4px;
+            }
+            QCalendarWidget QToolButton::menu-indicator {
+                image: none; /* Hilangkan panah numpuk */
+            }
+            
+            /* 4. FIX: Dropdown Menu untuk Bulan (QMenu) */
+            QMenu {
+                background-color: #2b2b2b;
+                color: white;
+                border: 1px solid #555;
+            }
+            QMenu::item {
+                background-color: transparent;
+                color: white;
+                padding: 6px 20px;
+            }
+            QMenu::item:selected {
+                background-color: #0078D7; /* Biru saat di-hover */
+                color: white;
+            }
+            
+            /* 5. FIX: Warna Background Nama Hari (Sen, Sel, Rab...) */
+            QCalendarWidget QTableView QHeaderView::section {
+                background-color: #2b2b2b; /* Paksa background hari jadi abu-abu gelap */
+                color: #A9B7C6; /* Warna teks hari kebiruan agar kontras */
+                font-weight: bold;
+                border: none;
+                padding: 4px;
+            }
+            
+            /* 6. Styling Grid Tanggal */
+            QCalendarWidget QTableView {
+                background-color: #1e1e1e;
+                color: white;
+                selection-background-color: #0078D7;
+                selection-color: white;
+            }
+            
+            /* 7. Styling SpinBox Pemilihan Tahun */
+            QCalendarWidget QSpinBox {
+                background-color: #1e1e1e;
+                color: white;
+                border: 1px solid #444;
+            }
+        """
+
+        header_format = QTextCharFormat()
+        header_format.setBackground(QColor("#2b2b2b"))
+        header_format.setForeground(QColor("#A9B7C6"))
         
         self.date_from = QDateEdit(QDate.currentDate().addDays(-30))
         self.date_from.setCalendarPopup(True)
-        self.date_from.setStyleSheet("background-color: #1e1e1e; color: white;")
+        self.date_from.setStyleSheet(date_style)
+        self.date_from.calendarWidget().setHeaderTextFormat(header_format)
         
         self.date_to = QDateEdit(QDate.currentDate())
         self.date_to.setCalendarPopup(True)
-        self.date_to.setStyleSheet("background-color: #1e1e1e; color: white;")
+        self.date_to.setStyleSheet(date_style)
+        self.date_to.calendarWidget().setHeaderTextFormat(header_format)
         
         self.cb_kasir = QComboBox()
-        self.cb_kasir.setStyleSheet("background-color: #1e1e1e; color: white;")
+        self.cb_kasir.setStyleSheet("background-color: #1e1e1e; color: white; padding: 4px;")
         
         self.cb_metode = QComboBox()
         self.cb_metode.addItems(["Semua", "Tunai", "Kartu", "Transfer", "Qris"])
-        self.cb_metode.setStyleSheet("background-color: #1e1e1e; color: white;")
+        self.cb_metode.setStyleSheet("background-color: #1e1e1e; color: white; padding: 4px;")
         
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Cari ID/Customer...")
         self.search_box.setStyleSheet("background-color: #1e1e1e; color: white; padding: 4px;")
         
         self.btn_filter = QPushButton("Filter")
-        self.btn_filter.setStyleSheet("background-color: #28A745; color: white; padding: 6px 15px; border-radius: 4px;")
+        self.btn_filter.setStyleSheet("background-color: #28A745; color: white; padding: 6px 15px; border-radius: 4px; font-weight: bold;")
         self.btn_filter.clicked.connect(lambda: self.apply_filters(reset_page=True))
         
         layout.addWidget(QLabel("Dari:"))
