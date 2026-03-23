@@ -667,16 +667,14 @@ class DatabaseManager:
             cursor.execute(
                 """
                 INSERT INTO transaksi (
-                    id_customer, id_kasir, nama_kasir, nama_customer,
+                    id_customer, id_kasir,
                     subtotal, diskon_nominal, diskon_persen, pembulatan,
                     total, metode_bayar, nominal_bayar, nominal_kembali, catatan
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     customer_id,
                     user_data.get("user_id"),
-                    user_data.get("username"),
-                    customer_name,
                     int(sale_data.get("subtotal") or 0),
                     int(sale_data.get("discount_nominal") or 0),
                     float(sale_data.get("discount_percent") or 0),
@@ -1101,7 +1099,13 @@ class DatabaseManager:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
-        query = "SELECT * FROM transaksi WHERE 1=1"
+        query = """
+            SELECT t.*, u.nama as nama_kasir, c.nama as nama_customer
+            FROM transaksi t
+            LEFT JOIN users u ON t.id_kasir = u.id
+            LEFT JOIN customer c ON t.id_customer = c.id
+            WHERE 1=1
+        """
         params = []
 
         if filters.get("date_from"):
@@ -1113,27 +1117,27 @@ class DatabaseManager:
             params.append(filters["date_to"])
 
         if filters.get("kasir_id") not in ("", None, "Semua"):
-            query += " AND id_kasir = ?"
+            query += " AND t.id_kasir = ?"
             params.append(filters["kasir_id"])
 
         if filters.get("payment_method") not in ("", None, "Semua"):
-            query += " AND metode_bayar = ?"
+            query += " AND t.metode_bayar = ?"
             params.append(filters["payment_method"])
 
         if filters.get("amount_min"):
-            query += " AND total >= ?"
+            query += " AND t.total >= ?"
             params.append(filters["amount_min"])
 
         if filters.get("amount_max"):
-            query += " AND total <= ?"
+            query += " AND t.total <= ?"
             params.append(filters["amount_max"])
 
         if filters.get("search_keyword"):
             kw = f"%{filters['search_keyword']}%"
-            query += " AND (nama_customer LIKE ? OR id LIKE ?)"
+            query += " AND (c.nama LIKE ? OR t.id LIKE ?)"
             params.extend([kw, kw])
 
-        query += " ORDER BY id DESC LIMIT ? OFFSET ?"
+        query += " ORDER BY t.id DESC LIMIT ? OFFSET ?"
         params.extend([limit, offset])
 
         cursor.execute(query, params)
@@ -1148,7 +1152,13 @@ class DatabaseManager:
         cursor = conn.cursor()
 
         # Header
-        cursor.execute("SELECT * FROM transaksi WHERE id = ?", (transaction_id,))
+        cursor.execute("""
+            SELECT t.*, u.nama as nama_kasir, c.nama as nama_customer
+            FROM transaksi t
+            LEFT JOIN users u ON t.id_kasir = u.id
+            LEFT JOIN customer c ON t.id_customer = c.id
+            WHERE t.id = ?
+        """, (transaction_id,))
         header_row = cursor.fetchone()
         if not header_row:
             conn.close()
@@ -1193,59 +1203,70 @@ class DatabaseManager:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
-        query = "SELECT COUNT(id) as total_count, COALESCE(SUM(total), 0) as total_revenue, COALESCE(AVG(total), 0) as avg_transaction FROM transaksi WHERE 1=1"
+        query = """
+            SELECT COUNT(t.id) as total_count, COALESCE(SUM(t.total), 0) as total_revenue, COALESCE(AVG(t.total), 0) as avg_transaction 
+            FROM transaksi t 
+            LEFT JOIN customer c ON t.id_customer = c.id
+            WHERE 1=1
+        """
         params = []
 
         if filters.get("date_from"):
-            query += " AND date(tanggal) >= date(?)"
+            query += " AND date(t.tanggal) >= date(?)"
             params.append(filters["date_from"])
         
         if filters.get("date_to"):
-            query += " AND date(tanggal) <= date(?)"
+            query += " AND date(t.tanggal) <= date(?)"
             params.append(filters["date_to"])
 
         if filters.get("kasir_id") not in ("", None, "Semua"):
-            query += " AND id_kasir = ?"
+            query += " AND t.id_kasir = ?"
             params.append(filters["kasir_id"])
 
         if filters.get("payment_method") not in ("", None, "Semua"):
-            query += " AND metode_bayar = ?"
+            query += " AND t.metode_bayar = ?"
             params.append(filters["payment_method"])
 
         if filters.get("amount_min"):
-            query += " AND total >= ?"
+            query += " AND t.total >= ?"
             params.append(filters["amount_min"])
 
         if filters.get("amount_max"):
-            query += " AND total <= ?"
+            query += " AND t.total <= ?"
             params.append(filters["amount_max"])
 
         if filters.get("search_keyword"):
             kw = f"%{filters['search_keyword']}%"
-            query += " AND (nama_customer LIKE ? OR id LIKE ?)"
+            query += " AND (c.nama LIKE ? OR t.id LIKE ?)"
             params.extend([kw, kw])
             
         cursor.execute(query, params)
         stats = dict(cursor.fetchone())
 
-        query_top = "SELECT nama_kasir, COUNT(id) as tx_count FROM transaksi WHERE 1=1"
+        query_top = """
+            SELECT u.nama as nama_kasir, COUNT(t.id) as tx_count 
+            FROM transaksi t 
+            LEFT JOIN users u ON t.id_kasir = u.id
+            LEFT JOIN customer c ON t.id_customer = c.id
+            WHERE 1=1
+        """
         
         if filters.get("date_from"):
-            query_top += " AND date(tanggal) >= date(?)"
+            query_top += " AND date(t.tanggal) >= date(?)"
         if filters.get("date_to"):
-            query_top += " AND date(tanggal) <= date(?)"
+            query_top += " AND date(t.tanggal) <= date(?)"
         if filters.get("kasir_id") not in ("", None, "Semua"):
-            query_top += " AND id_kasir = ?"
+            query_top += " AND t.id_kasir = ?"
         if filters.get("payment_method") not in ("", None, "Semua"):
-            query_top += " AND metode_bayar = ?"
+            query_top += " AND t.metode_bayar = ?"
         if filters.get("amount_min"):
-            query_top += " AND total >= ?"
+            query_top += " AND t.total >= ?"
         if filters.get("amount_max"):
-            query_top += " AND total <= ?"
+            query_top += " AND t.total <= ?"
         if filters.get("search_keyword"):
-            query_top += " AND (nama_customer LIKE ? OR id LIKE ?)"
+            query_top += " AND (c.nama LIKE ? OR t.id LIKE ?)"
 
-        query_top += " GROUP BY nama_kasir ORDER BY tx_count DESC LIMIT 1"
+        query_top += " GROUP BY u.nama ORDER BY tx_count DESC LIMIT 1"
         cursor.execute(query_top, params)
         top_cashier_row = cursor.fetchone()
         
