@@ -250,8 +250,9 @@ class MainWindow(QMainWindow):
         # Hapus semua widget dari stack
         while self.stack.count() > 0:
             widget = self.stack.widget(0)
-            self.stack.removeWidget(widget)
-            widget.deleteLater()
+            if widget is not None:
+                self.stack.removeWidget(widget)
+                widget.deleteLater()
 
         # Tambahkan dashboard
         dashboard = Dashboard(data)

@@ -433,8 +433,8 @@ class PenjualanWindow(QWidget):
             self.search_lookup.clear()
             self.search_hint_label.setText("Cari produk berdasarkan SKU atau nama produk.")
 
-            if self.search_completer.popup():
-                self.search_completer.popup().hide()
+            if (p := self.search_completer.popup()):
+                p.hide()
             return
 
         self._refresh_search_suggestions(text)

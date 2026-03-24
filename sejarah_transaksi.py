@@ -9,24 +9,18 @@ from PySide6.QtWidgets import (
     QDateEdit, QLineEdit, QFrame, QMessageBox,
     QDialog, QFileDialog
 )
+import openpyxl
+from openpyxl.styles import Font
+HAS_OPENPYXL = True
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import landscape, A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+HAS_REPORTLAB = True
+
 from database import DatabaseManager
 from fungsi import CustomCalendar
-
-try:
-    import openpyxl
-    from openpyxl.styles import Font
-    HAS_OPENPYXL = True
-except ImportError:
-    HAS_OPENPYXL = False
-
-try:
-    from reportlab.lib import colors
-    from reportlab.lib.pagesizes import landscape, A4
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-    from reportlab.lib.styles import getSampleStyleSheet
-    HAS_REPORTLAB = True
-except ImportError:
-    HAS_REPORTLAB = False
 
 class TransactionDetailModal(QDialog):
     def __init__(self, db_manager, transaction_id, parent=None):
@@ -431,13 +425,21 @@ class SejarahTransaksiWindow(QWidget):
         self.btn_filter.setStyleSheet("background-color: #28A745; color: white; padding: 6px 15px; border-radius: 4px; font-weight: bold;")
         self.btn_filter.clicked.connect(lambda: self.apply_filters(reset_page=True))
         
-        layout.addWidget(QLabel("Dari:", styleSheet="color: white;"))
+        lbl_dari = QLabel("Dari:")
+        lbl_dari.setStyleSheet("color: white;")
+        layout.addWidget(lbl_dari)
         layout.addWidget(self.date_from)
-        layout.addWidget(QLabel("Sampai:", styleSheet="color: white;"))
+        lbl_sampai = QLabel("Sampai:")
+        lbl_sampai.setStyleSheet("color: white;")
+        layout.addWidget(lbl_sampai)
         layout.addWidget(self.date_to)
-        layout.addWidget(QLabel("Kasir:", styleSheet="color: white;"))
+        lbl_kasir = QLabel("Kasir:")
+        lbl_kasir.setStyleSheet("color: white;")
+        layout.addWidget(lbl_kasir)
         layout.addWidget(self.cb_kasir)
-        layout.addWidget(QLabel("Metode:", styleSheet="color: white;"))
+        lbl_metode = QLabel("Metode:")
+        lbl_metode.setStyleSheet("color: white;")
+        layout.addWidget(lbl_metode)
         layout.addWidget(self.cb_metode)
         layout.addWidget(self.search_box)
         layout.addWidget(self.btn_filter)
@@ -594,27 +596,30 @@ class SejarahTransaksiWindow(QWidget):
             return
             
         try:
-            wb = openpyxl.Workbook()
+            wb = openpyxl.Workbook()  # type: ignore[possibly-undefined]
             ws = wb.active
-            ws.title = "Sejarah Transaksi"
+            if ws is not None:
+                ws.title = "Sejarah Transaksi"
             
-            headers = ["ID", "Tanggal", "ID Kasir", "Nama Kasir", "Customer", "Subtotal", "Diskon", "Pembulatan", "Total", "Metode Bayar", "Catatan"]
-            for col, h in enumerate(headers, 1):
-                cell = ws.cell(row=1, column=col, value=h)
-                cell.font = Font(bold=True)
+                headers = ["ID", "Tanggal", "ID Kasir", "Nama Kasir", "Customer", "Subtotal", "Diskon", "Pembulatan", "Total", "Metode Bayar", "Catatan"]
+                for col, h in enumerate(headers, 1):
+                    cell = ws.cell(row=1, column=col, value=h)
+                    cell.font = Font(bold=True)
                 
-            for row_idx, data in enumerate(all_data, 2):
-                ws.cell(row=row_idx, column=1, value=data.get("id"))
-                ws.cell(row=row_idx, column=2, value=data.get("tanggal"))
-                ws.cell(row=row_idx, column=3, value=data.get("id_kasir"))
-                ws.cell(row=row_idx, column=4, value=data.get("nama_kasir"))
-                ws.cell(row=row_idx, column=5, value=data.get("nama_customer"))
-                ws.cell(row=row_idx, column=6, value=int(data.get("subtotal", 0)))
-                ws.cell(row=row_idx, column=7, value=int(data.get("diskon_nominal", 0)))
-                ws.cell(row=row_idx, column=8, value=int(data.get("pembulatan", 0)))
-                ws.cell(row=row_idx, column=9, value=int(data.get("total", 0)))
-                ws.cell(row=row_idx, column=10, value=data.get("metode_bayar"))
-                ws.cell(row=row_idx, column=11, value=data.get("catatan"))
+                for row_idx, data in enumerate(all_data, 2):
+                    ws.cell(row=row_idx, column=1, value=data.get("id"))
+                    ws.cell(row=row_idx, column=2, value=data.get("tanggal"))
+                    ws.cell(row=row_idx, column=3, value=data.get("id_kasir"))
+                    ws.cell(row=row_idx, column=4, value=data.get("nama_kasir"))
+                    ws.cell(row=row_idx, column=5, value=data.get("nama_customer"))
+                    ws.cell(row=row_idx, column=6, value=int(data.get("subtotal", 0)))
+                    ws.cell(row=row_idx, column=7, value=int(data.get("diskon_nominal", 0)))
+                    ws.cell(row=row_idx, column=8, value=int(data.get("pembulatan", 0)))
+                    ws.cell(row=row_idx, column=9, value=int(data.get("total", 0)))
+                    ws.cell(row=row_idx, column=10, value=data.get("metode_bayar"))
+                    ws.cell(row=row_idx, column=11, value=data.get("catatan"))
+            else:
+                QMessageBox.critical(self, "Error", "Gagal membuat worksheet Excel")
                 
             wb.save(path)
             QMessageBox.information(self, "Sukses", f"Data berhasil diexport ke:\n{path}")

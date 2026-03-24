@@ -52,8 +52,8 @@ class ScreenSize:
 
     def get_centered_position(
             self,
-            window_width: int = None,
-            window_height: int = None
+            window_width: int | None = None,
+            window_height: int | None = None
     ) -> tuple[int, int]:
         """
         Menghitung posisi untuk center window di screen
@@ -92,7 +92,7 @@ class ScreenSize:
 class CustomCalendar(QCalendarWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setVerticalHeaderFormat(QCalendarWidget.NoVerticalHeader)
+        self.setVerticalHeaderFormat(QCalendarWidget.VerticalHeaderFormat.NoVerticalHeader)
 
     def paintCell(self, painter, rect, date):
         if date.month() == self.monthShown():
@@ -102,6 +102,6 @@ class CustomCalendar(QCalendarWidget):
             
             painter.setPen(QColor("#555555"))
             
-            painter.drawText(rect, Qt.AlignCenter, str(date.day()))
+            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, str(date.day()))
             
             painter.restore()

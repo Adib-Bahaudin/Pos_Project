@@ -300,9 +300,10 @@ class LoginPage(QWidget):
             is_success, result = database_manager.verify_login(key)
             if is_success:
                 self.error_info.setText('')
-                self.on_login_success(result)
+                if self.on_login_success:
+                    self.on_login_success(result)
             else:
-                self.error_info.setText(result)
+                self.error_info.setText(str(result))
         else:
             self.error_info.setText("Kunci Hanya Berupa Angka")
 
