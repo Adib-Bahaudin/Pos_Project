@@ -86,7 +86,7 @@ class InitDatabase:
 
         cursor.execute("""
             CREATE TABLE "transaksi" (
-	            "id" INTEGER,
+	            "id" TEXT PRIMARY KEY,
 	            "id_customer" INTEGER DEFAULT 1,
                 "id_kasir" INTEGER,
                 "subtotal" INTEGER DEFAULT 0,
@@ -99,7 +99,6 @@ class InitDatabase:
                 "nominal_kembali" INTEGER DEFAULT 0,
                 "catatan" TEXT,
 	            "tanggal" TEXT DEFAULT (DATETIME('now', 'localtime')),
-	            PRIMARY KEY("id" AUTOINCREMENT),
                 FOREIGN KEY("id_customer") REFERENCES "customer"("id"),
                 FOREIGN KEY("id_kasir") REFERENCES "users"("id")
             )
@@ -108,7 +107,7 @@ class InitDatabase:
         cursor.execute("""
             CREATE TABLE "transaksi_detail" (
 	            "id" INTEGER,
-	            "id_transaksi" INTEGER NOT NULL,
+	            "id_transaksi" TEXT NOT NULL,
 	            "jenis_produk" TEXT NOT NULL CHECK("jenis_produk" IN ('satuan', 'paket')),
 	            "id_produk"	INTEGER NOT NULL,
 	            "jumlah" INTEGER NOT NULL DEFAULT 1,
@@ -122,7 +121,7 @@ class InitDatabase:
         cursor.execute("""
             CREATE TABLE laba_transaksi (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                id_transaksi INTEGER,
+                id_transaksi TEXT,
                 tanggal TEXT,
                 pendapatan_kotor INTEGER NOT NULL,
                 total_hpp INTEGER NOT NULL,

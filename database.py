@@ -47,7 +47,8 @@ class DatabaseManager:
                 return
 
             cursor.execute("PRAGMA table_info(transaksi)")
-            columns = {row[1] for row in cursor.fetchall()}
+            columns_info = cursor.fetchall()
+            columns = {row[1] for row in columns_info}
 
             required_columns = {
                 "id_kasir": "INTEGER",
@@ -663,6 +664,24 @@ class DatabaseManager:
 
         return total_hpp
 
+    def _generate_invoice_number(self, cursor, customer_id):
+        """Generate nomor invoice unik: {id_customer}{YYMMDD}{urutan_hari}.
+        
+        Contoh: 12603241 = customer 1, tanggal 26/03/24, transaksi ke-1 hari itu.
+        """
+        now = datetime.now()
+        date_part = now.strftime("%y%m%d")  # e.g. "260324"
+        today_str = now.strftime("%Y-%m-%d")
+
+        cursor.execute(
+            "SELECT COUNT(*) FROM transaksi WHERE date(tanggal) = date(?)",
+            (today_str,),
+        )
+        count_today = cursor.fetchone()[0]
+        sequence = count_today + 1
+
+        return f"{customer_id}{date_part}{sequence}"
+
     def create_sale_transaction(self, cart_items, sale_data, user_data=None):
         """Simpan penjualan dengan validasi dan update stok yang benar."""
     
@@ -709,16 +728,20 @@ class DatabaseManager:
                 cursor, sale_data.get("customer_name")
             )
         
-            # 3. INSERT TRANSAKSI (lengkap, jangan UPDATE kemudian)
+            # 3. GENERATE INVOICE NUMBER
+            invoice_number = self._generate_invoice_number(cursor, customer_id)
+
+            # 4. INSERT TRANSAKSI
             cursor.execute(
                 """
                 INSERT INTO transaksi (
-                    id_customer, id_kasir,
+                    id, id_customer, id_kasir,
                     subtotal, diskon_nominal, diskon_persen, pembulatan,
                     total, metode_bayar, nominal_bayar, nominal_kembali, catatan
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
+                    invoice_number,
                     customer_id,
                     user_data.get("user_id"),
                     int(sale_data.get("subtotal") or 0),
@@ -733,9 +756,9 @@ class DatabaseManager:
                 ),
             )
         
-            transaction_id = cursor.lastrowid
+            transaction_id = invoice_number
         
-            # 4. INSERT DETAIL
+            # 5. INSERT DETAIL
             for item in cart_items:
                 product_id = item.get("product_id")
                 qty = int(item.get("qty") or 0)
@@ -760,7 +783,7 @@ class DatabaseManager:
                     ),
                 )
         
-            # 5. HITUNG & INSERT LABA (hapus dulu jika trigger lama sempat insert)
+            # 6. HITUNG & INSERT LABA (hapus dulu jika trigger lama sempat insert)
             cursor.execute("DELETE FROM laba_transaksi WHERE id_transaksi = ?", (transaction_id,))
             total_hpp = self._calculate_total_hpp(cursor, cart_items)
             cursor.execute(
@@ -795,7 +818,7 @@ class DatabaseManager:
                 (total_hpp, laba_kotor, pajak, laba_bersih, transaction_id),
             )
         
-            # 6. COMMIT
+            # 7. COMMIT
             conn.commit()
         
             return {
@@ -1213,7 +1236,7 @@ class DatabaseManager:
         conn.close()
         return result
 
-    def get_transaction_detail_with_items(self, transaction_id: int):
+    def get_transaction_detail_with_items(self, transaction_id):
         conn = sqlite3.connect(self.db_name)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
