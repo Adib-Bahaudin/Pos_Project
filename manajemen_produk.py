@@ -517,6 +517,12 @@ class ManajemenProduk(QWidget):
             self.table_data((page - 1) * 5)
         else:
             pass
+    
+    def refresh_data(self):
+        self.table_data()
+        self.search_input.clear()
+        self.product_selector.setCurrentIndex(0)
+        self.page_input.setText("1")
 
 
 _ID_MONTHS = {

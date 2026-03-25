@@ -372,6 +372,8 @@ class Dashboard(QWidget):
                 self.sejarah_widget = SejarahTransaksiWindow(self.user_data)
                 if self.main_stack.indexOf(self.sejarah_widget) == -1:
                     self.main_stack.addWidget(self.sejarah_widget)
+            else:
+                self.sejarah_widget.refresh_data()
             self.main_stack.setCurrentWidget(self.sejarah_widget)
 
     def _reset_all_button_widths(self):

@@ -683,3 +683,17 @@ class SejarahTransaksiWindow(QWidget):
             QMessageBox.information(self, "Sukses", f"Data berhasil diexport ke:\n{path}")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Gagal export PDF: {str(e)}")
+
+    def refresh_data(self):
+        """
+        Mengembalikan semua filter ke kondisi awal (default) 
+        dan mengambil data transaksi terbaru dari database.
+        """
+        self.current_page = 1
+        self.date_from.setDate(QDate.currentDate().addDays(-30))
+        self.date_to.setDate(QDate.currentDate())
+        self.search_box.clear()
+        self.cb_metode.setCurrentIndex(0)
+        self.cb_kasir.clear()
+        self._load_cashiers()
+        self.apply_filters(reset_page=True)
