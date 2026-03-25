@@ -1,6 +1,6 @@
 from PySide6.QtCore import QSize, Qt
-from PySide6.QtWidgets import QApplication, QCalendarWidget
-from PySide6.QtGui import QColor
+from PySide6.QtWidgets import QApplication, QCalendarWidget, QPushButton
+from PySide6.QtGui import QColor, QIcon
 
 
 class ScreenSize:
@@ -105,3 +105,39 @@ class CustomCalendar(QCalendarWidget):
             painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, str(date.day()))
             
             painter.restore()
+
+class NavigationButton(QPushButton):
+    """Tombol navigasi dengan efek hover"""
+
+    BUTTON_SIZE = 35
+
+    def __init__(self, icon_normal: str, icon_hover: str):
+        super().__init__()
+
+        self.icon_normal = QIcon(icon_normal)
+        self.icon_hover = QIcon(icon_hover)
+
+        self._setup_ui()
+
+    def _setup_ui(self):
+        """Inisialisasi tampilan tombol"""
+        self.setFixedSize(self.BUTTON_SIZE, self.BUTTON_SIZE)
+        self.setStyleSheet("""
+            QPushButton{
+                background-color: transparent;
+                border: none;
+            }
+        """)
+        self.setIconSize(QSize(self.BUTTON_SIZE, self.BUTTON_SIZE))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setIcon(self.icon_normal)
+
+    def enterEvent(self, event):
+        """Handler ketika mouse masuk ke area tombol"""
+        self.setIcon(self.icon_hover)
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        """Handler ketika mouse keluar dari area tombol"""
+        self.setIcon(self.icon_normal)
+        super().leaveEvent(event)

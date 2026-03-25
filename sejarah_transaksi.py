@@ -20,7 +20,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 HAS_REPORTLAB = True
 
 from database import DatabaseManager
-from fungsi import CustomCalendar
+from fungsi import CustomCalendar, NavigationButton
 
 class TransactionDetailModal(QDialog):
     def __init__(self, db_manager, transaction_id, parent=None):
@@ -174,16 +174,15 @@ class SejarahTransaksiWindow(QWidget):
         main_layout.addWidget(self.table)
         
         pagination_layout = QHBoxLayout()
-        self.btn_prev = QPushButton("◄ Previous")
-        self.btn_next = QPushButton("Next ►")
-        self.lbl_page = QLabel(f"Page {self.current_page}")
-        self.lbl_page.setStyleSheet("color: white;")
+        self.btn_prev = NavigationButton("data/arah kiri.svg", "data/kiri-hover.svg")
+        self.btn_next = NavigationButton("data/arah kanan.svg", "data/kanan-hover.svg")
+
+        self.lbl_page = QLabel(f"Halaman {self.current_page}")
+        self.lbl_page.setStyleSheet("color: white; background-color: transparent;")
         
         self.btn_prev.clicked.connect(self._prev_page)
         self.btn_next.clicked.connect(self._next_page)
-        self.btn_prev.setStyleSheet("background-color: #444; color: white; padding: 5px;")
-        self.btn_next.setStyleSheet("background-color: #444; color: white; padding: 5px;")
-        
+
         pagination_layout.addWidget(self.btn_prev)
         pagination_layout.addWidget(self.lbl_page)
         pagination_layout.addWidget(self.btn_next)
@@ -503,7 +502,7 @@ class SejarahTransaksiWindow(QWidget):
         top_c = stats.get('top_cashier_count', 0)
         self._update_stat_card(self.lbl_stat_top, f"{top} ({top_c})")
         
-        self.lbl_page.setText(f"Page {self.current_page}")
+        self.lbl_page.setText(f"Halaman {self.current_page}")
         self.btn_prev.setEnabled(self.current_page > 1)
         self.btn_next.setEnabled(len(self.transactions_data) == self.items_per_page)
 

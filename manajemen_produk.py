@@ -13,7 +13,7 @@ from barang_baru import TambahBarangBaru
 from edit_produk import EditProduk
 from hapus_produk import HapusProdukDialog
 from database import DatabaseManager
-
+from fungsi import NavigationButton
 
 class ManajemenProduk(QWidget):
     """Widget utama untuk manajemen produk"""
@@ -681,40 +681,3 @@ class ProdukPaketTable(BaseProductTable):
     COLUMN_WIDTHS = [100, 300, 200, 200]
     HEADERS = ["SKU", "NAMA BARANG", "HARGA JUAL", "KETERANGAN"]
     FIELDS = ["sku", "nama_barang", "harga_jual", "keterangan"]
-
-
-class NavigationButton(QPushButton):
-    """Tombol navigasi dengan efek hover"""
-
-    BUTTON_SIZE = 35
-
-    def __init__(self, icon_normal: str, icon_hover: str):
-        super().__init__()
-
-        self.icon_normal = QIcon(icon_normal)
-        self.icon_hover = QIcon(icon_hover)
-
-        self._setup_ui()
-
-    def _setup_ui(self):
-        """Inisialisasi tampilan tombol"""
-        self.setFixedSize(self.BUTTON_SIZE, self.BUTTON_SIZE)
-        self.setStyleSheet("""
-            QPushButton{
-                background-color: transparent;
-                border: none;
-            }
-        """)
-        self.setIconSize(QSize(self.BUTTON_SIZE, self.BUTTON_SIZE))
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setIcon(self.icon_normal)
-
-    def enterEvent(self, event):
-        """Handler ketika mouse masuk ke area tombol"""
-        self.setIcon(self.icon_hover)
-        super().enterEvent(event)
-
-    def leaveEvent(self, event):
-        """Handler ketika mouse keluar dari area tombol"""
-        self.setIcon(self.icon_normal)
-        super().leaveEvent(event)
