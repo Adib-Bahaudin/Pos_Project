@@ -20,7 +20,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 HAS_REPORTLAB = True
 
 from database import DatabaseManager
-from fungsi import CustomCalendar, NavigationButton
+from fungsi import CustomCalendar, NavigationButton, CurrencyDelegate
 
 class TransactionDetailModal(QDialog):
     def __init__(self, db_manager, transaction_id, parent=None):
@@ -166,11 +166,22 @@ class SejarahTransaksiWindow(QWidget):
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(6, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(7, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(8, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(9, QHeaderView.ResizeMode.ResizeToContents)
         self.table.verticalHeader().setVisible(False)
         
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.cellDoubleClicked.connect(self.show_transaction_detail_modal)
+
+        currency_delegate = CurrencyDelegate()
+        self.table.setItemDelegateForColumn(6, currency_delegate)
+        self.table.setItemDelegateForColumn(7, currency_delegate)
+        self.table.setItemDelegateForColumn(8, currency_delegate)
+        self.table.setItemDelegateForColumn(9, currency_delegate)
+
         main_layout.addWidget(self.table)
         
         pagination_layout = QHBoxLayout()
@@ -508,6 +519,12 @@ class SejarahTransaksiWindow(QWidget):
 
     def populate_table(self):
         self.table.setRowCount(len(self.transactions_data))
+
+        def create_center_item(text):
+            item = QTableWidgetItem(text)
+            item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            return item
+
         for i, row in enumerate(self.transactions_data):
             
             dt_str = row.get("tanggal", "")
@@ -520,17 +537,14 @@ class SejarahTransaksiWindow(QWidget):
             except Exception:
                 dt_disp = dt_str
 
-            # --- Masukkan nomor urut di kolom 0 ---
-            self.table.setItem(i, 0, QTableWidgetItem(str(i + 1)))
-            
-            # --- Geser sisa data ke kolom selanjutnya ---
-            self.table.setItem(i, 1, QTableWidgetItem(str(row.get("id", ""))))
-            self.table.setItem(i, 2, QTableWidgetItem(dt_disp))
-            self.table.setItem(i, 3, QTableWidgetItem(row.get("nama_kasir", "")))
-            self.table.setItem(i, 4, QTableWidgetItem(row.get("nama_customer", "")))
+            self.table.setItem(i, 0, create_center_item(str(i + 1)))
+            self.table.setItem(i, 1, create_center_item(str(row.get("id", ""))))
+            self.table.setItem(i, 2, create_center_item(dt_disp))
+            self.table.setItem(i, 3, create_center_item(row.get("nama_kasir", "")))
+            self.table.setItem(i, 4, create_center_item(row.get("nama_customer", "")))
             
             metode = row.get("metode_bayar", "")
-            item_metode = QTableWidgetItem(metode)
+            item_metode = create_center_item(metode)
             if "tunai" in metode.lower():
                 item_metode.setForeground(QColor("#28A745"))
             elif "kartu" in metode.lower():
@@ -539,26 +553,27 @@ class SejarahTransaksiWindow(QWidget):
                 item_metode.setForeground(QColor("#FFC107"))
                 
             self.table.setItem(i, 5, item_metode)
-            self.table.setItem(i, 6, QTableWidgetItem(f"Rp {int(row.get('subtotal', 0)):,}"))
-            self.table.setItem(i, 7, QTableWidgetItem(f"Rp {int(row.get('diskon_nominal', 0)):,}"))
+
+            self.table.setItem(i, 6, QTableWidgetItem(f"Rp. {int(row.get('subtotal', 0)):,}"))
+            self.table.setItem(i, 7, QTableWidgetItem(f"Rp. {int(row.get('diskon_nominal', 0)):,}"))
 
             pembulatan = int(row.get('pembulatan', 0))
             item_pembulatan = QTableWidgetItem(self._format_pembulatan(pembulatan))
             if pembulatan > 0:
-                item_pembulatan.setForeground(QColor("#FF6B6B"))  # merah — nambah bayar
+                item_pembulatan.setForeground(QColor("#28A745"))  # merah — nambah bayar
             elif pembulatan < 0:
-                item_pembulatan.setForeground(QColor("#28A745"))  # hijau — kurang bayar
+                item_pembulatan.setForeground(QColor("#FF6B6B"))  # hijau — kurang bayar
             self.table.setItem(i, 8, item_pembulatan)
 
-            self.table.setItem(i, 9, QTableWidgetItem(f"Rp {int(row.get('total', 0)):,}"))
+            self.table.setItem(i, 9, QTableWidgetItem(f"Rp. {int(row.get('total', 0)):,}"))
 
     @staticmethod
     def _format_pembulatan(nilai: int) -> str:
         if nilai > 0:
-            return f"+Rp {nilai:,}"
+            return f"+Rp. {nilai:,}"
         elif nilai < 0:
-            return f"-Rp {abs(nilai):,}"
-        return "Rp 0"
+            return f"-Rp. {abs(nilai):,}"
+        return "Rp. 0"
 
     def _prev_page(self):
         if self.current_page > 1:

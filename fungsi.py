@@ -1,6 +1,6 @@
 from PySide6.QtCore import QSize, Qt
-from PySide6.QtWidgets import QApplication, QCalendarWidget, QPushButton
-from PySide6.QtGui import QColor, QIcon
+from PySide6.QtWidgets import QApplication, QCalendarWidget, QPushButton, QStyledItemDelegate, QStyle, QStyleOptionViewItem
+from PySide6.QtGui import QColor, QIcon, QBrush
 
 
 class ScreenSize:
@@ -141,3 +141,55 @@ class NavigationButton(QPushButton):
         """Handler ketika mouse keluar dari area tombol"""
         self.setIcon(self.icon_normal)
         super().leaveEvent(event)
+
+class CurrencyDelegate(QStyledItemDelegate):
+    def paint(self, painter, option, index):
+        # Gunakan QStyleOptionViewItem untuk membuat salinan option
+        opt = QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
+        
+        # Simpan teks aslinya ke variabel, lalu KOSONGKAN teks di dalam option
+        # Ini mencegah Qt menggambar teks bawaan sehingga tidak terjadi dobel!
+        text = opt.text
+        opt.text = "" 
+        
+        painter.save()
+        
+        # Sekarang drawControl HANYA akan menggambar background dan status highlight
+        style = opt.widget.style() if opt.widget else QApplication.style()
+        style.drawControl(QStyle.ControlElement.CE_ItemViewItem, opt, painter)
+
+        if text:
+            # Mengambil warna teks (ForegroundRole)
+            foreground = index.data(Qt.ItemDataRole.ForegroundRole)
+            
+            # Set warna pen, tangani jika tipe datanya QBrush
+            if foreground:
+                if isinstance(foreground, QBrush):
+                    painter.setPen(foreground.color())
+                else:
+                    painter.setPen(foreground)
+            elif opt.state & QStyle.StateFlag.State_Selected:
+                painter.setPen(opt.palette.highlightedText().color())
+            else:
+                painter.setPen(opt.palette.text().color())
+
+            # Memisahkan simbol (Rp/+Rp/-Rp) dengan nominal angkanya
+            parts = str(text).split(" ", 1)
+            if len(parts) == 2 and "Rp" in parts[0]:
+                simbol = parts[0]
+                nominal = parts[1]
+
+                # Gambar simbol di kiri dengan padding 5px
+                rect_kiri = opt.rect.adjusted(5, 0, 0, 0)
+                painter.drawText(rect_kiri, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, simbol)
+
+                # Gambar nominal di kanan dengan padding 5px
+                rect_kanan = opt.rect.adjusted(0, 0, -5, 0)
+                painter.drawText(rect_kanan, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, nominal)
+            else:
+                # Fallback jika format teks bukan mata uang (jaga-jaga)
+                rect_fallback = opt.rect.adjusted(0, 0, -5, 0)
+                painter.drawText(rect_fallback, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, text)
+
+        painter.restore()
