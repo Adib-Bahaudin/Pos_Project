@@ -358,6 +358,8 @@ class Dashboard(QWidget):
                 self.manajemen_widget = ManajemenProduk()
                 if self.main_stack.indexOf(self.manajemen_widget) == -1:
                     self.main_stack.addWidget(self.manajemen_widget)
+            else:
+                self.manajemen_widget.refresh_data()
             self.main_stack.setCurrentWidget(self.manajemen_widget)
         elif self.button_transaksi_left.isChecked():
             self.button_transaksi_right.setMinimumWidth(self.BUTTON_EXPANDED_WIDTH)
