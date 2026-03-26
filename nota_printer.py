@@ -3,12 +3,17 @@ from PySide6.QtGui import QTextDocument, QPageSize, QPageLayout
 from PySide6.QtCore import QSizeF, QMarginsF
 
 class NotaPrinter:
+    def __init__(self, printer_name=None):
+        self.printer_name = printer_name
+
     def print_receipt(self, data):
         printer = QPrinter(QPrinter.PrinterMode.ScreenResolution)
-
-        # Debug Only
-        #printer.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
-        #printer.setOutputFileName("test_nota.pdf")
+        if self.printer_name:
+            printer.setPrinterName(self.printer_name)
+        else:
+            # Debug Only
+            printer.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
+            printer.setOutputFileName("test_nota.pdf")
         
         page_size = QPageSize(QSizeF(58, 200), QPageSize.Unit.Millimeter)
         printer.setPageSize(page_size)
