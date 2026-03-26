@@ -59,11 +59,18 @@ class TransactionDetailModal(QDialog):
         layout.addWidget(self.lbl_info)
         
         self.table_items = QTableWidget()
+        self.table_items.verticalHeader().setVisible(False)
         self.table_items.setAlternatingRowColors(True)
         self.table_items.setShowGrid(False)
-        self.table_items.setColumnCount(4)
-        self.table_items.setHorizontalHeaderLabels(["Barang", "Harga", "Qty", "Subtotal"])
-        self.table_items.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.table_items.setColumnCount(5)
+        self.table_items.setHorizontalHeaderLabels(["No", "Barang", "Harga", "Qty", "Subtotal"])
+        
+        header = self.table_items.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
         self.table_items.setStyleSheet("""
             QTableWidget { 
                 background-color: #2d2d2d; 
@@ -85,8 +92,8 @@ class TransactionDetailModal(QDialog):
         self.table_items.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
         currency_delegate = CurrencyDelegate(horizontal_padding=25, parent=self.table_items)
-        self.table_items.setItemDelegateForColumn(1, currency_delegate)
-        self.table_items.setItemDelegateForColumn(3, currency_delegate)
+        self.table_items.setItemDelegateForColumn(2, currency_delegate)
+        self.table_items.setItemDelegateForColumn(4, currency_delegate)
 
         layout.addWidget(self.table_items)
 
@@ -168,10 +175,16 @@ class TransactionDetailModal(QDialog):
             qty = int(item.get("jumlah", 0))
             subtotal = harga * qty
             
-            self.table_items.setItem(i, 0, QTableWidgetItem(nama))
-            self.table_items.setItem(i, 1, QTableWidgetItem(f"Rp. {harga:,}"))
-            self.table_items.setItem(i, 2, QTableWidgetItem(str(qty)))
-            self.table_items.setItem(i, 3, QTableWidgetItem(f"Rp. {subtotal:,}"))
+            item_no = QTableWidgetItem(str(i + 1))
+            item_no.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            item_qty = QTableWidgetItem(str(qty))
+            item_qty.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            
+            self.table_items.setItem(i, 0, item_no)
+            self.table_items.setItem(i, 1, QTableWidgetItem(nama))
+            self.table_items.setItem(i, 2, QTableWidgetItem(f"Rp. {harga:,}"))
+            self.table_items.setItem(i, 3, item_qty)
+            self.table_items.setItem(i, 4, QTableWidgetItem(f"Rp. {subtotal:,}"))
 
         pembulatan = int(header.get('pembulatan') or 0)
         total = int(header.get('total') or 0)
