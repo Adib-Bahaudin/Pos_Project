@@ -2,7 +2,8 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QTableWidget, QTableWidgetItem, QHeaderView, QWidget
+    QTableWidget, QTableWidgetItem, QHeaderView, QWidget,
+    QGridLayout
 )
 
 from dialog_title_bar import DialogTitleBar
@@ -67,9 +68,36 @@ class TransactionDetailModal(QDialog):
         self.table_items.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         layout.addWidget(self.table_items)
 
-        self.lbl_laba = QLabel("")
-        self.lbl_laba.setFont(QFont("Arial", 11, QFont.Weight.Bold))
-        layout.addWidget(self.lbl_laba)
+        self.summary_widget = QWidget()
+        summary_layout = QGridLayout(self.summary_widget)
+        summary_layout.setContentsMargins(0, 5, 0, 5)
+        
+        summary_layout.setColumnStretch(0, 1)
+        summary_layout.setColumnStretch(1, 1)
+        summary_layout.setColumnStretch(2, 1)
+        summary_layout.setColumnStretch(3, 1)
+        
+        self.lbl_biaya_text = QLabel("Biaya Lain-Lain : Rp")
+        self.lbl_biaya_value = QLabel("0")
+        self.lbl_total_text = QLabel("Total : Rp")
+        self.lbl_total_value = QLabel("0")
+        
+        self.lbl_biaya_text.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignRight)
+        self.lbl_biaya_value.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignRight)
+        self.lbl_total_text.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignRight)
+        self.lbl_total_value.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignRight)
+        
+        self.lbl_biaya_text.setFont(QFont("Arial", 11))
+        self.lbl_biaya_value.setFont(QFont("Arial", 11))
+        self.lbl_total_text.setFont(QFont("Arial", 11, QFont.Weight.Bold))
+        self.lbl_total_value.setFont(QFont("Arial", 11, QFont.Weight.Bold))
+        
+        summary_layout.addWidget(self.lbl_biaya_text, 0, 2)
+        summary_layout.addWidget(self.lbl_biaya_value, 0, 3)
+        summary_layout.addWidget(self.lbl_total_text, 1, 2)
+        summary_layout.addWidget(self.lbl_total_value, 1, 3)
+        
+        layout.addWidget(self.summary_widget)
 
         btn_layout = QHBoxLayout()
         btn_close = QPushButton("Tutup")
@@ -94,7 +122,6 @@ class TransactionDetailModal(QDialog):
         info_text += f"<b>Kasir:</b> {header.get('nama_kasir', '')} <br/>"
         info_text += f"<b>Customer:</b> {header.get('nama_customer', '')} <br/>"
         info_text += f"<b>Metode Bayar:</b> {header.get('metode_bayar', '')} <br/>"
-        info_text += f"<b>Total:</b> Rp {int(header.get('total', 0)):,} <br/>"
         
         if header.get('catatan'):
             info_text += f"<b>Catatan:</b> {header.get('catatan', '')}"
@@ -113,8 +140,8 @@ class TransactionDetailModal(QDialog):
             self.table_items.setItem(i, 2, QTableWidgetItem(str(qty)))
             self.table_items.setItem(i, 3, QTableWidgetItem(f"Rp {subtotal:,}"))
 
-        if laba:
-            laba_bersih = int(laba.get('laba_bersih', 0))
-            self.lbl_laba.setText(f"Laba Bersih Transaksi: Rp {laba_bersih:,}")
-        else:
-            self.lbl_laba.setText("Laba: Tidak tersedia")
+        pembulatan = int(header.get('pembulatan') or 0)
+        total = int(header.get('total') or 0)
+        
+        self.lbl_biaya_value.setText(f"{pembulatan:,}")
+        self.lbl_total_value.setText(f"{total:,}")
