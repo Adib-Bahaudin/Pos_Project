@@ -4,22 +4,30 @@ from PySide6.QtCore import QSizeF, QMarginsF
 
 class NotaPrinter:
     def print_receipt(self, data):
-        printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+        # PERBAIKAN 1: Gunakan ScreenResolution agar rendering ukuran HTML (px/pt) stabil dan akurat
+        printer = QPrinter(QPrinter.PrinterMode.ScreenResolution)
 
-        #Debug Only
+        # Debug Only (Hapus atau beri komentar 2 baris ini saat print ke mesin kasir asli)
         printer.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
         printer.setOutputFileName("test_nota.pdf")
         
-        # Configure HighResolution thermal printer settings
+        # Configure thermal printer settings (58mm width, Auto height/200mm)
         page_size = QPageSize(QSizeF(58, 200), QPageSize.Unit.Millimeter)
         printer.setPageSize(page_size)
-        printer.setPageMargins(QMarginsF(0, 0, 0, 0), QPageLayout.Unit.Millimeter)
+        
+        # PERBAIKAN 2: Berikan margin tipis di level printer (misal 2mm) agar teks tidak menyentuh ujung kertas
+        printer.setPageMargins(QMarginsF(2, 2, 2, 2), QPageLayout.Unit.Millimeter)
         
         doc = QTextDocument()
+        
+        # PERBAIKAN 3: Kunci lebar dokumen HTML mengikuti ukuran area cetak printer
+        doc.setPageSize(printer.pageRect(QPrinter.Unit.Point).size())
+        doc.setDocumentMargin(0) # Hapus margin internal bawaan QTextDocument
         
         header_data = data.get('header', {})
         items = data.get('items', [])
         
+        # PERBAIKAN 4: Hapus padding dari body CSS karena sudah ditangani oleh QMarginsF
         html = """
         <html>
         <head>
@@ -29,7 +37,6 @@ class NotaPrinter:
                 font-size: 9pt;
                 color: black;
                 margin: 0;
-                padding: 10px;
             }
             .center { text-align: center; }
             .right { text-align: right; }
@@ -47,6 +54,10 @@ class NotaPrinter:
                 padding: 2px 0; 
                 vertical-align: top; 
             }
+            /* Menjaga lebar kolom info agar proporsional */
+            .col-label { width: 35%; }
+            .col-colon { width: 5%; }
+            .col-value { width: 60%; }
         </style>
         </head>
         <body>
@@ -54,11 +65,11 @@ class NotaPrinter:
             <div class="center">Alamat Toko<br>Telp: 08123456789</div>
             <hr>
             <table>
-                <tr><td style="width: 40%;">ID</td><td>: """ + str(header_data.get('id', '')) + """</td></tr>
-                <tr><td>Tanggal</td><td>: """ + str(header_data.get('tanggal', '')) + """</td></tr>
-                <tr><td>Kasir</td><td>: """ + str(header_data.get('nama_kasir', '')) + """</td></tr>
-                <tr><td>Customer</td><td>: """ + str(header_data.get('nama_customer', '')) + """</td></tr>
-                <tr><td>Metode</td><td>: """ + str(header_data.get('metode_bayar', '')) + """</td></tr>
+                <tr><td class="col-label">ID</td><td class="col-colon">:</td><td class="col-value">""" + str(header_data.get('id', '')) + """</td></tr>
+                <tr><td class="col-label">Tanggal</td><td class="col-colon">:</td><td class="col-value">""" + str(header_data.get('tanggal', '')) + """</td></tr>
+                <tr><td class="col-label">Kasir</td><td class="col-colon">:</td><td class="col-value">""" + str(header_data.get('nama_kasir', '')) + """</td></tr>
+                <tr><td class="col-label">Customer</td><td class="col-colon">:</td><td class="col-value">""" + str(header_data.get('nama_customer', '')) + """</td></tr>
+                <tr><td class="col-label">Metode</td><td class="col-colon">:</td><td class="col-value">""" + str(header_data.get('metode_bayar', '')) + """</td></tr>
             </table>
             <hr>
             <table>
