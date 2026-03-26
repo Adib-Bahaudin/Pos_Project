@@ -176,7 +176,7 @@ class SejarahTransaksiWindow(QWidget):
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.cellDoubleClicked.connect(self.show_transaction_detail_modal)
 
-        currency_delegate = CurrencyDelegate()
+        currency_delegate = CurrencyDelegate(horizontal_padding=25, parent=self.table)
         self.table.setItemDelegateForColumn(6, currency_delegate)
         self.table.setItemDelegateForColumn(7, currency_delegate)
         self.table.setItemDelegateForColumn(8, currency_delegate)

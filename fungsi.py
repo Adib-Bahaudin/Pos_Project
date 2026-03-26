@@ -143,27 +143,33 @@ class NavigationButton(QPushButton):
         super().leaveEvent(event)
 
 class CurrencyDelegate(QStyledItemDelegate):
+    # 1. Tambahkan parameter horizontal_padding di init
+    def __init__(self, horizontal_padding=15, parent=None):
+        super().__init__(parent)
+        self.horizontal_padding = horizontal_padding
+
+    # 2. Tambahkan sizeHint untuk memanipulasi lebar kolom saat di-ResizeToContents
+    def sizeHint(self, option, index):
+        size = super().sizeHint(option, index)
+        # Tambahkan ruang ekstra ke kiri dan kanan sesuai nilai padding
+        size.setWidth(size.width() + (self.horizontal_padding * 2))
+        size.setHeight(size.height() + 8) 
+        return size
+
     def paint(self, painter, option, index):
-        # Gunakan QStyleOptionViewItem untuk membuat salinan option
         opt = QStyleOptionViewItem(option)
         self.initStyleOption(opt, index)
         
-        # Simpan teks aslinya ke variabel, lalu KOSONGKAN teks di dalam option
-        # Ini mencegah Qt menggambar teks bawaan sehingga tidak terjadi dobel!
         text = opt.text
         opt.text = "" 
         
         painter.save()
         
-        # Sekarang drawControl HANYA akan menggambar background dan status highlight
         style = opt.widget.style() if opt.widget else QApplication.style()
         style.drawControl(QStyle.ControlElement.CE_ItemViewItem, opt, painter)
 
         if text:
-            # Mengambil warna teks (ForegroundRole)
             foreground = index.data(Qt.ItemDataRole.ForegroundRole)
-            
-            # Set warna pen, tangani jika tipe datanya QBrush
             if foreground:
                 if isinstance(foreground, QBrush):
                     painter.setPen(foreground.color())
@@ -174,22 +180,20 @@ class CurrencyDelegate(QStyledItemDelegate):
             else:
                 painter.setPen(opt.palette.text().color())
 
-            # Memisahkan simbol (Rp/+Rp/-Rp) dengan nominal angkanya
             parts = str(text).split(" ", 1)
             if len(parts) == 2 and "Rp" in parts[0]:
                 simbol = parts[0]
                 nominal = parts[1]
 
-                # Gambar simbol di kiri dengan padding 5px
-                rect_kiri = opt.rect.adjusted(5, 0, 0, 0)
+                # 3. Gunakan self.horizontal_padding sebagai jarak dari tepi kiri
+                rect_kiri = opt.rect.adjusted(self.horizontal_padding, 0, 0, 0)
                 painter.drawText(rect_kiri, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, simbol)
 
-                # Gambar nominal di kanan dengan padding 5px
-                rect_kanan = opt.rect.adjusted(0, 0, -5, 0)
+                # 4. Gunakan -self.horizontal_padding sebagai jarak dari tepi kanan
+                rect_kanan = opt.rect.adjusted(0, 0, -self.horizontal_padding, 0)
                 painter.drawText(rect_kanan, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, nominal)
             else:
-                # Fallback jika format teks bukan mata uang (jaga-jaga)
-                rect_fallback = opt.rect.adjusted(0, 0, -5, 0)
+                rect_fallback = opt.rect.adjusted(0, 0, -self.horizontal_padding, 0)
                 painter.drawText(rect_fallback, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, text)
 
         painter.restore()
