@@ -77,25 +77,33 @@ class TransactionDetailModal(QDialog):
         summary_layout.setColumnStretch(2, 1)
         summary_layout.setColumnStretch(3, 1)
         
-        self.lbl_biaya_text = QLabel("Biaya Lain-Lain : Rp")
+        self.lbl_diskon_text = QLabel("Diskon : Rp.")
+        self.lbl_diskon_value = QLabel("0")
+        self.lbl_biaya_text = QLabel("Biaya Lain-Lain : Rp.")
         self.lbl_biaya_value = QLabel("0")
-        self.lbl_total_text = QLabel("Total : Rp")
+        self.lbl_total_text = QLabel("Total : Rp.")
         self.lbl_total_value = QLabel("0")
         
-        self.lbl_biaya_text.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignRight)
-        self.lbl_biaya_value.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignRight)
-        self.lbl_total_text.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignRight)
-        self.lbl_total_value.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignRight)
+        self.lbl_diskon_text.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.lbl_diskon_value.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.lbl_biaya_text.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.lbl_biaya_value.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.lbl_total_text.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.lbl_total_value.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         
+        self.lbl_diskon_text.setFont(QFont("Arial", 11))
+        self.lbl_diskon_value.setFont(QFont("Arial", 11))
         self.lbl_biaya_text.setFont(QFont("Arial", 11))
         self.lbl_biaya_value.setFont(QFont("Arial", 11))
         self.lbl_total_text.setFont(QFont("Arial", 11, QFont.Weight.Bold))
         self.lbl_total_value.setFont(QFont("Arial", 11, QFont.Weight.Bold))
         
-        summary_layout.addWidget(self.lbl_biaya_text, 0, 2)
-        summary_layout.addWidget(self.lbl_biaya_value, 0, 3)
-        summary_layout.addWidget(self.lbl_total_text, 1, 2)
-        summary_layout.addWidget(self.lbl_total_value, 1, 3)
+        summary_layout.addWidget(self.lbl_diskon_text, 0, 2)
+        summary_layout.addWidget(self.lbl_diskon_value, 0, 3)
+        summary_layout.addWidget(self.lbl_biaya_text, 1, 2)
+        summary_layout.addWidget(self.lbl_biaya_value, 1, 3)
+        summary_layout.addWidget(self.lbl_total_text, 2, 2)
+        summary_layout.addWidget(self.lbl_total_value, 2, 3)
         
         layout.addWidget(self.summary_widget)
 
@@ -136,12 +144,33 @@ class TransactionDetailModal(QDialog):
             subtotal = harga * qty
             
             self.table_items.setItem(i, 0, QTableWidgetItem(nama))
-            self.table_items.setItem(i, 1, QTableWidgetItem(f"Rp {harga:,}"))
+            self.table_items.setItem(i, 1, QTableWidgetItem(f"Rp. {harga:,}"))
             self.table_items.setItem(i, 2, QTableWidgetItem(str(qty)))
-            self.table_items.setItem(i, 3, QTableWidgetItem(f"Rp {subtotal:,}"))
+            self.table_items.setItem(i, 3, QTableWidgetItem(f"Rp. {subtotal:,}"))
 
         pembulatan = int(header.get('pembulatan') or 0)
         total = int(header.get('total') or 0)
+        diskon_nominal = int(header.get('diskon_nominal') or 0)
+        diskon_persen = float(header.get('diskon_persen') or 0)
         
+        if diskon_persen > 0:
+            self.lbl_diskon_value.setText(f"{diskon_nominal:,} ({diskon_persen:g}%)")
+        else:
+            self.lbl_diskon_value.setText(f"{diskon_nominal:,}")
+
+        if diskon_nominal == 0:
+            self.lbl_diskon_text.hide()
+            self.lbl_diskon_value.hide()
+        else:
+            self.lbl_diskon_text.show()
+            self.lbl_diskon_value.show()
+
+        if pembulatan == 0:
+            self.lbl_biaya_text.hide()
+            self.lbl_biaya_value.hide()
+        else:
+            self.lbl_biaya_text.show()
+            self.lbl_biaya_value.show()
+            
         self.lbl_biaya_value.setText(f"{pembulatan:,}")
         self.lbl_total_value.setText(f"{total:,}")
