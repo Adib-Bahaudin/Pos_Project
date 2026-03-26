@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
 )
 
 from dialog_title_bar import DialogTitleBar
+from fungsi import CurrencyDelegate
 
 
 class TransactionDetailModal(QDialog):
@@ -58,14 +59,35 @@ class TransactionDetailModal(QDialog):
         layout.addWidget(self.lbl_info)
         
         self.table_items = QTableWidget()
+        self.table_items.setAlternatingRowColors(True)
+        self.table_items.setShowGrid(False)
         self.table_items.setColumnCount(4)
         self.table_items.setHorizontalHeaderLabels(["Barang", "Harga", "Qty", "Subtotal"])
         self.table_items.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table_items.setStyleSheet("""
-            QTableWidget { background-color: #2b2b2b; color: white; border: 1px solid #444; }
-            QHeaderView::section { background-color: #1e1e1e; color: white; padding: 4px; }
+            QTableWidget { 
+                background-color: #2d2d2d; 
+                alternate-background-color: #545454; 
+                color: white; 
+                border: 1px solid #444; 
+                outline: none; 
+            }
+            QHeaderView::section:horizontal {
+                background-color: #a6a6a6;
+                color: black; 
+                font-weight: bold;
+                border: none; 
+                padding: 6px; 
+            }
         """)
         self.table_items.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table_items.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
+        self.table_items.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+
+        currency_delegate = CurrencyDelegate(horizontal_padding=25, parent=self.table_items)
+        self.table_items.setItemDelegateForColumn(1, currency_delegate)
+        self.table_items.setItemDelegateForColumn(3, currency_delegate)
+
         layout.addWidget(self.table_items)
 
         self.summary_widget = QWidget()
@@ -125,14 +147,17 @@ class TransactionDetailModal(QDialog):
         items = data['items']
         laba = header.get('laba')
 
-        info_text = f"<b>ID Transaksi:</b> {header.get('id', '')} <br/>"
-        info_text += f"<b>Waktu:</b> {header.get('tanggal', '')} <br/>"
-        info_text += f"<b>Kasir:</b> {header.get('nama_kasir', '')} <br/>"
-        info_text += f"<b>Customer:</b> {header.get('nama_customer', '')} <br/>"
-        info_text += f"<b>Metode Bayar:</b> {header.get('metode_bayar', '')} <br/>"
+        info_text = "<table cellspacing='0' cellpadding='2'>"
+        info_text += f"<tr><td><b>ID Transaksi</b></td><td><b>:</b></td><td>{header.get('id', '')}</td></tr>"
+        info_text += f"<tr><td><b>Waktu</b></td><td><b>:</b></td><td>{header.get('tanggal', '')}</td></tr>"
+        info_text += f"<tr><td><b>Kasir</b></td><td><b>:</b></td><td>{header.get('nama_kasir', '')}</td></tr>"
+        info_text += f"<tr><td><b>Customer</b></td><td><b>:</b></td><td>{header.get('nama_customer', '')}</td></tr>"
+        info_text += f"<tr><td><b>Metode Bayar</b></td><td><b>:</b></td><td>{header.get('metode_bayar', '')}</td></tr>"
         
         if header.get('catatan'):
-            info_text += f"<b>Catatan:</b> {header.get('catatan', '')}"
+            info_text += f"<tr><td><b>Catatan</b></td><td><b>:</b></td><td>{header.get('catatan', '')}</td></tr>"
+            
+        info_text += "</table>"
 
         self.lbl_info.setText(info_text)
 
