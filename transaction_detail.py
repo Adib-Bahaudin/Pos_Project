@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
 
 from dialog_title_bar import DialogTitleBar
 from fungsi import CurrencyDelegate
+from nota_printer import NotaPrinter
 
 
 class TransactionDetailModal(QDialog):
@@ -137,15 +138,23 @@ class TransactionDetailModal(QDialog):
         layout.addWidget(self.summary_widget)
 
         btn_layout = QHBoxLayout()
+        
+        btn_print = QPushButton("Cetak Nota")
+        btn_print.setStyleSheet("background-color: #0d6efd; color: white; padding: 8px; border-radius: 4px;")
+        btn_print.clicked.connect(self._print_nota)
+        
         btn_close = QPushButton("Tutup")
         btn_close.setStyleSheet("background-color: #dc3545; color: white; padding: 8px; border-radius: 4px;")
         btn_close.clicked.connect(self.accept)
+        
         btn_layout.addStretch()
+        btn_layout.addWidget(btn_print)
         btn_layout.addWidget(btn_close)
         layout.addLayout(btn_layout)
 
     def _load_data(self):
-        data = self.db.get_transaction_detail_with_items(self.transaction_id)
+        self.transaction_data = self.db.get_transaction_detail_with_items(self.transaction_id)
+        data = self.transaction_data
         if not data:
             self.lbl_info.setText("Data tidak ditemukan.")
             return
@@ -212,3 +221,8 @@ class TransactionDetailModal(QDialog):
             
         self.lbl_biaya_value.setText(f"{pembulatan:,}")
         self.lbl_total_value.setText(f"{total:,}")
+
+    def _print_nota(self):
+        if hasattr(self, 'transaction_data') and self.transaction_data:
+            printer = NotaPrinter()
+            printer.print_receipt(self.transaction_data)
