@@ -206,8 +206,7 @@ class TambahBarangBaru(QDialog):
         button_layout = QHBoxLayout()
         button_layout.setContentsMargins(60,0,60,0)
 
-        self.btn_import_csv = QPushButton("Impor dari CSV...")
-        self.btn_import_csv.setStyleSheet("""
+        link_btn_style = """
             QPushButton {
                 background-color: transparent;
                 border: none;
@@ -218,10 +217,24 @@ class TambahBarangBaru(QDialog):
             QPushButton:hover {
                 text-decoration: underline;
             }
-        """)
+        """
+
+        link_buttons_layout = QVBoxLayout()
+        link_buttons_layout.setSpacing(2)
+
+        self.btn_import_csv = QPushButton("Impor dari CSV...")
+        self.btn_import_csv.setStyleSheet(link_btn_style)
         self.btn_import_csv.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_import_csv.clicked.connect(self.import_csv_dialog)
-        button_layout.addWidget(self.btn_import_csv)
+        link_buttons_layout.addWidget(self.btn_import_csv)
+
+        self.btn_download_template = QPushButton("Unduh Template CSV...")
+        self.btn_download_template.setStyleSheet(link_btn_style)
+        self.btn_download_template.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_download_template.clicked.connect(self.download_template_csv)
+        link_buttons_layout.addWidget(self.btn_download_template)
+
+        button_layout.addLayout(link_buttons_layout)
 
         button_layout.addStretch()
 
@@ -411,6 +424,42 @@ class TambahBarangBaru(QDialog):
                     QMessageBox.warning(self, "Impor Selesai dengan Peringatan", msg)
                 else:
                     QMessageBox.critical(self, "Impor Gagal", msg)
+
+    def download_template_csv(self):
+        import os
+        import shutil
+        from PySide6.QtWidgets import QFileDialog, QMessageBox
+
+        sumber = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                              "data", "system_files", "template_import.csv")
+
+        if not os.path.exists(sumber):
+            QMessageBox.critical(
+                self, "Error",
+                "File template sumber tidak ditemukan.\n"
+                f"Path: {sumber}"
+            )
+            return
+
+        tujuan, _ = QFileDialog.getSaveFileName(
+            self,
+            "Simpan Template CSV",
+            "Template_Impor_Produk.csv",
+            "CSV Files (*.csv)"
+        )
+
+        if tujuan:
+            try:
+                shutil.copy2(sumber, tujuan)
+                QMessageBox.information(
+                    self, "Berhasil",
+                    f"Template berhasil disimpan ke:\n{tujuan}"
+                )
+            except Exception as e:
+                QMessageBox.critical(
+                    self, "Gagal",
+                    f"Gagal menyimpan template:\n{str(e)}"
+                )
 
     @staticmethod
     def validate_fields_not_empty(**fields):
