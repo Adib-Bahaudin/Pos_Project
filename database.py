@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import hashlib
 import sqlite3
 import os
+import csv
 from zoneinfo import ZoneInfo
 
 import jwt
@@ -1374,3 +1375,64 @@ class DatabaseManager:
 
         conn.close()
         return stats
+
+    def import_batch_csv(self, filepath):
+        hasil = {"berhasil": 0, "gagal": 0, "errors": []}
+        try:
+            with open(filepath, mode='r', encoding='utf-8-sig') as file:
+                reader = csv.DictReader(file)
+                if not reader.fieldnames:
+                    hasil["error_format"] = "File CSV kosong atau tidak valid."
+                    return hasil
+                
+                headers = [h.strip().lower() for h in reader.fieldnames]
+                reader.fieldnames = headers
+                
+                required = ['jenis', 'sku', 'nama', 'harga_jual', 'harga_beli', 'stok', 'konversi', 'nama_barang_satuan']
+                if not all(r in headers for r in required):
+                    hasil["error_format"] = "Format header CSV tidak sesuai! Pastikan ada kolom: jenis, sku, nama, harga_jual, harga_beli, stok, konversi, nama_barang_satuan."
+                    return hasil
+                
+                for r_idx, row in enumerate(reader, start=2):
+                    jenis = row.get('jenis', '').strip().lower()
+                    sku = row.get('sku', '').strip()
+                    nama = row.get('nama', '').strip()
+                    
+                    try:
+                        harga_jual = int(float(row.get('harga_jual') or 0))
+                        harga_beli = int(float(row.get('harga_beli') or 0))
+                        stok = int(float(row.get('stok') or 0))
+                        konversi = int(float(row.get('konversi') or 0))
+                    except ValueError:
+                        hasil["gagal"] += 1
+                        hasil["errors"].append(f"Baris {r_idx}: Format angka salah pada SKU '{sku}'.")
+                        continue
+                        
+                    nama_satuan = row.get('nama_barang_satuan', '').strip()
+                    
+                    if jenis == 'satuan':
+                        valid = self.verify_is_valid('satuan', sku, nama)
+                        if valid['is_valid']:
+                            tanggal = datetime.now().isoformat()
+                            self.insert_barang_baru_satuan(sku, nama, harga_jual, harga_beli, stok, tanggal)
+                            hasil["berhasil"] += 1
+                        else:
+                            hasil["gagal"] += 1
+                            hasil["errors"].append(f"Baris {r_idx}: Satuan SKU '{sku}' atau Nama '{nama}' sudah ada.")
+                    elif jenis == 'paket':
+                        valid = self.verify_is_valid('paket', sku, nama, nama_satuan)
+                        if valid['is_valid']:
+                            self.insert_barang_baru_paket(nama, harga_jual, nama_satuan, sku, konversi)
+                            hasil["berhasil"] += 1
+                        else:
+                            hasil["gagal"] += 1
+                            hasil["errors"].append(f"Baris {r_idx}: Paket SKU '{sku}'/'{nama}' gagal validasi atau Satuan '{nama_satuan}' tidak ada.")
+                    else:
+                        hasil["gagal"] += 1
+                        hasil["errors"].append(f"Baris {r_idx}: Jenis '{jenis}' tidak dimengerti.")
+                        
+        except Exception as e:
+            hasil["error_format"] = f"Error membaca file CSV: {str(e)}"
+            
+        return hasil
+

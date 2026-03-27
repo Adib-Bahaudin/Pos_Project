@@ -206,6 +206,25 @@ class TambahBarangBaru(QDialog):
         button_layout = QHBoxLayout()
         button_layout.setContentsMargins(60,0,60,0)
 
+        self.btn_import_csv = QPushButton("Impor dari CSV...")
+        self.btn_import_csv.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: none;
+                color: #90EE90;
+                text-decoration: none;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                text-decoration: underline;
+            }
+        """)
+        self.btn_import_csv.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_import_csv.clicked.connect(self.import_csv_dialog)
+        button_layout.addWidget(self.btn_import_csv)
+
+        button_layout.addStretch()
+
         self.btn_batal = QPushButton("Batal")
         self.btn_batal.setStyleSheet("""
             QPushButton {
@@ -216,7 +235,7 @@ class TambahBarangBaru(QDialog):
                 padding: 10px 30px;
                 font-size: 14px;
                 font-weight: 600;
-                min-width: 120px;
+                min-width: 100px;
             }
             QPushButton:hover {
                 background-color: #5500ff;
@@ -231,7 +250,7 @@ class TambahBarangBaru(QDialog):
         self.btn_batal.clicked.connect(self.reject)
         button_layout.addWidget(self.btn_batal)
 
-        button_layout.addStretch()
+        #button_layout.addStretch()
 
         self.btn_tambahkan = QPushButton("Tambahkan")
         self.btn_tambahkan.setStyleSheet("""
@@ -243,7 +262,7 @@ class TambahBarangBaru(QDialog):
                 padding: 10px 30px;
                 font-size: 14px;
                 font-weight: bold;
-                min-width: 140px;
+                min-width: 100px;
             }
             QPushButton:hover {
                 background-color: #aaffff;
@@ -347,6 +366,51 @@ class TambahBarangBaru(QDialog):
                 "per_satuan": self.convert.get_data(),
                 "sku": self.sku.get_data(),
             }
+
+    def import_csv_dialog(self):
+        from PySide6.QtWidgets import QFileDialog, QMessageBox
+        import csv
+
+        filepath, _ = QFileDialog.getOpenFileName(
+            self,
+            "Pilih File CSV",
+            "",
+            "CSV Files (*.csv)"
+        )
+        if filepath:
+            try:
+                with open(filepath, mode='r', encoding='utf-8-sig') as f:
+                    reader = csv.reader(f)
+                    headers = next(reader, None)
+                    if not headers:
+                        raise ValueError("File kosong")
+            except Exception as e:
+                QMessageBox.critical(self, "Error Format", f"Format file salah atau tidak dapat dibaca: {str(e)}")
+                return
+                
+            db = DatabaseManager()
+            hasil = db.import_batch_csv(filepath)
+            
+            if "error_format" in hasil:
+                QMessageBox.critical(self, "Gagal", hasil["error_format"])
+            else:
+                berhasil = hasil.get("berhasil", 0)
+                gagal = hasil.get("gagal", 0)
+                errors = hasil.get("errors", [])
+                
+                msg = f"Berhasil diimpor: {berhasil}\nGagal diimpor: {gagal}"
+                if errors:
+                    err_str = "\n".join(errors[:5])
+                    if len(errors) > 5:
+                        err_str += f"\n... dan {len(errors) - 5} baris lainnya."
+                    msg += f"\n\nDetail:\n{err_str}"
+                    
+                if gagal == 0 and berhasil > 0:
+                    QMessageBox.information(self, "Impor Berhasil", msg)
+                elif berhasil > 0:
+                    QMessageBox.warning(self, "Impor Selesai dengan Peringatan", msg)
+                else:
+                    QMessageBox.critical(self, "Impor Gagal", msg)
 
     @staticmethod
     def validate_fields_not_empty(**fields):
