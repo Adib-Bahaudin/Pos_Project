@@ -6,8 +6,7 @@ from PySide6.QtGui import QFont, QColor, QPixmap, QTextCharFormat
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QHeaderView, QComboBox,
-    QDateEdit, QLineEdit, QFrame, QMessageBox,
-    QDialog, QFileDialog
+    QDateEdit, QLineEdit, QFrame, QFileDialog
 )
 import openpyxl
 from openpyxl.styles import Font
@@ -22,6 +21,7 @@ HAS_REPORTLAB = True
 from database import DatabaseManager
 from fungsi import CustomCalendar, NavigationButton, CurrencyDelegate
 from transaction_detail import TransactionDetailModal
+from message import CustomMessageBox
 
 
 class SejarahTransaksiWindow(QWidget):
@@ -516,13 +516,13 @@ class SejarahTransaksiWindow(QWidget):
 
     def export_to_excel(self):
         if not HAS_OPENPYXL:
-            QMessageBox.warning(self, "Error", "openpyxl belum terinstall. Silakan 'pip install -r requirements.txt'")
+            CustomMessageBox.warning(self, "Error", "openpyxl belum terinstall. Silakan 'pip install -r requirements.txt'")
             return
             
         filters = self._get_filter_values()
         all_data = self.db.get_transaction_history(filters, limit=10000)
         if not all_data:
-            QMessageBox.information(self, "Info", "Tidak ada data untuk diexport.")
+            CustomMessageBox.information(self, "Info", "Tidak ada data untuk diexport.")
             return
             
         default_name = f"transaksi_{filters['date_from']}_{filters['date_to']}.xlsx"
@@ -554,22 +554,22 @@ class SejarahTransaksiWindow(QWidget):
                     ws.cell(row=row_idx, column=10, value=data.get("metode_bayar"))
                     ws.cell(row=row_idx, column=11, value=data.get("catatan"))
             else:
-                QMessageBox.critical(self, "Error", "Gagal membuat worksheet Excel")
+                CustomMessageBox.critical(self, "Error", "Gagal membuat worksheet Excel")
                 
             wb.save(path)
-            QMessageBox.information(self, "Sukses", f"Data berhasil diexport ke:\n{path}")
+            CustomMessageBox.information(self, "Sukses", f"Data berhasil diexport ke:\n{path}")
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Gagal export Excel: {str(e)}")
+            CustomMessageBox.critical(self, "Error", f"Gagal export Excel: {str(e)}")
 
     def export_to_pdf(self):
         if not HAS_REPORTLAB:
-            QMessageBox.warning(self, "Error", "reportlab belum terinstall. Silakan 'pip install -r requirements.txt'")
+            CustomMessageBox.warning(self, "Error", "reportlab belum terinstall. Silakan 'pip install -r requirements.txt'")
             return
             
         filters = self._get_filter_values()
         all_data = self.db.get_transaction_history(filters, limit=10000)
         if not all_data:
-            QMessageBox.information(self, "Info", "Tidak ada data untuk diexport.")
+            CustomMessageBox.information(self, "Info", "Tidak ada data untuk diexport.")
             return
             
         default_name = f"transaksi_{filters['date_from']}_{filters['date_to']}.pdf"
@@ -615,9 +615,9 @@ class SejarahTransaksiWindow(QWidget):
             elements.append(t)
             doc.build(elements)
             
-            QMessageBox.information(self, "Sukses", f"Data berhasil diexport ke:\n{path}")
+            CustomMessageBox.information(self, "Sukses", f"Data berhasil diexport ke:\n{path}")
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Gagal export PDF: {str(e)}")
+            CustomMessageBox.critical(self, "Error", f"Gagal export PDF: {str(e)}")
 
     def refresh_data(self):
         """
