@@ -4,11 +4,13 @@ from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout,
     QFrame, QLabel, QLineEdit, QComboBox, QPushButton, QTableWidget, QAbstractItemView, QHeaderView, QGridLayout,
-    QTextEdit, QCompleter, QTableWidgetItem, QSpinBox, QAbstractSpinBox, QScrollArea, QCheckBox
+    QTextEdit, QCompleter, QTableWidgetItem, QSpinBox, QAbstractSpinBox, QScrollArea, QCheckBox, QDialog
 )
 
 from database import DatabaseManager
 from discount import DiscountPopup
+from nota_printer import NotaPrinter
+from printer_selection import PrinterSelectionDialog
 
 
 class PenjualanWindow(QWidget):
@@ -949,8 +951,13 @@ class PenjualanWindow(QWidget):
         customer_name = result.get("customer_name", "Pelanggan Umum")
 
         if self.print_checkbox.isChecked():
-            self.transaction_data = self.db_manager.get_transaction_detail_with_items(transaction_id)
-            pass
+            transaction_data = self.db_manager.get_transaction_detail_with_items(transaction_id)
+            if transaction_data:
+                dialog = PrinterSelectionDialog(self)
+                if dialog.exec() == QDialog.DialogCode.Accepted:
+                    selected_printer = dialog.get_selected_printer()
+                    printer = NotaPrinter(printer_name=selected_printer)
+                    printer.print_receipt(transaction_data)
 
         self._clear_cart()
         self.search_hint_label.setText(
