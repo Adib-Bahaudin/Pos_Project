@@ -35,9 +35,6 @@ import sys
 import os
 
 
-# ──────────────────────────────────────────────────────────────
-# Helper: map QDialogButtonBox role → QMessageBox.StandardButton
-# ──────────────────────────────────────────────────────────────
 from PySide6.QtWidgets import QMessageBox
 
 _BUTTON_MAP: dict[str, QMessageBox.StandardButton] = {
@@ -48,9 +45,6 @@ _BUTTON_MAP: dict[str, QMessageBox.StandardButton] = {
 }
 
 
-# ══════════════════════════════════════════════════════════════
-#  Custom Title Bar
-# ══════════════════════════════════════════════════════════════
 class _TitleBar(QWidget):
     """
     A draggable, custom title bar with:
@@ -82,13 +76,11 @@ class _TitleBar(QWidget):
         layout.setContentsMargins(10, 0, 8, 0)
         layout.setSpacing(8)
 
-        # ── Logo ──────────────────────────────────────────────
         logo_path = self.LOGO_PATH
         if os.path.isfile(logo_path):
             logo = QSvgWidget(logo_path, self)
             logo.setFixedSize(28, 28)
         else:
-            # Fallback: draw a simple "B" in a white circle
             logo = QLabel("B", self)
             logo.setFixedSize(28, 28)
             logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -98,17 +90,14 @@ class _TitleBar(QWidget):
             )
         layout.addWidget(logo)
 
-        # ── Title label ───────────────────────────────────────
         self._title_label = QLabel(title, self)
         self._title_label.setStyleSheet(
             "color: #ffffff; font-size: 13px; font-weight: 600; background: transparent;"
         )
         layout.addWidget(self._title_label)
 
-        # ── Spacer ────────────────────────────────────────────
         layout.addStretch()
 
-        # ── Close button ──────────────────────────────────────
         close_btn = QPushButton("✕", self)
         close_btn.setFixedSize(30, 30)
         close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -135,7 +124,6 @@ class _TitleBar(QWidget):
         close_btn.clicked.connect(parent.reject)
         layout.addWidget(close_btn)
 
-    # ── Dragging logic ────────────────────────────────────────
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
             self._drag_pos = event.globalPosition().toPoint() - self._parent_dialog.frameGeometry().topLeft()
@@ -153,9 +141,6 @@ class _TitleBar(QWidget):
         self._title_label.setText(title)
 
 
-# ══════════════════════════════════════════════════════════════
-#  CustomMessageBox
-# ══════════════════════════════════════════════════════════════
 class CustomMessageBox(QDialog):
     """
     A frameless, draggable, fully-styled message dialog.
@@ -169,13 +154,11 @@ class CustomMessageBox(QDialog):
     Returns a QMessageBox.StandardButton value.
     """
 
-    # Message type constants
     Information = "information"
     Warning     = "warning"
     Critical    = "critical"
     Question    = "question"
 
-    # Map type → (SP_icon, button_labels, accent_color)
     _TYPE_CONFIG: dict = {
         "information": (
             QStyle.StandardPixmap.SP_MessageBoxInformation,
@@ -207,8 +190,6 @@ class CustomMessageBox(QDialog):
         msg_type: str = "information",
     ) -> None:
         super().__init__(parent)
-
-        # ── Window flags ──────────────────────────────────────
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog
         )
@@ -222,9 +203,8 @@ class CustomMessageBox(QDialog):
             msg_type, self._TYPE_CONFIG["information"]
         )
 
-        # ── Root container (gives us rounded-corner shadow card) ──
         root_layout = QVBoxLayout(self)
-        root_layout.setContentsMargins(12, 12, 12, 12)   # shadow margin
+        root_layout.setContentsMargins(12, 12, 12, 12)
         root_layout.setSpacing(0)
 
         container = QWidget(self)
@@ -244,24 +224,20 @@ class CustomMessageBox(QDialog):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
-        # ── Title bar ─────────────────────────────────────────
         self._title_bar = _TitleBar(title, self)
         main_layout.addWidget(self._title_bar)
 
-        # ── Thin accent stripe ────────────────────────────────
         stripe = QWidget()
         stripe.setFixedHeight(3)
         stripe.setStyleSheet(f"background: {accent}; border: none;")
         main_layout.addWidget(stripe)
 
-        # ── Content area ──────────────────────────────────────
         content_widget = QWidget()
         content_widget.setStyleSheet("background: transparent;")
         content_layout = QHBoxLayout(content_widget)
         content_layout.setContentsMargins(24, 24, 24, 16)
         content_layout.setSpacing(20)
 
-        # Standard OS icon
         icon_label = QLabel()
         icon_label.setFixedSize(52, 52)
         std_icon: QIcon = self.style().standardIcon(sp_icon)
@@ -269,7 +245,6 @@ class CustomMessageBox(QDialog):
         icon_label.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
         content_layout.addWidget(icon_label, 0)
 
-        # Message text
         msg_label = QLabel(message)
         msg_label.setObjectName("MsgLabel")
         msg_label.setWordWrap(True)
@@ -282,13 +257,11 @@ class CustomMessageBox(QDialog):
 
         main_layout.addWidget(content_widget)
 
-        # ── Divider ───────────────────────────────────────────
         divider = QWidget()
         divider.setFixedHeight(1)
         divider.setStyleSheet("background: #2e2e2e; border: none;")
         main_layout.addWidget(divider)
 
-        # ── Button box ────────────────────────────────────────
         btn_widget = QWidget()
         btn_widget.setStyleSheet("background: transparent;")
         btn_layout = QHBoxLayout(btn_widget)
@@ -352,7 +325,6 @@ class CustomMessageBox(QDialog):
 
         main_layout.addWidget(btn_widget)
 
-    # ── Internal helpers ──────────────────────────────────────
     def _on_button(self, std_btn: QMessageBox.StandardButton) -> None:
         self._clicked_button = std_btn
         if std_btn in (QMessageBox.StandardButton.Ok, QMessageBox.StandardButton.Yes):
@@ -380,7 +352,6 @@ class CustomMessageBox(QDialog):
             max(c.blue()  - amount, 0),
         ).name()
 
-    # ── Drop-shadow via paintEvent ────────────────────────────
     def paintEvent(self, event) -> None:
         """Paint a subtle drop-shadow behind the card."""
         painter = QPainter(self)
@@ -398,13 +369,10 @@ class CustomMessageBox(QDialog):
             )
         painter.end()
 
-    # ── Result accessor ───────────────────────────────────────
     def clicked_button(self) -> QMessageBox.StandardButton:
         return self._clicked_button
 
-    # ══════════════════════════════════════════════════════════
-    #  Static convenience methods (mirror QMessageBox API)
-    # ══════════════════════════════════════════════════════════
+
     @staticmethod
     def information(
         parent: QWidget | None,
@@ -448,99 +416,3 @@ class CustomMessageBox(QDialog):
         dlg = CustomMessageBox(parent, title, message, CustomMessageBox.Question)
         dlg.exec()
         return dlg.clicked_button()
-
-
-# ══════════════════════════════════════════════════════════════
-#  Demo / Test harness
-# ══════════════════════════════════════════════════════════════
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-
-    # Optional: set a global dark palette so native widgets match
-    app.setStyle("Fusion")
-
-    from PySide6.QtWidgets import QMainWindow, QVBoxLayout, QPushButton, QWidget
-
-    class DemoWindow(QMainWindow):
-        def __init__(self):
-            super().__init__()
-            self.setWindowTitle("CustomMessageBox Demo")
-            self.setFixedSize(360, 260)
-            self.setStyleSheet("background: #121212;")
-
-            central = QWidget()
-            self.setCentralWidget(central)
-            layout = QVBoxLayout(central)
-            layout.setSpacing(12)
-            layout.setContentsMargins(40, 40, 40, 40)
-
-            btn_style = (
-                "QPushButton { background: #2a2a2a; color: #e0e0e0;"
-                "border: 1px solid #444; border-radius: 6px;"
-                "font-size: 13px; padding: 8px 0; }"
-                "QPushButton:hover { background: #333; border-color: #888; }"
-            )
-
-            info_btn = QPushButton("ℹ  Information")
-            info_btn.setStyleSheet(btn_style)
-            info_btn.clicked.connect(self.show_information)
-            layout.addWidget(info_btn)
-
-            warn_btn = QPushButton("⚠  Warning")
-            warn_btn.setStyleSheet(btn_style)
-            warn_btn.clicked.connect(self.show_warning)
-            layout.addWidget(warn_btn)
-
-            crit_btn = QPushButton("✖  Critical / Error")
-            crit_btn.setStyleSheet(btn_style)
-            crit_btn.clicked.connect(self.show_critical)
-            layout.addWidget(crit_btn)
-
-            ques_btn = QPushButton("?  Question")
-            ques_btn.setStyleSheet(btn_style)
-            ques_btn.clicked.connect(self.show_question)
-            layout.addWidget(ques_btn)
-
-        def show_information(self):
-            result = CustomMessageBox.information(
-                self,
-                "Operation Complete",
-                "Your file has been saved successfully.\n"
-                "You can find it in the Documents folder.",
-            )
-            print(f"[Information] Returned: {result}")
-
-        def show_warning(self):
-            result = CustomMessageBox.warning(
-                self,
-                "Unsaved Changes",
-                "You have unsaved changes that will be lost.\n"
-                "Do you want to continue without saving?",
-            )
-            print(f"[Warning] Returned: {result}")
-
-        def show_critical(self):
-            result = CustomMessageBox.critical(
-                self,
-                "Critical Error",
-                "An unexpected error has occurred and the application\n"
-                "cannot continue. Please restart and try again.\n\n"
-                "Error code: 0xC000005",
-            )
-            print(f"[Critical] Returned: {result}")
-
-        def show_question(self):
-            result = CustomMessageBox.question(
-                self,
-                "Confirm Delete",
-                "Are you sure you want to permanently delete\n"
-                "the selected 12 items? This action cannot be undone.",
-            )
-            if result == QMessageBox.StandardButton.Yes:
-                print("[Question] User chose: Yes — deleting items.")
-            else:
-                print("[Question] User chose: No — cancelled.")
-
-    window = DemoWindow()
-    window.show()
-    sys.exit(app.exec())

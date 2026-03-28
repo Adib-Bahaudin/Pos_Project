@@ -5,6 +5,7 @@ from PySide6.QtWidgets import QDialog, QVBoxLayout, QWidget, QPushButton, QHBoxL
 from database import DatabaseManager
 from dialog_title_bar import DialogTitleBar
 from fungsi import ScreenSize
+from message import CustomMessageBox
 
 
 class TambahBarangBaru(QDialog):
@@ -381,7 +382,7 @@ class TambahBarangBaru(QDialog):
             }
 
     def import_csv_dialog(self):
-        from PySide6.QtWidgets import QFileDialog, QMessageBox
+        from PySide6.QtWidgets import QFileDialog
         import csv
 
         filepath, _ = QFileDialog.getOpenFileName(
@@ -398,14 +399,14 @@ class TambahBarangBaru(QDialog):
                     if not headers:
                         raise ValueError("File kosong")
             except Exception as e:
-                QMessageBox.critical(self, "Error Format", f"Format file salah atau tidak dapat dibaca: {str(e)}")
+                CustomMessageBox.critical(self, "Error Format", f"Format file salah atau tidak dapat dibaca: {str(e)}")
                 return
                 
             db = DatabaseManager()
             hasil = db.import_batch_csv(filepath)
             
             if "error_format" in hasil:
-                QMessageBox.critical(self, "Gagal", hasil["error_format"])
+                CustomMessageBox.critical(self, "Gagal", hasil["error_format"])
             else:
                 berhasil = hasil.get("berhasil", 0)
                 gagal = hasil.get("gagal", 0)
@@ -419,22 +420,22 @@ class TambahBarangBaru(QDialog):
                     msg += f"\n\nDetail:\n{err_str}"
                     
                 if gagal == 0 and berhasil > 0:
-                    QMessageBox.information(self, "Impor Berhasil", msg)
+                    CustomMessageBox.information(self, "Impor Berhasil", msg)
                 elif berhasil > 0:
-                    QMessageBox.warning(self, "Impor Selesai dengan Peringatan", msg)
+                    CustomMessageBox.warning(self, "Impor Selesai dengan Peringatan", msg)
                 else:
-                    QMessageBox.critical(self, "Impor Gagal", msg)
+                    CustomMessageBox.critical(self, "Impor Gagal", msg)
 
     def download_template_csv(self):
         import os
         import shutil
-        from PySide6.QtWidgets import QFileDialog, QMessageBox
+        from PySide6.QtWidgets import QFileDialog
 
         sumber = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                               "data", "system_files", "template_import.csv")
 
         if not os.path.exists(sumber):
-            QMessageBox.critical(
+            CustomMessageBox.critical(
                 self, "Error",
                 "File template sumber tidak ditemukan.\n"
                 f"Path: {sumber}"
@@ -451,12 +452,12 @@ class TambahBarangBaru(QDialog):
         if tujuan:
             try:
                 shutil.copy2(sumber, tujuan)
-                QMessageBox.information(
+                CustomMessageBox.information(
                     self, "Berhasil",
                     f"Template berhasil disimpan ke:\n{tujuan}"
                 )
             except Exception as e:
-                QMessageBox.critical(
+                CustomMessageBox.critical(
                     self, "Gagal",
                     f"Gagal menyimpan template:\n{str(e)}"
                 )
