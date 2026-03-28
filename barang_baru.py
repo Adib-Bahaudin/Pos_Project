@@ -25,9 +25,13 @@ class TambahBarangBaru(QDialog):
         int_validator = QIntValidator(0, 9999999)
 
         root_layout = QVBoxLayout()
+        root_layout.setContentsMargins(2, 2, 2, 2)
+
         root_widget= QWidget()
+        root_widget.setObjectName("MainFrame")
+
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(0,0,0,0)
+        main_layout.setContentsMargins(2,2,2,2)
 
         title_bar = DialogTitleBar("Tambah Produk Baru", self)
         main_layout.addWidget(title_bar)
@@ -299,8 +303,10 @@ class TambahBarangBaru(QDialog):
         root_layout.addWidget(root_widget)
         self.setLayout(root_layout)
         self.setStyleSheet("""
-            background-color: #000000;
-            border: 2px solid #90EE90;
+            QWidget#MainFrame {
+                background-color: #000000;
+                border: 2px solid #90EE90;
+            }
         """)
 
     def _on_change(self, index: int):
