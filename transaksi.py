@@ -365,7 +365,7 @@ class PenjualanWindow(QWidget):
             QCheckBox::indicator:checked {
                 background-color: #00ff85;
                 border: 2px solid #00ff85;
-                image: url(data/check.svg); /* Opsional: hapus baris ini jika tidak punya icon check.svg */
+                image: url(data/check.svg);
             }
         """)
         layout.addWidget(self.print_checkbox)
