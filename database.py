@@ -1436,3 +1436,111 @@ class DatabaseManager:
             
         return hasil
 
+    def get_customers(self, limit=10, offset=0):
+        conn = sqlite3.connect(self.db_name)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT 
+                c.id, c.nama, c.nomer_hp, c.alamat,
+                COUNT(t.id) as total_transaksi
+            FROM customer c
+            LEFT JOIN transaksi t ON c.id = t.id_customer
+            GROUP BY c.id
+            ORDER BY c.nama ASC
+            LIMIT ? OFFSET ?
+        """, (limit, offset))
+        
+        result = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+        return result
+
+    def search_customers(self, keyword, limit=10, offset=0):
+        kw = f"%{keyword}%"
+        conn = sqlite3.connect(self.db_name)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT 
+                c.id, c.nama, c.nomer_hp, c.alamat,
+                COUNT(t.id) as total_transaksi
+            FROM customer c
+            LEFT JOIN transaksi t ON c.id = t.id_customer
+            WHERE c.nama LIKE ? OR c.nomer_hp LIKE ?
+            GROUP BY c.id
+            ORDER BY c.nama ASC
+            LIMIT ? OFFSET ?
+        """, (kw, kw, limit, offset))
+        
+        result = [dict(r) for r in cursor.fetchall()]
+        conn.close()
+        return result
+
+    def get_customers_count(self, keyword=""):
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+        if keyword:
+            kw = f"%{keyword}%"
+            cursor.execute("SELECT COUNT(*) FROM customer WHERE nama LIKE ? OR nomer_hp LIKE ?", (kw, kw))
+        else:
+            cursor.execute("SELECT COUNT(*) FROM customer")
+        result = cursor.fetchone()[0]
+        conn.close()
+        return result
+
+    def insert_customer(self, nama, nomer_hp, alamat):
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                INSERT INTO customer (nama, nomer_hp, alamat)
+                VALUES (?, ?, ?)
+            """, (nama, nomer_hp, alamat))
+            conn.commit()
+            return {"success": True}
+        except Exception as e:
+            conn.rollback()
+            return {"success": False, "message": str(e)}
+        finally:
+            conn.close()
+
+    def update_customer(self, id_customer, nama, nomer_hp, alamat):
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                UPDATE customer 
+                SET nama = ?, nomer_hp = ?, alamat = ?
+                WHERE id = ?
+            """, (nama, nomer_hp, alamat, id_customer))
+            conn.commit()
+            return {"success": True}
+        except Exception as e:
+            conn.rollback()
+            return {"success": False, "message": str(e)}
+        finally:
+            conn.close()
+
+    def delete_customer(self, id_customer):
+        if id_customer == 1:
+            return {"success": False, "message": "Pelanggan Umum tidak bisa dihapus."}
+            
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT nama FROM customer WHERE id = ?", (id_customer,))
+            row = cursor.fetchone()
+            if row and row[0] == "Pelanggan Umum":
+                return {"success": False, "message": "Pelanggan Umum tidak bisa dihapus."}
+
+            cursor.execute("DELETE FROM customer WHERE id = ?", (id_customer,))
+            conn.commit()
+            return {"success": True}
+        except Exception as e:
+            conn.rollback()
+            return {"success": False, "message": str(e)}
+        finally:
+            conn.close()
+
