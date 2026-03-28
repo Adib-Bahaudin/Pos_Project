@@ -4,7 +4,7 @@ from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout,
     QFrame, QLabel, QLineEdit, QComboBox, QPushButton, QTableWidget, QAbstractItemView, QHeaderView, QGridLayout,
-    QTextEdit, QCompleter, QTableWidgetItem, QSpinBox, QAbstractSpinBox, QScrollArea
+    QTextEdit, QCompleter, QTableWidgetItem, QSpinBox, QAbstractSpinBox, QScrollArea, QCheckBox
 )
 
 from database import DatabaseManager
@@ -340,6 +340,33 @@ class PenjualanWindow(QWidget):
         self.change_label = QLabel("Kembalian: Rp 0")
         self.change_label.setStyleSheet("color: #ffffff; font-size: 14px; font-weight: 700;")
         layout.addWidget(self.change_label)
+
+        self.print_checkbox = QCheckBox(" Cetak Nota Transaksi")
+        self.print_checkbox.setChecked(False)
+        self.print_checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.print_checkbox.setStyleSheet("""
+            QCheckBox {
+                color: #b8c4d0;
+                font-size: 13px;
+                margin-top: 10px;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+                border-radius: 4px;
+                border: 2px solid #263241;
+                background-color: #111827;
+            }
+            QCheckBox::indicator:hover {
+                border: 2px solid #00c2ff;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #00ff85;
+                border: 2px solid #00ff85;
+                image: url(data/check.svg); /* Opsional: hapus baris ini jika tidak punya icon check.svg */
+            }
+        """)
+        layout.addWidget(self.print_checkbox)
 
         return card
 
@@ -920,6 +947,11 @@ class PenjualanWindow(QWidget):
 
         transaction_id = result.get("transaction_id")
         customer_name = result.get("customer_name", "Pelanggan Umum")
+
+        if self.print_checkbox.isChecked():
+            self.transaction_data = self.db_manager.get_transaction_detail_with_items(transaction_id)
+            pass
+
         self._clear_cart()
         self.search_hint_label.setText(
             f"Transaksi #{transaction_id} berhasil disimpan untuk {customer_name}."
