@@ -11,6 +11,53 @@ import jwt
 from init_database import InitDatabase
 
 
+def _build_transaction_filter_clauses(filters: dict):
+    """Build SQL WHERE clause additions and bound parameters for transaction filters.
+
+    Args:
+        filters: dict with optional keys: date_from, date_to, kasir_id,
+                 payment_method, amount_min, amount_max, search_keyword.
+
+    Returns:
+        Tuple of (clauses, params) where clauses is a string of
+        SQL AND conditions to append to a WHERE clause and params is the
+        corresponding list of bound parameter values.
+    """
+    clauses = ""
+    params = []
+
+    if filters.get("date_from"):
+        clauses += " AND date(t.tanggal) >= date(?)"
+        params.append(filters["date_from"])
+
+    if filters.get("date_to"):
+        clauses += " AND date(t.tanggal) <= date(?)"
+        params.append(filters["date_to"])
+
+    if filters.get("kasir_id") not in ("", None, "Semua"):
+        clauses += " AND t.id_kasir = ?"
+        params.append(filters["kasir_id"])
+
+    if filters.get("payment_method") not in ("", None, "Semua"):
+        clauses += " AND t.metode_bayar = ?"
+        params.append(filters["payment_method"])
+
+    if filters.get("amount_min"):
+        clauses += " AND t.total >= ?"
+        params.append(filters["amount_min"])
+
+    if filters.get("amount_max"):
+        clauses += " AND t.total <= ?"
+        params.append(filters["amount_max"])
+
+    if filters.get("search_keyword"):
+        kw = f"%{filters['search_keyword']}%"
+        clauses += " AND (c.nama LIKE ? OR t.id LIKE ?)"
+        params.extend([kw, kw])
+
+    return clauses, params
+
+
 class DatabaseManager:
     """Manager untuk mengelola database dan operasi autentikasi"""
 
@@ -1182,52 +1229,6 @@ class DatabaseManager:
         finally:
             conn.close()
 
-    def _build_transaction_filter_clauses(self, filters: dict):
-        """Build SQL WHERE clause additions and bound parameters for transaction filters.
-
-        Args:
-            filters: dict with optional keys: date_from, date_to, kasir_id,
-                     payment_method, amount_min, amount_max, search_keyword.
-
-        Returns:
-            Tuple of (clauses, params) where clauses is a string of
-            SQL AND conditions to append to a WHERE clause and params is the
-            corresponding list of bound parameter values.
-        """
-        clauses = ""
-        params = []
-
-        if filters.get("date_from"):
-            clauses += " AND date(t.tanggal) >= date(?)"
-            params.append(filters["date_from"])
-
-        if filters.get("date_to"):
-            clauses += " AND date(t.tanggal) <= date(?)"
-            params.append(filters["date_to"])
-
-        if filters.get("kasir_id") not in ("", None, "Semua"):
-            clauses += " AND t.id_kasir = ?"
-            params.append(filters["kasir_id"])
-
-        if filters.get("payment_method") not in ("", None, "Semua"):
-            clauses += " AND t.metode_bayar = ?"
-            params.append(filters["payment_method"])
-
-        if filters.get("amount_min"):
-            clauses += " AND t.total >= ?"
-            params.append(filters["amount_min"])
-
-        if filters.get("amount_max"):
-            clauses += " AND t.total <= ?"
-            params.append(filters["amount_max"])
-
-        if filters.get("search_keyword"):
-            kw = f"%{filters['search_keyword']}%"
-            clauses += " AND (c.nama LIKE ? OR t.id LIKE ?)"
-            params.extend([kw, kw])
-
-        return clauses, params
-
     def get_transaction_history(self, filters: dict, limit: int = 50, offset: int = 0):
         conn = sqlite3.connect(self.db_name)
         conn.row_factory = sqlite3.Row
@@ -1245,7 +1246,7 @@ class DatabaseManager:
             LEFT JOIN customer c ON t.id_customer = c.id
             WHERE 1=1
         """
-        filter_clauses, params = self._build_transaction_filter_clauses(filters)
+        filter_clauses, params = _build_transaction_filter_clauses(filters)
         query += filter_clauses
 
         query += " ORDER BY t.id DESC LIMIT ? OFFSET ?"
@@ -1325,7 +1326,7 @@ class DatabaseManager:
             LEFT JOIN customer c ON t.id_customer = c.id
             WHERE 1=1
         """
-        filter_clauses, params = self._build_transaction_filter_clauses(filters)
+        filter_clauses, params = _build_transaction_filter_clauses(filters)
         query += filter_clauses
 
         cursor.execute(query, params)
