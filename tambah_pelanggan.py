@@ -16,11 +16,11 @@ class TambahPelangganDialog(QDialog):
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
 
-        self.setFixedSize(600, 550)
+        self.setFixedSize(550, 600)
         self.setModal(True)
 
         screen_size = ScreenSize()
-        x, y = screen_size.get_centered_position(600, 550)
+        x, y = screen_size.get_centered_position(550, 600)
         self.move(x, y)
 
         root_layout = QVBoxLayout()
@@ -142,7 +142,6 @@ class TambahPelangganDialog(QDialog):
             QWidget#MainFrame {
                 background-color: #000000;
                 border: 2px solid #90EE90;
-                border-radius: 10px;
             }
         """)
 

@@ -1,6 +1,7 @@
-import os
 import sqlite3
 from datetime import datetime
+
+import openpyxl
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtGui import QFont, QColor, QPixmap, QTextCharFormat
 from PySide6.QtWidgets import (
@@ -8,8 +9,8 @@ from PySide6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView, QComboBox,
     QDateEdit, QLineEdit, QFrame, QFileDialog
 )
-import openpyxl
 from openpyxl.styles import Font
+
 HAS_OPENPYXL = True
 
 from reportlab.lib import colors
@@ -158,7 +159,8 @@ class SejarahTransaksiWindow(QWidget):
         
         return frame
 
-    def _create_stat_card(self, title, initial_value, base_color, image_path):
+    @staticmethod
+    def _create_stat_card(title, initial_value, base_color, image_path):
         container = QFrame()
         container.setObjectName("statCard") 
         
@@ -204,7 +206,8 @@ class SejarahTransaksiWindow(QWidget):
         
         return container
 
-    def _update_stat_card(self, card_container, new_value):
+    @staticmethod
+    def _update_stat_card(card_container, new_value):
         lbl_value = card_container.findChild(QLabel, "statValue")
         if lbl_value:
             lbl_value.setText(new_value)
@@ -506,7 +509,7 @@ class SejarahTransaksiWindow(QWidget):
             self.current_page += 1
             self.apply_filters()
 
-    def show_transaction_detail_modal(self, row, col):
+    def show_transaction_detail_modal(self, row):
         if row < 0 or row >= len(self.transactions_data):
             return
         t_id = self.transactions_data[row].get("id")
