@@ -2,12 +2,13 @@ import math
 
 from PySide6.QtGui import QShortcut, QKeySequence
 from PySide6.QtWidgets import (
-    QWidget, QHBoxLayout, QVBoxLayout, QStackedWidget
+    QWidget, QHBoxLayout, QVBoxLayout, QStackedWidget, QDialog
 )
 
 from database import DatabaseManager
 from ui_base import BaseTableWidget, BaseDataPage
-
+from tambah_pelanggan import TambahPelangganDialog
+from message import CustomMessageBox
 
 class PelangganTable(BaseTableWidget):
     TABLE_WIDTH = 800
@@ -71,8 +72,6 @@ class DataPelanggan(BaseDataPage):
         widget.setLayout(layout)
         return widget
 
-
-
     def _setup_connections(self):
         self.button_tambah.clicked.connect(self._show_tambah_dialog)
         self.button_edit.clicked.connect(self._show_edit_dialog)
@@ -82,8 +81,32 @@ class DataPelanggan(BaseDataPage):
         pass
 
     def _show_tambah_dialog(self):
-        # Placeholder
-        print("Show Tambah Dialog")
+        dialog = TambahPelangganDialog(self)
+        result = dialog.exec()
+
+        if result == QDialog.DialogCode.Accepted:
+            data = dialog.get_data()
+            database = DatabaseManager()
+
+            response = database.insert_customer(
+                nama=data["nama"],
+                nomer_hp=data["nomer_hp"],
+                alamat=data["alamat"]
+            )
+
+            if response.get("success"):
+                CustomMessageBox.information(
+                    self,
+                    "Berhasil",
+                    f"Pelanggan '{data['nama']}' berhasil ditambahkan."
+                )
+                self.table_data()
+            else:
+                CustomMessageBox.critical(
+                    self,
+                    "Gagal",
+                    f"Gagal menambahkan pelanggan:\n{response.get('message')}"
+                )
 
     def _show_edit_dialog(self):
         # Placeholder
