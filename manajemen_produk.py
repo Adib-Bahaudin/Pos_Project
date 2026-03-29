@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 
 from PySide6.QtGui import QFont, Qt, QShortcut, QKeySequence
 from PySide6.QtWidgets import (
-    QWidget, QHBoxLayout, QFrame, QVBoxLayout, QLabel,
+    QWidget, QHBoxLayout, QVBoxLayout, QLabel,
     QComboBox, QStackedWidget
 )
 

@@ -1,9 +1,8 @@
 import math
 
-from PySide6.QtGui import QFont, Qt, QShortcut, QKeySequence
+from PySide6.QtGui import QShortcut, QKeySequence
 from PySide6.QtWidgets import (
-    QWidget, QHBoxLayout, QFrame, QVBoxLayout, QLabel,
-    QStackedWidget
+    QWidget, QHBoxLayout, QVBoxLayout, QStackedWidget
 )
 
 from database import DatabaseManager

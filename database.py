@@ -4,6 +4,7 @@ import sqlite3
 import os
 import csv
 from zoneinfo import ZoneInfo
+from typing import Any
 
 import jwt
 
@@ -665,7 +666,8 @@ class DatabaseManager:
 
         return total_hpp
 
-    def _generate_invoice_number(self, cursor, customer_id):
+    @staticmethod
+    def _generate_invoice_number(cursor, customer_id):
         """Generate nomor invoice unik: {id_customer}{YYMMDD}{urutan_hari}.
         
         Contoh: 12603241 = customer 1, tanggal 26/03/24, transaksi ke-1 hari itu.
@@ -1377,7 +1379,7 @@ class DatabaseManager:
         return stats
 
     def import_batch_csv(self, filepath):
-        hasil = {"berhasil": 0, "gagal": 0, "errors": []}
+        hasil: dict[str, Any] = {"berhasil": 0, "gagal": 0, "errors": []}
         try:
             with open(filepath, mode='r', encoding='utf-8-sig') as file:
                 reader = csv.DictReader(file)
