@@ -340,7 +340,7 @@ class ProdukSatuanTable(BaseTableWidget):
     TABLE_NAME = "produksatuan"
     TABLE_WIDTH = 800
     TABLE_ROW_COUNT = 5
-    COLUMN_WIDTHS = [100, 300, 80, 150, 170]
+    COLUMN_WIDTHS = [100, 0, 80, 150, 170]
     HEADERS = ["SKU", "NAMA BARANG", "STOCK", "HARGA JUAL", "TGL MASUK"]
     FIELDS = ["sku", "nama_barang", "stock", "harga_jual", "tgl_masuk"]
     FORMATTERS = {

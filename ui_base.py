@@ -73,12 +73,15 @@ class BaseTableWidget(QWidget):
         table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         table.setHorizontalHeaderLabels(self.HEADERS)
 
-        for index, width in enumerate(self.COLUMN_WIDTHS):
-            table.setColumnWidth(index, width)
-
         header = table.horizontalHeader()
-        header.setSectionResizeMode(header.ResizeMode.Interactive)
         table.verticalHeader().setVisible(False)
+
+        for index, width in enumerate(self.COLUMN_WIDTHS):
+            if width == 0:
+                header.setSectionResizeMode(index, QHeaderView.ResizeMode.Stretch)
+            else:
+                table.setColumnWidth(index, width)
+                header.setSectionResizeMode(index, QHeaderView.ResizeMode.Fixed)
 
         table.setAlternatingRowColors(True)
         table.setStyleSheet("""
@@ -96,8 +99,7 @@ class BaseTableWidget(QWidget):
         return table
 
     def reset_width(self):
-        for index, width in enumerate(self.COLUMN_WIDTHS):
-            self.table.setColumnWidth(index, width)
+        pass
 
     def set_data(self, rows: list[dict]):
         self._all_rows = rows or []

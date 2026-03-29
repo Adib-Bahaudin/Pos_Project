@@ -12,9 +12,9 @@ from message import CustomMessageBox
 
 class PelangganTable(BaseTableWidget):
     TABLE_WIDTH = 800
-    TABLE_ROW_COUNT = 10
-    COLUMN_WIDTHS = [50, 200, 150, 250, 150]
-    HEADERS = ["ID", "NAMA PELANGGAN", "NO HANDPHONE", "ALAMAT", "TOTAL TRANSAKSI"]
+    TABLE_ROW_COUNT = 5
+    COLUMN_WIDTHS = [50, 0, 150, 0, 100]
+    HEADERS = ["ID", "NAMA PELANGGAN", "NO HANDPHONE", "ALAMAT", "TRANSAKSI"]
     FIELDS = ["id", "nama", "nomer_hp", "alamat", "total_transaksi"]
     LEFT_ALIGN_FIELDS = ["nama", "alamat"]
 
