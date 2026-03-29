@@ -33,7 +33,7 @@ class SejarahTransaksiWindow(QWidget):
         self.db = DatabaseManager()
         
         self.current_page = 1
-        self.items_per_page = 50
+        self.items_per_page = 9
         self.transactions_data = []
         
         self._setup_ui()
@@ -103,6 +103,12 @@ class SejarahTransaksiWindow(QWidget):
         self.table.setItemDelegateForColumn(7, currency_delegate)
         self.table.setItemDelegateForColumn(8, currency_delegate)
         self.table.setItemDelegateForColumn(9, currency_delegate)
+
+        self.table.setRowCount(self.items_per_page)
+        row_height = 30
+        self.table.verticalHeader().setDefaultSectionSize(row_height)
+        header_height = self.table.horizontalHeader().height()
+        self.table.setFixedHeight(header_height + self.items_per_page * row_height + 2)
 
         main_layout.addWidget(self.table)
         
@@ -442,7 +448,7 @@ class SejarahTransaksiWindow(QWidget):
         self.btn_next.setEnabled(len(self.transactions_data) == self.items_per_page)
 
     def populate_table(self):
-        self.table.setRowCount(len(self.transactions_data))
+        self.table.clearContents()
 
         def create_center_item(text):
             item = QTableWidgetItem(text)
@@ -461,7 +467,7 @@ class SejarahTransaksiWindow(QWidget):
             except Exception:
                 dt_disp = dt_str
 
-            self.table.setItem(i, 0, create_center_item(str(i + 1)))
+            self.table.setItem(i, 0, create_center_item(str(i + 1 + (self.current_page - 1) * self.items_per_page)))
             self.table.setItem(i, 1, create_center_item(str(row.get("id", ""))))
             self.table.setItem(i, 2, create_center_item(dt_disp))
             self.table.setItem(i, 3, create_center_item(row.get("nama_kasir", "")))
@@ -471,7 +477,7 @@ class SejarahTransaksiWindow(QWidget):
             item_metode = create_center_item(metode)
             if "tunai" in metode.lower():
                 item_metode.setForeground(QColor("#28A745"))
-            elif "kartu" in metode.lower():
+            elif "transfer" in metode.lower():
                 item_metode.setForeground(QColor("#0078D7"))
             else:
                 item_metode.setForeground(QColor("#FFC107"))
@@ -484,9 +490,9 @@ class SejarahTransaksiWindow(QWidget):
             pembulatan = int(row.get('pembulatan', 0))
             item_pembulatan = QTableWidgetItem(self._format_pembulatan(pembulatan))
             if pembulatan > 0:
-                item_pembulatan.setForeground(QColor("#28A745"))  # merah — nambah bayar
+                item_pembulatan.setForeground(QColor("#28A745"))
             elif pembulatan < 0:
-                item_pembulatan.setForeground(QColor("#FF6B6B"))  # hijau — kurang bayar
+                item_pembulatan.setForeground(QColor("#FF6B6B"))
             self.table.setItem(i, 8, item_pembulatan)
 
             self.table.setItem(i, 9, QTableWidgetItem(f"Rp. {int(row.get('total', 0)):,}"))
@@ -534,7 +540,7 @@ class SejarahTransaksiWindow(QWidget):
             return
             
         try:
-            wb = openpyxl.Workbook()  # type: ignore[possibly-undefined]
+            wb = openpyxl.Workbook()
             ws = wb.active
             if ws is not None:
                 ws.title = "Sejarah Transaksi"

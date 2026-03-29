@@ -1181,7 +1181,7 @@ class DatabaseManager:
         finally:
             conn.close()
 
-    def get_transaction_history(self, filters: dict, limit: int = 50, offset: int = 0):
+    def get_transaction_history(self, filters: dict, limit: int = 9, offset: int = 0):
         conn = sqlite3.connect(self.db_name)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
