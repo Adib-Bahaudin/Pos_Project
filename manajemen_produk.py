@@ -2,18 +2,18 @@ import math
 from datetime import datetime, date
 from zoneinfo import ZoneInfo
 
-from PySide6.QtCore import QSize
-from PySide6.QtGui import QFont, Qt, QIntValidator, QShortcut, QKeySequence
+from PySide6.QtGui import QFont, Qt, QShortcut, QKeySequence
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QFrame, QVBoxLayout, QLabel,
-    QComboBox, QStackedWidget, QTableWidgetItem, QApplication
+    QComboBox, QStackedWidget
 )
 
 from barang_baru import TambahBarangBaru
+from database import DatabaseManager
 from edit_produk import EditProduk
 from hapus_produk import HapusProdukDialog
-from database import DatabaseManager
 from ui_base import BaseTableWidget, BaseDataPage
+
 
 class ManajemenProduk(BaseDataPage):
     """Widget utama untuk manajemen produk"""

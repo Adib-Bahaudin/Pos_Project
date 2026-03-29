@@ -1,13 +1,14 @@
 import math
-from PySide6.QtCore import QSize
-from PySide6.QtGui import QFont, Qt, QIntValidator, QShortcut, QKeySequence
+
+from PySide6.QtGui import QFont, Qt, QShortcut, QKeySequence
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QFrame, QVBoxLayout, QLabel,
-    QStackedWidget, QTableWidgetItem
+    QStackedWidget
 )
 
 from database import DatabaseManager
 from ui_base import BaseTableWidget, BaseDataPage
+
 
 class PelangganTable(BaseTableWidget):
     TABLE_WIDTH = 800
@@ -62,7 +63,8 @@ class DataPelanggan(BaseDataPage):
         self.setStyleSheet("border: none")
         self.table_data()
 
-    def _create_header_label(self) -> QLabel:
+    @staticmethod
+    def _create_header_label() -> QLabel:
         label = QLabel("DATA PELANGGAN")
         label.setFont(QFont("Times New Roman", 30, QFont.Weight.Bold))
         label.setStyleSheet("color: #ffffff;")
