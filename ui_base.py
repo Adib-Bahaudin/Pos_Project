@@ -2,7 +2,8 @@ from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QFont, QIcon, QIntValidator
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QLineEdit,
-    QTableWidget, QTableWidgetItem, QApplication, QHeaderView
+    QTableWidget, QTableWidgetItem, QApplication, QHeaderView,
+    QFrame, QLabel
 )
 
 from fungsi import NavigationButton
@@ -129,9 +130,60 @@ class BaseDataPage(QWidget):
     PAGE_INPUT_HEIGHT = 30
     RESET_BUTTON_WIDTH = 100
 
+    HEADER_TITLE = ""
+    SEARCH_PLACEHOLDER = ""
+
     def __init__(self):
         super().__init__()
         self.pages = 0
+
+    def _setup_ui(self):
+        root_layout = QHBoxLayout()
+        root_layout.setContentsMargins(0, 0, 0, 0)
+        root_layout.setSpacing(0)
+
+        root_widget = QFrame()
+        root_widget.setContentsMargins(0, 0, 0, 0)
+
+        content_layout = QVBoxLayout()
+        content_layout.setContentsMargins(20, 20, 20, 20)
+        content_layout.setSpacing(15)
+
+        if self.HEADER_TITLE:
+            header_label = self._create_header_label()
+            content_layout.addWidget(header_label)
+            content_layout.addSpacing(20)
+
+        self._add_custom_widgets(content_layout)
+
+        if self.SEARCH_PLACEHOLDER:
+            search_widget = self._create_search_widget(self.SEARCH_PLACEHOLDER)
+            content_layout.addWidget(search_widget)
+
+        content_layout.addStretch()
+
+        data_widget = self._create_data_widget()
+        if data_widget:
+            content_layout.addWidget(data_widget)
+
+        root_widget.setLayout(content_layout)
+        root_layout.addWidget(root_widget)
+        self.setLayout(root_layout)
+        self.setStyleSheet("border: none")
+        self.table_data()
+
+    def _create_header_label(self) -> QLabel:
+        label = QLabel(self.HEADER_TITLE)
+        label.setFont(QFont("Times New Roman", 30, QFont.Weight.Bold))
+        label.setStyleSheet("color: #ffffff;")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        return label
+
+    def _add_custom_widgets(self, layout):
+        pass
+
+    def _create_data_widget(self) -> QWidget | None:
+        return None
 
     def _create_action_button(self, text: str, color: str) -> ActionButton:
         return ActionButton(text, color, self.BUTTON_WIDTH, self.BUTTON_HEIGHT)

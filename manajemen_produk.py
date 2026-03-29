@@ -17,6 +17,8 @@ from ui_base import BaseTableWidget, BaseDataPage
 
 class ManajemenProduk(BaseDataPage):
     """Widget utama untuk manajemen produk"""
+    HEADER_TITLE = "MANAJEMEN PRODUK"
+    SEARCH_PLACEHOLDER = "Cari Produk atau SKU ..."
 
     # Konstanta
     SELECTOR_HEIGHT = 35
@@ -31,59 +33,16 @@ class ManajemenProduk(BaseDataPage):
         shortcut = QShortcut(QKeySequence("Return"), self)
         shortcut.activated.connect(self.handle_shortcut)
 
-    def _setup_ui(self):
-        """Inisialisasi user interface"""
-        root_layout = QHBoxLayout()
-        root_layout.setContentsMargins(0, 0, 0, 0)
-        root_layout.setSpacing(0)
-
-        root_widget = QFrame()
-        root_widget.setContentsMargins(0, 0, 0, 0)
-
-        content_layout = QVBoxLayout()
-        content_layout.setContentsMargins(20, 20, 20, 20)
-        content_layout.setSpacing(15)
-
-        # Header
-        header_label = self._create_header_label()
-        content_layout.addWidget(header_label)
-        content_layout.addSpacing(20)
-
+    def _add_custom_widgets(self, layout):
         # Tombol aksi utama
         action_buttons_widget = self._create_action_buttons()
-        content_layout.addWidget(action_buttons_widget)
+        layout.addWidget(action_buttons_widget)
 
         # Tombol aksi sekunder
         secondary_buttons_widget = self._create_secondary_buttons()
-        content_layout.addWidget(secondary_buttons_widget)
+        layout.addWidget(secondary_buttons_widget)
 
-        content_layout.addSpacing(20)
-
-        # Widget pencarian
-        search_widget = self._create_search_widget("Cari Produk atau SKU ...")
-        content_layout.addWidget(search_widget)
-
-        content_layout.addStretch()
-
-        # Widget data produk
-        data_widget = self._create_data_widget()
-        content_layout.addWidget(data_widget)
-
-        root_widget.setLayout(content_layout)
-        root_layout.addWidget(root_widget)
-        self.setLayout(root_layout)
-        self.setStyleSheet("border: none")
-        self.table_data()
-
-    @staticmethod
-    def _create_header_label() -> QLabel:
-        """Membuat label header"""
-        label = QLabel()
-        label.setText("MANAJEMEN PRODUK")
-        label.setFont(QFont("Times New Roman", 30, QFont.Weight.Bold))
-        label.setStyleSheet("color: #ffffff;")
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        return label
+        layout.addSpacing(20)
 
     def _create_action_buttons(self) -> QWidget:
         """Membuat widget dengan tombol aksi utama"""

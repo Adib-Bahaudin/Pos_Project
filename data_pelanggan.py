@@ -20,6 +20,8 @@ class PelangganTable(BaseTableWidget):
 
 
 class DataPelanggan(BaseDataPage):
+    HEADER_TITLE = "DATA PELANGGAN"
+    SEARCH_PLACEHOLDER = "Cari Nama atau No. HP ..."
 
     def __init__(self):
         super().__init__()
@@ -29,47 +31,10 @@ class DataPelanggan(BaseDataPage):
         shortcut = QShortcut(QKeySequence("Return"), self)
         shortcut.activated.connect(self.handle_shortcut)
 
-    def _setup_ui(self):
-        root_layout = QHBoxLayout()
-        root_layout.setContentsMargins(0, 0, 0, 0)
-        root_layout.setSpacing(0)
-
-        root_widget = QFrame()
-        root_widget.setContentsMargins(0, 0, 0, 0)
-
-        content_layout = QVBoxLayout()
-        content_layout.setContentsMargins(20, 20, 20, 20)
-        content_layout.setSpacing(15)
-
-        header_label = self._create_header_label()
-        content_layout.addWidget(header_label)
-        content_layout.addSpacing(20)
-
+    def _add_custom_widgets(self, layout):
         action_buttons_widget = self._create_action_buttons()
-        content_layout.addWidget(action_buttons_widget)
-        content_layout.addSpacing(20)
-
-        search_widget = self._create_search_widget("Cari Nama atau No. HP ...")
-        content_layout.addWidget(search_widget)
-
-        content_layout.addStretch()
-
-        data_widget = self._create_data_widget()
-        content_layout.addWidget(data_widget)
-
-        root_widget.setLayout(content_layout)
-        root_layout.addWidget(root_widget)
-        self.setLayout(root_layout)
-        self.setStyleSheet("border: none")
-        self.table_data()
-
-    @staticmethod
-    def _create_header_label() -> QLabel:
-        label = QLabel("DATA PELANGGAN")
-        label.setFont(QFont("Times New Roman", 30, QFont.Weight.Bold))
-        label.setStyleSheet("color: #ffffff;")
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        return label
+        layout.addWidget(action_buttons_widget)
+        layout.addSpacing(20)
 
     def _create_action_buttons(self) -> QWidget:
         widget = QWidget()
