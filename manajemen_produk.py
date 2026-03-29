@@ -3,34 +3,24 @@ from datetime import datetime, date
 from zoneinfo import ZoneInfo
 
 from PySide6.QtCore import QSize
-from PySide6.QtGui import QFont, Qt, QIcon, QIntValidator, QShortcut, QKeySequence
+from PySide6.QtGui import QFont, Qt, QIntValidator, QShortcut, QKeySequence
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QFrame, QVBoxLayout, QLabel,
-    QPushButton, QLineEdit, QTableWidget, QComboBox, QStackedWidget, QTableWidgetItem, QApplication
+    QComboBox, QStackedWidget, QTableWidgetItem, QApplication
 )
 
 from barang_baru import TambahBarangBaru
 from edit_produk import EditProduk
 from hapus_produk import HapusProdukDialog
 from database import DatabaseManager
-from fungsi import NavigationButton
+from ui_base import BaseTableWidget, BaseDataPage
 
-class ManajemenProduk(QWidget):
+class ManajemenProduk(BaseDataPage):
     """Widget utama untuk manajemen produk"""
 
     # Konstanta
-    pages = 0
-    BUTTON_WIDTH = 200
-    BUTTON_HEIGHT = 35
-    SEARCH_FIELD_WIDTH = 500
-    SEARCH_BUTTON_WIDTH = 100
-    CONTENT_WIDGET_WIDTH = 800
     SELECTOR_HEIGHT = 35
-    TABLE_WIDTH = 800
-    PAGE_INPUT_WIDTH = 30
-    PAGE_INPUT_HEIGHT = 30
     NAV_BUTTON_SIZE = 35
-    RESET_BUTTON_WIDTH = 100
 
     def __init__(self):
         super().__init__()
@@ -70,7 +60,7 @@ class ManajemenProduk(QWidget):
         content_layout.addSpacing(20)
 
         # Widget pencarian
-        search_widget = self._create_search_widget()
+        search_widget = self._create_search_widget("Cari Produk atau SKU ...")
         content_layout.addWidget(search_widget)
 
         content_layout.addStretch()
@@ -130,86 +120,6 @@ class ManajemenProduk(QWidget):
         layout.addWidget(self.button_baru)
         layout.addStretch()
 
-        widget.setLayout(layout)
-        return widget
-
-    def _create_action_button(self, text: str, color: str) -> QPushButton:
-        """Membuat tombol aksi dengan warna kustom"""
-        button = QPushButton(text)
-        button.setFixedSize(self.BUTTON_WIDTH, self.BUTTON_HEIGHT)
-        button.setCursor(Qt.CursorShape.PointingHandCursor)
-        button.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {color};
-                color: white;
-                border: none;
-                border-radius: 10px;
-                font-family: "Segoe UI";
-                font-size: 20px;
-                font-weight: bold;
-            }}
-            QPushButton:hover{{
-                background-color: #ffffff;
-                color: {color};
-            }}
-        """)
-        return button
-
-    def _create_search_widget(self) -> QWidget:
-        """Membuat widget pencarian"""
-        widget = QWidget()
-        layout = QHBoxLayout()
-        layout.addStretch()
-
-        # Input pencarian
-        self.search_input = QLineEdit()
-        self.search_input.setStyleSheet("""
-            QLineEdit{
-                border: 2px solid #ffffff;
-                border-radius: 10px;
-                background-color: #676767;
-                color: #ffffff;
-                font-family: "Segoe UI";
-                padding-left: 10px;
-                font-size: 16px;
-            }
-            QLineEdit:placeholder {
-                color: #d3d3d3;
-            }
-            QLineEdit[active ="true"] {
-                border: 2px solid #00aaff;
-            }
-        """)
-        self.search_input.setPlaceholderText("Cari Produk atau SKU ...")
-        self.search_input.setFixedSize(self.SEARCH_FIELD_WIDTH, self.BUTTON_HEIGHT)
-        self.search_input.setProperty("active", False)
-        layout.addWidget(self.search_input)
-
-        # Tombol cari
-        search_button = QPushButton("   Cari")
-        search_button.setFixedSize(self.SEARCH_BUTTON_WIDTH, self.BUTTON_HEIGHT)
-        search_button.setIcon(QIcon("data/search.svg"))
-        search_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        search_button.setStyleSheet("""
-            QPushButton{
-                background-color: #00aaff;
-                color: white;
-                border: 2px solid #00aaff;
-                border-radius: 10px;
-                font-family: "Segoe UI";
-                font-size: 16px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #0055ff;
-                color: #ffffff;
-                border: 2px solid #0055ff;
-            }
-        """)
-        search_button.clicked.connect(self.search_page)
-        layout.addWidget(search_button)
-
-        layout.addStretch()
         widget.setLayout(layout)
         return widget
 
@@ -287,76 +197,6 @@ class ManajemenProduk(QWidget):
         root_widget.setLayout(root_layout)
         return root_widget
 
-    def _create_bottom_navigation(self) -> QWidget:
-        """Membuat widget navigasi halaman di bagian bawah"""
-        root_widget = QWidget()
-        root_widget.setContentsMargins(0, 0, 0, 0)
-        root_layout = QHBoxLayout()
-        root_layout.setContentsMargins(0, 0, 0, 0)
-        root_layout.setSpacing(0)
-        root_layout.addStretch()
-
-        content_widget = QWidget()
-        content_widget.setFixedSize(self.CONTENT_WIDGET_WIDTH, self.BUTTON_HEIGHT)
-        content_widget.setContentsMargins(0, 0, 0, 0)
-        content_layout = QHBoxLayout()
-        content_layout.setContentsMargins(0, 0, 0, 0)
-        content_layout.setSpacing(0)
-
-        # Tombol reset
-        button_reset = QPushButton(" Reset")
-        button_reset.setIcon(QIcon("data/reset.svg"))
-        button_reset.setFixedSize(self.RESET_BUTTON_WIDTH, self.BUTTON_HEIGHT)
-        button_reset.setIconSize(QSize(20, 20))
-        button_reset.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
-        button_reset.setCursor(Qt.CursorShape.PointingHandCursor)
-        button_reset.clicked.connect(self.reset_click)
-        button_reset.setStyleSheet("""
-            QPushButton{
-                background-color: #ff8000;
-                color: white;
-                border: 2px solid #ff8000;
-                border-radius: 10px;
-            }
-        """)
-        content_layout.addWidget(button_reset)
-
-        content_layout.addStretch()
-
-        # Tombol navigasi kiri
-        button_left = NavigationButton("data/arah kiri.svg", "data/kiri-hover.svg")
-        button_left.clicked.connect(self.prev_page)
-        content_layout.addWidget(button_left)
-
-        # Input halaman
-        self.page_input = QLineEdit()
-        self.page_input.setText("1")
-        self.page_input.setValidator(QIntValidator(0, 99))
-        self.page_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.page_input.setFixedSize(self.PAGE_INPUT_WIDTH, self.PAGE_INPUT_HEIGHT)
-        self.page_input.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
-        self.page_input.setStyleSheet("""
-            QLineEdit{
-                border: none;
-                background-color: #ffffff;
-                color: #000000;
-                border-radius: 5px;
-            }
-        """)
-        self.page_input.setMaxLength(2)
-        content_layout.addWidget(self.page_input)
-
-        # Tombol navigasi kanan
-        button_right = NavigationButton("data/arah kanan.svg", "data/kanan-hover.svg")
-        button_right.clicked.connect(self.next_page)
-        content_layout.addWidget(button_right)
-
-        content_widget.setLayout(content_layout)
-        root_layout.addWidget(content_widget)
-        root_layout.addStretch()
-
-        root_widget.setLayout(root_layout)
-        return root_widget
 
     def _setup_connections(self):
         """Setup signal-slot connections"""
@@ -365,9 +205,7 @@ class ManajemenProduk(QWidget):
         self.button_edit.clicked.connect(self._show_edit_dialog)
         self.button_hapus.clicked.connect(self._show_hapus_dialog)
 
-    def reset_click(self):
-        self.search_input.setText("")
-        self.search_page()
+    def on_reset_click(self):
         self.table_satuan.reset_width()
         self.table_paket.reset_width()
 
@@ -418,14 +256,6 @@ class ManajemenProduk(QWidget):
         if result == HapusProdukDialog.DialogCode.Accepted:
             self.table_data()
 
-    def handle_shortcut(self):
-        focused = QApplication.focusWidget()
-
-        if focused == self.search_input:
-            self.search_page()
-        elif focused == self.page_input:
-            self.custom_page()
-
     def table_data(self, offset=0):
         current = bool(self.search_input.property("active"))
         text = self.search_input.text().strip()
@@ -457,20 +287,6 @@ class ManajemenProduk(QWidget):
             text = int(offset / 5) + 1
             self.page_input.setText(str(text))
 
-    def search_page(self):
-        current = bool(self.search_input.property("active"))
-        text = self.search_input.text().strip()
-        if (text != "" and current == False) or (text != "" and current == True):
-            if not current:
-                self.search_input.setProperty("active", not current)
-            self.search_input.style().unpolish(self.search_input)
-            self.search_input.style().polish(self.search_input)
-            self.table_data()
-        elif text == "" and current == True:
-            self.search_input.setProperty("active", not current)
-            self.search_input.style().unpolish(self.search_input)
-            self.search_input.style().polish(self.search_input)
-            self.table_data()
 
     def custom_page(self):
         text = self.search_input.text().strip()
@@ -558,107 +374,8 @@ def format_tanggal(value, in_fmt="%Y-%m-%d"):
         return str(value)
 
 
-class BaseProductTable(QWidget):
-    """Base class untuk tabel produk dengan fungsi shared"""
 
-    TABLE_WIDTH = 800
-    TABLE_ROW_COUNT = 5
-    COLUMN_WIDTHS = []
-    HEADERS = []
-    TABLE_NAME = ""
-    FIELDS = []
-    FORMATTERS = {}
-
-    def __init__(self):
-        super().__init__()
-        self.current_page = 1
-        self.per_page = self.TABLE_ROW_COUNT
-        self._all_rows = []
-        self._setup_ui()
-
-    def _setup_ui(self):
-        """Inisialisasi user interface"""
-        root_layout = QHBoxLayout()
-        root_layout.setContentsMargins(0, 0, 0, 5)
-        root_layout.addStretch()
-
-        table_widget = QWidget()
-        table_layout = QVBoxLayout()
-        table_layout.setContentsMargins(0, 0, 0, 0)
-
-        # Buat tabel
-        self.table = self._create_table()
-        table_layout.addWidget(self.table)
-
-        table_widget.setLayout(table_layout)
-        root_layout.addWidget(table_widget)
-        root_layout.addStretch()
-        self.setLayout(root_layout)
-
-    def _create_table(self) -> QTableWidget:
-        """Membuat tabel produk"""
-        table = QTableWidget()
-        table.setRowCount(self.TABLE_ROW_COUNT)
-        table.setColumnCount(len(self.COLUMN_WIDTHS))
-        table.setFixedWidth(self.TABLE_WIDTH)
-        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-
-        # Set header
-        table.setHorizontalHeaderLabels(self.HEADERS)
-
-        # Set lebar kolom
-        for index, width in enumerate(self.COLUMN_WIDTHS):
-            table.setColumnWidth(index, width)
-
-        # Konfigurasi header
-        header = table.horizontalHeader()
-        header.setSectionResizeMode(header.ResizeMode.Interactive)
-        table.verticalHeader().setVisible(False)
-
-        # Styling
-        table.setAlternatingRowColors(True)
-        table.setStyleSheet("""
-            QTableWidget{
-                background-color: #ffffff;
-                gridline-color: #d0d0d0;
-            }
-            QHeaderView::section {
-                background-color: #f0f0f0;
-                padding: 5px;
-                border: 1px solid #d0d0d0;
-                font-weight: bold;
-            }
-        """)
-        return table
-
-    def reset_width(self):
-        """reset lebar kolom sesuai konfigurasi awal"""
-        for index, width in enumerate(self.COLUMN_WIDTHS):
-            self.table.setColumnWidth(index, width)
-
-    def set_data(self, rows: list[dict]):
-        """Set Seluruh Data tabel"""
-        self._all_rows = rows or []
-        self.current_page = 1
-        self._render_current_page()
-
-    def _render_current_page(self):
-        self.table.clearContents()
-
-        for r, row in enumerate(self._all_rows):
-            for c, key in enumerate(self.FIELDS):
-                val = row.get(key)
-                if key in self.FORMATTERS:
-                    val = self.FORMATTERS[key](val)
-                item = QTableWidgetItem("" if val is None else str(val))
-                if key == "nama_barang":
-                    item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-                else:
-                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
-                self.table.setItem(r, c, item)
-
-
-class ProdukSatuanTable(BaseProductTable):
+class ProdukSatuanTable(BaseTableWidget):
     """Widget tabel untuk produk satuan"""
 
     TABLE_NAME = "produksatuan"
@@ -670,9 +387,9 @@ class ProdukSatuanTable(BaseProductTable):
     FORMATTERS = {
         "tgl_masuk": format_tanggal,
     }
+    LEFT_ALIGN_FIELDS = ["nama_barang"]
 
-
-class ProdukPaketTable(BaseProductTable):
+class ProdukPaketTable(BaseTableWidget):
     """Widget tabel untuk produk paket"""
 
     TABLE_NAME = "produkpaket"
@@ -681,3 +398,4 @@ class ProdukPaketTable(BaseProductTable):
     COLUMN_WIDTHS = [100, 300, 200, 200]
     HEADERS = ["SKU", "NAMA BARANG", "HARGA JUAL", "KETERANGAN"]
     FIELDS = ["sku", "nama_barang", "harga_jual", "keterangan"]
+    LEFT_ALIGN_FIELDS = ["nama_barang"]
