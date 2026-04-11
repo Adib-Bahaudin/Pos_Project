@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
 from database import DatabaseManager
 from ui_base import BaseTableWidget, BaseDataPage
 from tambah_pelanggan import TambahPelangganDialog
+from edit_pelanggan import EditPelangganDialog
 from message import CustomMessageBox
 
 class PelangganTable(BaseTableWidget):
@@ -109,8 +110,47 @@ class DataPelanggan(BaseDataPage):
                 )
 
     def _show_edit_dialog(self):
-        # Placeholder
-        print("Show Edit Dialog")
+        table = self.table_pelanggan.table
+        current_row = table.currentRow()
+        
+        if current_row < 0:
+            CustomMessageBox.critical(self, "Peringatan", "Pilih data pelanggan yang akan diedit terlebih dahulu!")
+            return
+            
+        data_to_edit = None
+        if len(self.table_pelanggan._all_rows) > current_row:
+            data_to_edit = self.table_pelanggan._all_rows[current_row]
+            
+        if not data_to_edit:
+            return
+
+        dialog = EditPelangganDialog(data_to_edit, self)
+        result = dialog.exec()
+
+        if result == QDialog.DialogCode.Accepted:
+            data = dialog.get_data()
+            database = DatabaseManager()
+
+            response = database.update_customer(
+                id_customer=data["id"],
+                nama=data["nama"],
+                nomer_hp=data["nomer_hp"],
+                alamat=data["alamat"]
+            )
+
+            if response.get("success"):
+                CustomMessageBox.information(
+                    self,
+                    "Berhasil",
+                    f"Pelanggan '{data['nama']}' berhasil diperbarui."
+                )
+                self.table_data()
+            else:
+                CustomMessageBox.critical(
+                    self,
+                    "Gagal",
+                    f"Gagal memperbarui pelanggan:\n{response.get('message')}"
+                )
 
     def _show_hapus_dialog(self):
         # Placeholder
