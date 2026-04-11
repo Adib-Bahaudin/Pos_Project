@@ -5,8 +5,9 @@ from PySide6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QApplication, QHeaderView,
     QFrame, QLabel
 )
+from config import asset_path
 
-from fungsi import NavigationButton
+from src.utils.fungsi import NavigationButton
 
 class ActionButton(QPushButton):
     """Tombol aksi standar dengan pengaturan warna"""
@@ -220,7 +221,7 @@ class BaseDataPage(QWidget):
 
         search_button = QPushButton("   Cari")
         search_button.setFixedSize(self.SEARCH_BUTTON_WIDTH, self.BUTTON_HEIGHT)
-        search_button.setIcon(QIcon("data/search.svg"))
+        search_button.setIcon(QIcon(asset_path("search.svg")))
         search_button.setCursor(Qt.CursorShape.PointingHandCursor)
         search_button.setStyleSheet("""
             QPushButton{
@@ -261,7 +262,7 @@ class BaseDataPage(QWidget):
         content_layout.setSpacing(0)
 
         button_reset = QPushButton(" Reset")
-        button_reset.setIcon(QIcon("data/reset.svg"))
+        button_reset.setIcon(QIcon(asset_path("reset.svg")))
         button_reset.setFixedSize(self.RESET_BUTTON_WIDTH, self.BUTTON_HEIGHT)
         button_reset.setIconSize(QSize(20, 20))
         button_reset.setFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
@@ -279,7 +280,7 @@ class BaseDataPage(QWidget):
         self._add_bottom_left_buttons(content_layout)
         content_layout.addStretch()
 
-        button_left = NavigationButton("data/arah kiri.svg", "data/kiri-hover.svg")
+        button_left = NavigationButton(asset_path("arah kiri.svg"), asset_path("kiri-hover.svg"))
         button_left.clicked.connect(self.prev_page)
         content_layout.addWidget(button_left)
 
@@ -300,7 +301,7 @@ class BaseDataPage(QWidget):
         self.page_input.setMaxLength(2)
         content_layout.addWidget(self.page_input)
 
-        button_right = NavigationButton("data/arah kanan.svg", "data/kanan-hover.svg")
+        button_right = NavigationButton(asset_path("arah kanan.svg"), asset_path("kanan-hover.svg"))
         button_right.clicked.connect(self.next_page)
         content_layout.addWidget(button_right)
 

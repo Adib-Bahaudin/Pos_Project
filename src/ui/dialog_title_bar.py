@@ -4,6 +4,8 @@ from PySide6.QtCore import Qt, QPoint
 from PySide6.QtGui import QPixmap, QFont, QMouseEvent
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QFrame, QLabel, QApplication, QPushButton
 
+from config import asset_path
+
 
 class DialogTitleBar(QWidget):
     def __init__(self, text, parent=None):
@@ -19,7 +21,7 @@ class DialogTitleBar(QWidget):
 
         icon = QLabel()
         icon.setFixedSize(20, 20)
-        icon.setPixmap(QPixmap("data/Black White Geometric Letter B Modern Logo.svg"))
+        icon.setPixmap(QPixmap(asset_path("Black White Geometric Letter B Modern Logo.svg")))
         icon.setScaledContents(True)
         main_layout.addWidget(icon)
 

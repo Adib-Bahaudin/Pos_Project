@@ -4,8 +4,9 @@ from PySide6.QtWidgets import (
     QWidget, QFrame, QHBoxLayout, QVBoxLayout, QLabel,
     QLineEdit, QPushButton
 )
+from config import asset_path
 
-from database import DatabaseManager
+from src.database.database import DatabaseManager
 
 
 class LoginPage(QWidget):
@@ -191,7 +192,7 @@ class LoginPage(QWidget):
 
         # Toggle visibility button
         self.toggle_visibility_button = QPushButton()
-        self.toggle_visibility_button.setIcon(QIcon("data/mata tutup.svg"))
+        self.toggle_visibility_button.setIcon(QIcon(asset_path("mata tutup.svg")))
         self.toggle_visibility_button.setIconSize(QSize(20, 20))
         self.toggle_visibility_button.setFixedHeight(50)
         self.toggle_visibility_button.setStyleSheet("border: none; color: #ffffff")
@@ -284,11 +285,11 @@ class LoginPage(QWidget):
         """Toggle visibility password antara tersembunyi dan terlihat"""
         if self.is_password_visible:
             self.text_input.setEchoMode(QLineEdit.EchoMode.Password)
-            self.toggle_visibility_button.setIcon(QIcon("data/mata tutup.svg"))
+            self.toggle_visibility_button.setIcon(QIcon(asset_path("mata tutup.svg")))
             self.is_password_visible = False
         else:
             self.text_input.setEchoMode(QLineEdit.EchoMode.Normal)
-            self.toggle_visibility_button.setIcon(QIcon("data/mata.svg"))
+            self.toggle_visibility_button.setIcon(QIcon(asset_path("mata.svg")))
             self.is_password_visible = True
 
     def _handle_login(self):

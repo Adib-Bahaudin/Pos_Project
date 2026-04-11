@@ -5,13 +5,14 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QPushButton, QHBoxLayout,
     QFrame, QStackedWidget
 )
+from config import asset_path
 
-from database import DatabaseManager
-from manajemen_produk import ManajemenProduk
-from error import ErrorWindow
-from welcome import WelcomeWindow
-from transaksi import PenjualanWindow
-from sejarah_transaksi import SejarahTransaksiWindow
+from src.database.database import DatabaseManager
+from src.ui.manajemen_produk import ManajemenProduk
+from src.ui.error import ErrorWindow
+from src.ui.welcome import WelcomeWindow
+from src.ui.transaksi import PenjualanWindow
+from src.ui.sejarah_transaksi import SejarahTransaksiWindow
 
 
 class Dashboard(QWidget):
@@ -89,44 +90,44 @@ class Dashboard(QWidget):
         layout.setSpacing(15)
 
         # Tombol menu
-        self.button_menu_left = self._create_menu_button("data/menu putih.png")
+        self.button_menu_left = self._create_menu_button(asset_path("menu putih.png"))
         layout.addWidget(self.button_menu_left)
         layout.addSpacing(25)
 
         # Tombol navigasi
         self.button_transaksi_left = self._create_nav_button(
-            "data/Transaksi putih.png",
-            "data/Transaksi hijau.png"
+            asset_path("Transaksi putih.png"),
+            asset_path("Transaksi hijau.png")
         )
         layout.addWidget(self.button_transaksi_left)
 
         self.button_sejarah_left = self._create_nav_button(
-            "data/sejarah putih.png",
-            "data/sejarah hijau.png"
+            asset_path("sejarah putih.png"),
+            asset_path("sejarah hijau.png")
         )
         layout.addWidget(self.button_sejarah_left)
 
         self.button_manajemen_left = self._create_nav_button(
-            "data/manajemen putih.png",
-            "data/manajemen hijau.png"
+            asset_path("manajemen putih.png"),
+            asset_path("manajemen hijau.png")
         )
         layout.addWidget(self.button_manajemen_left)
 
         self.button_pelanggan_left = self._create_nav_button(
-            "data/pelanggan putih.png",
-            "data/pelanggan hijau.png"
+            asset_path("pelanggan putih.png"),
+            asset_path("pelanggan hijau.png")
         )
         layout.addWidget(self.button_pelanggan_left)
 
         self.button_kas_left = self._create_nav_button(
-            "data/kas putih.png",
-            "data/kas hijau.png"
+            asset_path("kas putih.png"),
+            asset_path("kas hijau.png")
         )
         layout.addWidget(self.button_kas_left)
 
         self.button_buku_left = self._create_nav_button(
-            "data/buku putih.png",
-            "data/buku hijau.png"
+            asset_path("buku putih.png"),
+            asset_path("buku hijau.png")
         )
         layout.addWidget(self.button_buku_left)
 
@@ -134,8 +135,8 @@ class Dashboard(QWidget):
 
         # Tombol logout
         self.button_logout_left = self._create_nav_button(
-            "data/logout putih.png",
-            "data/logout hijau.png"
+            asset_path("logout putih.png"),
+            asset_path("logout hijau.png")
         )
         layout.addWidget(self.button_logout_left)
 
@@ -152,49 +153,49 @@ class Dashboard(QWidget):
         layout.setSpacing(15)
 
         # Tombol menu
-        self.button_menu_right = self._create_menu_button("data/menu putih.png")
+        self.button_menu_right = self._create_menu_button(asset_path("menu putih.png"))
         layout.addWidget(self.button_menu_right)
         layout.addSpacing(25)
 
         # Tombol navigasi dengan text
         self.button_transaksi_right = self._create_nav_button_with_text(
-            "data/Transaksi putih.png",
-            "data/Transaksi hijau.png",
+            asset_path("Transaksi putih.png"),
+            asset_path("Transaksi hijau.png"),
             " Input Transaksi"
         )
         layout.addWidget(self.button_transaksi_right)
 
         self.button_sejarah_right = self._create_nav_button_with_text(
-            "data/sejarah putih.png",
-            "data/sejarah hijau.png",
+            asset_path("sejarah putih.png"),
+            asset_path("sejarah hijau.png"),
             " Sejarah Transaksi"
         )
         layout.addWidget(self.button_sejarah_right)
 
         self.button_manajemen_right = self._create_nav_button_with_text(
-            "data/manajemen putih.png",
-            "data/manajemen hijau.png",
+            asset_path("manajemen putih.png"),
+            asset_path("manajemen hijau.png"),
             " Manajemen Produk"
         )
         layout.addWidget(self.button_manajemen_right)
 
         self.button_pelanggan_right = self._create_nav_button_with_text(
-            "data/pelanggan putih.png",
-            "data/pelanggan hijau.png",
+            asset_path("pelanggan putih.png"),
+            asset_path("pelanggan hijau.png"),
             " Data Customer"
         )
         layout.addWidget(self.button_pelanggan_right)
 
         self.button_kas_right = self._create_nav_button_with_text(
-            "data/kas putih.png",
-            "data/kas hijau.png",
+            asset_path("kas putih.png"),
+            asset_path("kas hijau.png"),
             " Laporan Laba"
         )
         layout.addWidget(self.button_kas_right)
 
         self.button_buku_right = self._create_nav_button_with_text(
-            "data/buku putih.png",
-            "data/buku hijau.png",
+            asset_path("buku putih.png"),
+            asset_path("buku hijau.png"),
             " Tutup Buku"
         )
         layout.addWidget(self.button_buku_right)
@@ -203,8 +204,8 @@ class Dashboard(QWidget):
 
         # Tombol logout
         self.button_logout_right = self._create_nav_button_with_text(
-            "data/logout putih.png",
-            "data/logout hijau.png",
+            asset_path("logout putih.png"),
+            asset_path("logout hijau.png"),
             " Log Out"
         )
         layout.addWidget(self.button_logout_right)
@@ -384,7 +385,7 @@ class Dashboard(QWidget):
         elif self.button_pelanggan_left.isChecked():
             self.button_pelanggan_right.setMinimumWidth(self.BUTTON_EXPANDED_WIDTH)
             if not self.pelanggan_widget:
-                from data_pelanggan import DataPelanggan
+                from src.ui.data_pelanggan import DataPelanggan
                 self.pelanggan_widget = DataPelanggan()
                 if self.main_stack.indexOf(self.pelanggan_widget) == -1:
                     self.main_stack.addWidget(self.pelanggan_widget)

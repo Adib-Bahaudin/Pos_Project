@@ -1,10 +1,12 @@
 import sqlite3
 
+from config import DATABASE_PATH
+
 class InitDatabase:
     def __init__(self):
         super().__init__()
 
-        self.db_name = "db_BarokahCopy.db"
+        self.db_name = str(DATABASE_PATH)
         coon = sqlite3.connect(self.db_name)
         cursor = coon.cursor()
 
@@ -178,8 +180,9 @@ class InitDatabase:
 
         coon.commit()
 
-        from database import DatabaseManager
-        engk = DatabaseManager()
+        from src.database.database import DatabaseManager
+
+        engk = DatabaseManager(self.db_name)
         kunci = engk.hash_key('0987654322')
         cursor.execute("""
             INSERT INTO users (nama, hash_kunci, role) VALUES (?,?,?)

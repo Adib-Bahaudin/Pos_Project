@@ -11,8 +11,8 @@ from PySide6.QtCharts import (
     QValueAxis, QBarCategoryAxis
 )
 
-from fungsi import CustomCalendar
-from database import DatabaseManager
+from src.utils.fungsi import CustomCalendar
+from src.database.database import DatabaseManager
 
 class KasFlowTableModel(QAbstractTableModel):
     def __init__(self, data=None):

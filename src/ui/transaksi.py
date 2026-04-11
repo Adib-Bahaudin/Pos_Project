@@ -6,11 +6,12 @@ from PySide6.QtWidgets import (
     QFrame, QLabel, QLineEdit, QComboBox, QPushButton, QTableWidget, QAbstractItemView, QHeaderView, QGridLayout,
     QTextEdit, QCompleter, QTableWidgetItem, QSpinBox, QAbstractSpinBox, QScrollArea, QCheckBox, QDialog
 )
+from config import asset_path
 
-from database import DatabaseManager
-from discount import DiscountPopup
-from nota_printer import NotaPrinter
-from printer_selection import PrinterSelectionDialog
+from src.database.database import DatabaseManager
+from src.ui.discount import DiscountPopup
+from src.ui.nota_printer import NotaPrinter
+from src.ui.printer_selection import PrinterSelectionDialog
 
 
 class PenjualanWindow(QWidget):
@@ -99,7 +100,7 @@ class PenjualanWindow(QWidget):
         layout.setContentsMargins(10, 0, 0, 0)
         layout.setSpacing(10)
 
-        icon = QSvgWidget("data/kasir_100.svg")
+        icon = QSvgWidget(asset_path("kasir_100.svg"))
         icon.setFixedSize(QSize(50, 50))
 
         header_layout = QVBoxLayout()
@@ -659,7 +660,7 @@ class PenjualanWindow(QWidget):
         button.setToolTip(f"Hapus {product_name}")
         button.setCursor(Qt.CursorShape.PointingHandCursor)
         button.setFixedSize(34, 34)
-        button.setIcon(QIcon("data/tong_sampah_putih.svg"))
+        button.setIcon(QIcon(asset_path("tong_sampah_putih.svg")))
         button.setIconSize(QSize(18, 18))
         button.setObjectName("deleteCartButton")
         button.clicked.connect(lambda _=False, current_row=row: self._remove_cart_item(current_row))

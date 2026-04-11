@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtPrintSupport import QPrinterInfo
 from PySide6.QtGui import QKeySequence, QShortcut
 
-from dialog_title_bar import DialogTitleBar
+from src.ui.dialog_title_bar import DialogTitleBar
 
 
 class PrinterSelectionDialog(QDialog):

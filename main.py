@@ -7,10 +7,11 @@ from PySide6.QtWidgets import (
     QMainWindow, QVBoxLayout, QFrame, QStackedWidget
 )
 
-from dashboard import Dashboard
-from fungsi import ScreenSize
-from login import LoginPage
-from database import DatabaseManager
+from src.ui.dashboard import Dashboard
+from src.utils.fungsi import ScreenSize
+from src.ui.login import LoginPage
+from src.database.database import DatabaseManager
+from config import asset_path
 
 
 class TitleBar(QWidget):
@@ -25,7 +26,7 @@ class TitleBar(QWidget):
         self._setup_ui()
         self._connect_signals()
 
-    def _setup_ui(self):
+    def _setup_ui(self) -> None:
         """Inisialisasi tampilan title bar"""
         self.setFixedHeight(50)
         self.setStyleSheet("""
@@ -73,7 +74,7 @@ class TitleBar(QWidget):
         """Membuat label icon aplikasi"""
         icon_label = QLabel(self)
         icon_label.setFixedSize(30, 30)
-        icon = QPixmap("data/Black White Geometric Letter B Modern Logo.svg")
+        icon = QPixmap(asset_path("Black White Geometric Letter B Modern Logo.svg"))
         icon_label.setPixmap(icon)
         icon_label.setScaledContents(True)
         return icon_label
@@ -222,7 +223,7 @@ class MainWindow(QMainWindow):
         main_widget.setLayout(main_layout)
         self.setCentralWidget(main_widget)
 
-    def _check_existing_session(self):
+    def _check_existing_session(self) -> None:
         """Mengecek apakah ada session login yang masih aktif"""
         database_manager = DatabaseManager()
         is_logged_in, session_data = database_manager.verify_session()
@@ -237,7 +238,7 @@ class MainWindow(QMainWindow):
                 pesan = LoginPage()
                 pesan.session_info(session_data)
 
-    def on_login_success(self, data):
+    def on_login_success(self, data: dict) -> None:
         """Handler ketika login berhasil"""
 
         self.login = True
@@ -259,7 +260,7 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(dashboard)
         self.stack.setCurrentWidget(dashboard)
 
-    def close_session(self):
+    def close_session(self) -> None:
         """Menutup session login saat aplikasi ditutup"""
         if self.login:
             database_manager = DatabaseManager()
@@ -280,7 +281,7 @@ if __name__ == "__main__":
         pass
 
     app = QApplication([])
-    app.setWindowIcon(QIcon("data/Black White Geometric Letter B Modern Logo.svg"))
+    app.setWindowIcon(QIcon(asset_path("Black White Geometric Letter B Modern Logo.svg")))
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
