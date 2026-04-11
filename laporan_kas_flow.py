@@ -89,7 +89,7 @@ class LaporanKasFlow(QWidget):
         
         header_layout.addStretch()
 
-        filter_label = QLabel("Filter:")
+        filter_label = QLabel("Filter:  ")
         filter_label.setFont(QFont("Segoe UI", 12))
         header_layout.addWidget(filter_label)
 
@@ -99,6 +99,8 @@ class LaporanKasFlow(QWidget):
         self.cb_rentang.setFixedHeight(35)
         self.cb_rentang.setStyleSheet(self._combo_style())
         header_layout.addWidget(self.cb_rentang)
+
+        header_layout.addSpacing(20)
 
         self.date_start = QDateEdit(QDate.currentDate())
         self.date_start.setCalendarPopup(True)
@@ -157,6 +159,8 @@ class LaporanKasFlow(QWidget):
         self.table_view.setModel(self.table_model)
         self.table_view.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table_view.verticalHeader().setVisible(False)
+        self.table_view.setShowGrid(False)
+        self.table_view.verticalHeader().setDefaultSectionSize(30)
         self.table_view.setSelectionMode(QTableView.SelectionMode.NoSelection)
         self.table_view.setAlternatingRowColors(True)
         self.table_view.setStyleSheet(self._table_style())
@@ -326,27 +330,47 @@ class LaporanKasFlow(QWidget):
 
     def _table_style(self) -> str:
         return """
-            QTableView {
-                background-color: #141414;
-                color: #ffffff;
-                gridline-color: #333333;
-                border: 1px solid #333333;
+            QTableView { 
+                background-color: #2d2d2d; 
+                alternate-background-color: #545454; 
+                color: white; 
+                border: none; 
+                outline: none; 
                 font-family: "Segoe UI";
                 font-size: 14px;
-            }
-            QTableView::item {
-                padding: 5px;
             }
             QTableView::item:selected {
-                background-color: #333333;
+                background-color: #0078D7;
+                color: white;
             }
-            QHeaderView::section {
-                background-color: #1e1e1e;
-                color: #ffffff;
-                padding: 8px;
-                border: 1px solid #333333;
+            QHeaderView::section:horizontal {
+                background-color: #a6a6a6;
+                color: black; 
                 font-weight: bold;
-                font-size: 14px;
+                border: none; 
+                padding: 6px; 
                 font-family: "Segoe UI";
+                font-size: 14px;
+            }
+            
+            QScrollBar:vertical {
+                border: none;
+                background: transparent;
+                width: 8px;
+                margin: 0px 0px 0px 0px;
+            }
+            QScrollBar::handle:vertical {
+                background: rgba(100, 100, 100, 150);
+                min-height: 20px;
+                border-radius: 4px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: rgba(150, 150, 150, 255);
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+                background: none;
             }
         """
