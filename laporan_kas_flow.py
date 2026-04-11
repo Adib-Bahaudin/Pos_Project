@@ -229,7 +229,6 @@ class LaporanKasFlow(QWidget):
         chart.setTitle("Arus Kas 7 Hari Terakhir")
         chart.setTitleFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
         
-        # Series
         bar_series = QBarSeries()
         
         set_income = QBarSet("Pemasukan")
@@ -250,13 +249,11 @@ class LaporanKasFlow(QWidget):
         pen = line_series.pen()
         pen.setWidth(3)
         line_series.setPen(pen)
-        # Assuming points map to categories index 0 to 6
         net_flows = [350000, 500000, 350000, 550000, 450000, 650000, 800000]
         for i, val in enumerate(net_flows):
             line_series.append(i, val)
         chart.addSeries(line_series)
 
-        # Axes
         categories = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"]
         axis_x = QBarCategoryAxis()
         axis_x.append(categories)
@@ -271,11 +268,9 @@ class LaporanKasFlow(QWidget):
         bar_series.attachAxis(axis_y)
         line_series.attachAxis(axis_y)
 
-        # Legend styling
         chart.legend().setVisible(True)
         chart.legend().setAlignment(Qt.AlignmentFlag.AlignBottom)
         
-        # Transparent background for legend
         chart.legend().setBackgroundVisible(False)
 
         self.chart_view.setChart(chart)
