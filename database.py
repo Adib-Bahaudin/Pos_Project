@@ -1414,6 +1414,15 @@ class DatabaseManager:
             
         return hasil
 
+    def get_all_customer_names(self) -> list[str]:
+        """Ambil semua nama customer untuk keperluan auto-suggestion."""
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+        cursor.execute("SELECT nama FROM customer ORDER BY nama ASC")
+        result = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        return result
+
     def get_customers(self, limit=10, offset=0):
         conn = sqlite3.connect(self.db_name)
         conn.row_factory = sqlite3.Row

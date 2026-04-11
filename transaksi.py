@@ -34,8 +34,10 @@ class PenjualanWindow(QWidget):
 
         self.setup_ui()
         self._setup_search_completer()
+        self._setup_customer_completer()
         self._setup_payment_actions()
         self._refresh_search_suggestions()
+        self._refresh_customer_suggestions()
         self._update_cart_summary()
 
     def setup_ui(self):
@@ -325,6 +327,7 @@ class PenjualanWindow(QWidget):
             }
         """
         )
+        self.customer_input.textChanged.connect(self._handle_customer_text_changed)
         form_layout.addWidget(pelanggan_label, 2, 0)
         form_layout.addWidget(self.customer_input, 2, 1)
 
@@ -453,6 +456,13 @@ class PenjualanWindow(QWidget):
         self.search_completer.activated.connect(self._handle_completer_activated)
         self.search_input.setCompleter(self.search_completer)
 
+    def _setup_customer_completer(self):
+        self.customer_model = QStringListModel(self)
+        self.customer_completer = QCompleter(self.customer_model, self)
+        self.customer_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.customer_completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.customer_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+
     def _handle_search_text_changed(self, text: str):
         if text in self.search_lookup:
             return
@@ -501,6 +511,15 @@ class PenjualanWindow(QWidget):
 
         if keyword and self.search_suggestions:
             self.search_completer.complete()
+
+    def _refresh_customer_suggestions(self):
+        customers = self.db_manager.get_all_customer_names()
+        self.customer_model.setStringList(customers)
+        self.customer_input.setCompleter(self.customer_completer)
+
+    def _handle_customer_text_changed(self, text: str):
+        if text.strip():
+            self.customer_completer.complete()
 
     def _find_exact_product(self, keyword: str):
         keyword = keyword.strip().casefold()
