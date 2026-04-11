@@ -64,6 +64,12 @@ class DataPelanggan(BaseDataPage):
 
         self.stack = QStackedWidget()
         self.table_pelanggan = PelangganTable()
+        self.table_pelanggan.table.setSelectionBehavior(
+            self.table_pelanggan.table.SelectionBehavior.SelectRows
+        )
+        self.table_pelanggan.table.setSelectionMode(
+            self.table_pelanggan.table.SelectionMode.SingleSelection
+        )
         self.stack.addWidget(self.table_pelanggan)
         layout.addWidget(self.stack)
 
