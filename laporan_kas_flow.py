@@ -88,7 +88,7 @@ class LaporanKasFlow(QWidget):
         # 1. Header & Filters
         header_layout = QHBoxLayout()
         
-        title_label = QLabel("LAPORAN KAS FLOW")
+        title_label = QLabel("LAPORAN LABA PENJUALAN")
         title_label.setFont(QFont("Times New Roman", 24, QFont.Weight.Bold))
         header_layout.addWidget(title_label)
         

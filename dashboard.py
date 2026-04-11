@@ -188,7 +188,7 @@ class Dashboard(QWidget):
         self.button_kas_right = self._create_nav_button_with_text(
             "data/kas putih.png",
             "data/kas hijau.png",
-            " Laporan Kas Flow"
+            " Laporan Laba"
         )
         layout.addWidget(self.button_kas_right)
 

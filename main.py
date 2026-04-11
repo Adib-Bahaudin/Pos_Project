@@ -1,7 +1,7 @@
 import sys
 
 from PySide6.QtCore import QPoint
-from PySide6.QtGui import QPixmap, QFont, Qt
+from PySide6.QtGui import QPixmap, QFont, Qt, QIcon
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QLabel, QApplication, QPushButton,
     QMainWindow, QVBoxLayout, QFrame, QStackedWidget
@@ -272,7 +272,15 @@ class MainWindow(QMainWindow):
 
 
 if __name__ == "__main__":
+    try:
+        import ctypes
+        myappid = 'pos_project.barokah.app.1' 
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    except Exception:
+        pass
+
     app = QApplication([])
+    app.setWindowIcon(QIcon("data/Black White Geometric Letter B Modern Logo.svg"))
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
