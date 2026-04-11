@@ -18,7 +18,7 @@ class KasFlowTableModel(QAbstractTableModel):
     def __init__(self, data=None):
         super().__init__()
         self._data = data or []
-        self._headers = ["Tanggal", "No. Transaksi", "Tipe", "Jumlah", "Laba"]
+        self._headers = ["No. Transaksi", "Jumlah", "HPP", "Pajak", "Laba Bersih"]
 
     def rowCount(self, parent: Union[QModelIndex, QPersistentModelIndex] = QModelIndex()) -> int:
         if parent.isValid():
@@ -37,28 +37,22 @@ class KasFlowTableModel(QAbstractTableModel):
             row = self._data[index.row()]
             col = index.column()
             if col == 0:
-                return row.get('tanggal', '')
-            elif col == 1:
                 return row.get('no_transaksi', '')
-            elif col == 2:
-                return row.get('tipe', '')
-            elif col == 3:
+            elif col == 1:
                 return f"Rp {row.get('jumlah', 0):,.0f}"
+            elif col == 2:
+                return f"Rp {row.get('hpp', 0):,.0f}"
+            elif col == 3:
+                return f"Rp {row.get('pajak', 0):,.0f}"
             elif col == 4:
-                return f"Rp {row.get('laba', 0):,.0f}"
+                return f"Rp {row.get('laba_bersih', 0):,.0f}"
             
         if role == Qt.ItemDataRole.TextAlignmentRole:
             return int(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
 
         if role == Qt.ItemDataRole.ForegroundRole:
-            if index.column() == 2:
-                tipe = self._data[index.row()].get('tipe', '')
-                if tipe == 'Income':
-                    return QColor("#00ff00")
-                elif tipe == 'Expense':
-                    return QColor("#ff0000")
-            elif index.column() == 4:
-                laba = self._data[index.row()].get('laba', 0)
+            if index.column() == 4:
+                laba = self._data[index.row()].get('laba_bersih', 0)
                 if laba > 0:
                     return QColor("#00ff00")
                 elif laba < 0:
@@ -396,15 +390,12 @@ class LaporanKasFlow(QWidget):
 
         table_rows = []
         for row in transactions:
-            laba = int(row["laba_bersih"])
-            tipe = "Income" if laba >= 0 else "Expense"
-            jumlah = int(row["total_pemasukan"]) if tipe == "Income" else -int(row["total_pengeluaran"])
             table_rows.append({
-                "tanggal": row["tanggal"],
                 "no_transaksi": row["id_transaksi"],
-                "tipe": tipe,
-                "jumlah": jumlah,
-                "laba": laba
+                "jumlah": int(row["total_pemasukan"]),
+                "hpp": int(row["total_pengeluaran"]),
+                "pajak": int(row["pajak_20_persen"]),
+                "laba_bersih": int(row["laba_bersih"])
             })
         self.table_model = KasFlowTableModel(table_rows)
         self.table_view.setModel(self.table_model)
