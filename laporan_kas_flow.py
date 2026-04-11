@@ -1,7 +1,7 @@
 from typing import Union
 
 from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex, QPersistentModelIndex, QDate, QMargins
-from PySide6.QtGui import QFont, QColor, QPainter, QBrush
+from PySide6.QtGui import QFont, QColor, QPainter, QBrush, QTextCharFormat
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFrame, QLabel, QComboBox, 
     QDateEdit, QTableView, QHeaderView
@@ -10,6 +10,8 @@ from PySide6.QtCharts import (
     QChart, QChartView, QBarSeries, QBarSet, QLineSeries, 
     QValueAxis, QBarCategoryAxis
 )
+
+from fungsi import CustomCalendar
 
 class KasFlowTableModel(QAbstractTableModel):
     def __init__(self, data=None):
@@ -102,10 +104,19 @@ class LaporanKasFlow(QWidget):
 
         header_layout.addSpacing(20)
 
+        header_format = QTextCharFormat()
+        header_format.setBackground(QColor("#2b2b2b"))
+        header_format.setForeground(QColor("#A9B7C6"))
+
         self.date_start = QDateEdit(QDate.currentDate())
         self.date_start.setCalendarPopup(True)
         self.date_start.setFixedHeight(35)
         self.date_start.setStyleSheet(self._date_style())
+        
+        cal_start = CustomCalendar()
+        cal_start.setHeaderTextFormat(header_format)
+        self.date_start.setCalendarWidget(cal_start)
+        
         header_layout.addWidget(self.date_start)
 
         to_label = QLabel(" - ")
@@ -116,6 +127,11 @@ class LaporanKasFlow(QWidget):
         self.date_end.setCalendarPopup(True)
         self.date_end.setFixedHeight(35)
         self.date_end.setStyleSheet(self._date_style())
+        
+        cal_end = CustomCalendar()
+        cal_end.setHeaderTextFormat(header_format)
+        self.date_end.setCalendarWidget(cal_end)
+        
         header_layout.addWidget(self.date_end)
 
         main_layout.addLayout(header_layout)
@@ -288,43 +304,101 @@ class LaporanKasFlow(QWidget):
     def _combo_style(self) -> str:
         return """
             QComboBox {
-                border: 2px solid #555555;
-                border-radius: 8px;
-                padding: 1px 18px 1px 10px;
-                background: #1e1e1e;
-                color: #ffffff;
-                font-family: "Segoe UI";
-                font-size: 14px;
+                background-color: #1e1e1e; 
+                color: white; 
+                padding: 4px 8px; /* Padding sedikit lebih lebar agar teks tidak menempel border */
+                border: 1px solid #444;
+                border-radius: 4px;
             }
             QComboBox::drop-down {
                 subcontrol-origin: padding;
                 subcontrol-position: top right;
-                width: 25px;
-                border-left-width: 0px;
+                width: 24px;
+                border-left: 1px solid #444;
             }
+            /* --- FIX: Menggunakan Ikon Custom --- */
+            QComboBox::down-arrow {
+                image: url(data/icon_down.svg);
+                width: 12px;
+                height: 12px;
+            }
+            /* Styling list dropdown saat Combo Box diklik agar senada */
             QComboBox QAbstractItemView {
-                background: #1e1e1e;
-                color: #ffffff;
-                selection-background-color: #333333;
-                border: 1px solid #555555;
+                background-color: #2b2b2b;
+                color: white;
+                border: 1px solid #444;
+                selection-background-color: #0078D7;
             }
         """
 
     def _date_style(self) -> str:
         return """
             QDateEdit {
-                border: 2px solid #555555;
-                border-radius: 8px;
-                padding: 1px 10px;
-                background: #1e1e1e;
-                color: #ffffff;
-                font-family: "Segoe UI";
-                font-size: 14px;
+                background-color: #1e1e1e; 
+                color: white;
+                border: 1px solid #444;
+                border-radius: 4px;
+                padding: 4px;
             }
             QDateEdit::drop-down {
                 subcontrol-origin: padding;
                 subcontrol-position: top right;
-                width: 25px;
+                width: 24px;
+                border-left: 1px solid #444;
+            }
+            /* --- FIX: Menggunakan Ikon Custom --- */
+            QDateEdit::down-arrow {
+                image: url(data/icon_down.svg);
+                width: 12px;  /* Sesuaikan ukuran ikon jika dirasa kurang besar/kecil */
+                height: 12px;
+            }
+            QCalendarWidget QWidget {
+                background-color: #1e1e1e;
+                color: white;
+            }
+            QCalendarWidget QWidget#qt_calendar_navigationbar {
+                background-color: #2b2b2b;
+                border-bottom: 1px solid #444;
+                min-height: 30px;
+            }
+            QCalendarWidget QToolButton {
+                color: white;
+                background-color: transparent;
+                font-weight: bold;
+                padding: 4px;
+                margin: 2px;
+            }
+            QCalendarWidget QToolButton:hover {
+                background-color: #555;
+                border-radius: 4px;
+            }
+            QCalendarWidget QToolButton::menu-indicator {
+                image: none;
+            }
+            QMenu {
+                background-color: #2b2b2b;
+                color: white;
+                border: 1px solid #555;
+            }
+            QMenu::item {
+                background-color: transparent;
+                color: white;
+                padding: 6px 20px;
+            }
+            QMenu::item:selected {
+                background-color: #0078D7;
+                color: white;
+            }
+            QCalendarWidget QTableView {
+                background-color: #1e1e1e;
+                color: white;
+                selection-background-color: #0078D7;
+                selection-color: white;
+            }
+            QCalendarWidget QSpinBox {
+                background-color: #1e1e1e;
+                color: white;
+                border: 1px solid #444;
             }
         """
 
