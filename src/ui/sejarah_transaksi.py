@@ -1,6 +1,6 @@
 import sqlite3
 from datetime import datetime
-from config import asset_path
+from config import asset_path, asset_uri
 
 import openpyxl
 from PySide6.QtCore import Qt, QDate
@@ -229,7 +229,7 @@ class SejarahTransaksiWindow(QWidget):
         layout = QHBoxLayout(frame)
         
         # --- STYLESHEET KHUSUS DATE EDIT & CALENDAR POPUP ---
-        date_style = """
+        date_style = f"""
             QDateEdit {
                 background-color: #1e1e1e; 
                 color: white;
@@ -245,7 +245,7 @@ class SejarahTransaksiWindow(QWidget):
             }
             /* --- FIX: Menggunakan Ikon Custom --- */
             QDateEdit::down-arrow {
-                image: url(data/icon_down.svg);
+                image: url({asset_uri("icon_down.svg")});
                 width: 12px;  /* Sesuaikan ukuran ikon jika dirasa kurang besar/kecil */
                 height: 12px;
             }
@@ -300,7 +300,7 @@ class SejarahTransaksiWindow(QWidget):
         """
 
         # --- STYLESHEET KHUSUS COMBOBOX ---
-        combo_style = """
+        combo_style = f"""
             QComboBox {
                 background-color: #1e1e1e; 
                 color: white; 
@@ -316,7 +316,7 @@ class SejarahTransaksiWindow(QWidget):
             }
             /* --- FIX: Menggunakan Ikon Custom --- */
             QComboBox::down-arrow {
-                image: url(data/icon_down.svg);
+                image: url({asset_uri("icon_down.svg")});
                 width: 12px;
                 height: 12px;
             }

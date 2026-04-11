@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
     QFrame, QLabel, QLineEdit, QComboBox, QPushButton, QTableWidget, QAbstractItemView, QHeaderView, QGridLayout,
     QTextEdit, QCompleter, QTableWidgetItem, QSpinBox, QAbstractSpinBox, QScrollArea, QCheckBox, QDialog
 )
-from config import asset_path
+from config import asset_path, asset_uri
 
 from src.database.database import DatabaseManager
 from src.ui.discount import DiscountPopup
@@ -350,7 +350,7 @@ class PenjualanWindow(QWidget):
         self.print_checkbox = QCheckBox(" Cetak Nota Transaksi")
         self.print_checkbox.setChecked(False)
         self.print_checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.print_checkbox.setStyleSheet("""
+        self.print_checkbox.setStyleSheet(f"""
             QCheckBox {
                 color: #b8c4d0;
                 font-size: 13px;
@@ -369,7 +369,7 @@ class PenjualanWindow(QWidget):
             QCheckBox::indicator:checked {
                 background-color: #00ff85;
                 border: 2px solid #00ff85;
-                image: url(data/check.svg);
+                image: url({asset_uri("check.svg")});
             }
         """)
         layout.addWidget(self.print_checkbox)
@@ -1019,7 +1019,7 @@ class PenjualanWindow(QWidget):
 
     @staticmethod
     def _get_stylesheet() -> str:
-        return """
+        return f"""
                 QWidget {
                     background-color: transparent;
                     color: #ffffff;
@@ -1063,12 +1063,12 @@ class PenjualanWindow(QWidget):
                     border-left: 1px solid #2a3745;
                 }
                 QSpinBox::up-arrow {
-                    image: url(data/icon_up.svg);
+                    image: url({asset_uri("icon_up.svg")});
                     width: 10px;
                     height: 10px;
                 }
                 QSpinBox::down-arrow {
-                    image: url(data/icon_down.svg);
+                    image: url({asset_uri("icon_down.svg")});
                     width: 10px;
                     height: 10px;
                 }

@@ -1,7 +1,7 @@
 from PySide6.QtGui import Qt, QFont, QPixmap, QShortcut, QIntValidator, QKeySequence
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QWidget, QPushButton, QFrame,
                                QHBoxLayout, QLabel, QComboBox, QLineEdit, QGridLayout, QApplication)
-from config import asset_path
+from config import asset_path, asset_uri
 
 from src.ui.dialog_title_bar import DialogTitleBar
 from src.utils.fungsi import ScreenSize
@@ -88,7 +88,7 @@ class EditProduk(QDialog):
         self.combo_box = QComboBox()
         self.combo_box.setFixedSize(150,45)
         self.combo_box.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.combo_box.setStyleSheet("""
+        self.combo_box.setStyleSheet(f"""
             QComboBox {
                 background-color: #1a1a1a;
                 border: 2px solid #333333;
@@ -110,7 +110,7 @@ class EditProduk(QDialog):
                 width: 30px;
             }
             QComboBox::down-arrow {
-                image: url(data/panah atas bawah.png);
+                image: url({asset_uri("panah atas bawah.png")});
                 width: 25px;
                 height: 25px;
             }

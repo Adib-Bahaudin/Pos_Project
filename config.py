@@ -9,3 +9,7 @@ DATABASE_PATH = PROJECT_ROOT / DATABASE_FILENAME
 
 def asset_path(filename: str) -> str:
     return str(DATA_DIR / filename)
+
+
+def asset_uri(filename: str) -> str:
+    return (DATA_DIR / filename).as_posix()
