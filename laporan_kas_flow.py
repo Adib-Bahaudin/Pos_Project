@@ -147,9 +147,9 @@ class LaporanKasFlow(QWidget):
         cards_layout.setSpacing(15)
 
         self.card_pemasukan, self.lbl_pemasukan_val = self._create_card("Total Pemasukan", "Rp 0", "#00ff00")
-        self.card_pengeluaran, self.lbl_pengeluaran_val = self._create_card("Total Pengeluaran", "Rp 0", "#ff0000")
-        self.card_net, self.lbl_net_val = self._create_card("Saldo Bersih (Net)", "Rp 0", "#00aaff")
-        self.card_awal, self.lbl_awal_val = self._create_card("Saldo Awal", "Rp 0", "#ffffff")
+        self.card_pengeluaran, self.lbl_pengeluaran_val = self._create_card("Total HPP", "Rp 0", "#ff0000")
+        self.card_net, self.lbl_net_val = self._create_card("Total Pajak", "Rp 0", "#ffcc00")
+        self.card_awal, self.lbl_awal_val = self._create_card("Total Laba Bersih", "Rp 0", "#ffffff")
 
         cards_layout.addWidget(self.card_pemasukan)
         cards_layout.addWidget(self.card_pengeluaran)
@@ -353,7 +353,8 @@ class LaporanKasFlow(QWidget):
                 t.tanggal AS tanggal,
                 COALESCE(t.total, 0) AS total_pemasukan,
                 COALESCE(l.total_hpp, 0) AS total_pengeluaran,
-                COALESCE(l.laba_bersih, 0) AS laba_bersih
+                COALESCE(l.laba_bersih, 0) AS laba_bersih,
+                COALESCE(l.pajak_20_persen, 0) AS pajak_20_persen
             FROM transaksi t
             LEFT JOIN laba_transaksi l ON l.id_transaksi = t.id
             WHERE 1=1 {filter_sql}
@@ -375,23 +376,23 @@ class LaporanKasFlow(QWidget):
         """, params)
         daily_rows = [dict(row) for row in cursor.fetchall()]
 
-        cursor.execute("""
-            SELECT COALESCE(SUM(COALESCE(l.laba_bersih, 0)), 0) AS saldo_awal
+        cursor.execute(f"""
+            SELECT COALESCE(SUM(COALESCE(l.pajak_20_persen, 0)), 0) AS total_pajak
             FROM transaksi t
             LEFT JOIN laba_transaksi l ON l.id_transaksi = t.id
-            WHERE date(t.tanggal) < date(?)
-        """, (date_from,))
-        saldo_awal = int(cursor.fetchone()["saldo_awal"])
+            WHERE 1=1 {filter_sql}
+        """, params)
+        total_pajak = int(cursor.fetchone()["total_pajak"])
         conn.close()
 
         total_pemasukan = sum(int(row["total_pemasukan"]) for row in transactions)
         total_pengeluaran = sum(int(row["total_pengeluaran"]) for row in transactions)
-        total_net = sum(int(row["laba_bersih"]) for row in transactions)
+        total_laba_bersih = sum(int(row["laba_bersih"]) for row in transactions)
 
         self.lbl_pemasukan_val.setText(self._to_rupiah(total_pemasukan))
         self.lbl_pengeluaran_val.setText(self._to_rupiah(total_pengeluaran))
-        self.lbl_net_val.setText(self._to_rupiah(total_net))
-        self.lbl_awal_val.setText(self._to_rupiah(saldo_awal))
+        self.lbl_net_val.setText(self._to_rupiah(total_pajak))
+        self.lbl_awal_val.setText(self._to_rupiah(total_laba_bersih))
 
         table_rows = []
         for row in transactions:
