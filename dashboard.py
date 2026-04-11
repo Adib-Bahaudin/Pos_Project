@@ -35,6 +35,7 @@ class Dashboard(QWidget):
         self.transaksi_widget = None
         self.sejarah_widget = None
         self.pelanggan_widget = None
+        self.kas_widget = None
 
         self._setup_ui()
         self._setup_connections()
@@ -323,6 +324,7 @@ class Dashboard(QWidget):
         self.button_sejarah_left.toggled.connect(self._handle_navigation)
         self.button_manajemen_left.toggled.connect(self._handle_navigation)
         self.button_pelanggan_left.toggled.connect(self._handle_navigation)
+        self.button_kas_left.toggled.connect(self._handle_navigation)
 
         # Logout
         self.button_logout_left.clicked.connect(self._handle_logout)
@@ -389,6 +391,14 @@ class Dashboard(QWidget):
             else:
                 self.pelanggan_widget.refresh_data()
             self.main_stack.setCurrentWidget(self.pelanggan_widget)
+        elif self.button_kas_left.isChecked():
+            self.button_kas_right.setMinimumWidth(self.BUTTON_EXPANDED_WIDTH)
+            if not self.kas_widget:
+                from laporan_kas_flow import LaporanKasFlow
+                self.kas_widget = LaporanKasFlow()
+                if self.main_stack.indexOf(self.kas_widget) == -1:
+                    self.main_stack.addWidget(self.kas_widget)
+            self.main_stack.setCurrentWidget(self.kas_widget)
 
     def _reset_all_button_widths(self):
         """Reset semua lebar tombol sidebar kanan ke ukuran default"""
