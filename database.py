@@ -1201,7 +1201,7 @@ class DatabaseManager:
         filter_clauses, params = self._build_transaction_filter_clauses(filters)
         query += filter_clauses
 
-        query += " ORDER BY t.id DESC LIMIT ? OFFSET ?"
+        query += " ORDER BY t.tanggal DESC, t.id DESC LIMIT ? OFFSET ?"
         params.extend([limit, offset])
 
         cursor.execute(query, params)
