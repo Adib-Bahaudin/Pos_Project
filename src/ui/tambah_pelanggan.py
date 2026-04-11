@@ -3,16 +3,16 @@ from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QWidget, QPushButton, QHBoxLayout,
     QLabel, QGridLayout
 )
+from config import asset_path
 
-from barang_baru import WidgetKecil
-from dialog_title_bar import DialogTitleBar
-from fungsi import ScreenSize
+from src.ui.barang_baru import WidgetKecil
+from src.ui.dialog_title_bar import DialogTitleBar
+from src.utils.fungsi import ScreenSize
 
 
-class EditPelangganDialog(QDialog):
-    def __init__(self, data_pelanggan, parent=None):
+class TambahPelangganDialog(QDialog):
+    def __init__(self, parent=None):
         super().__init__(parent)
-        self.data_pelanggan = data_pelanggan
 
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
@@ -33,7 +33,7 @@ class EditPelangganDialog(QDialog):
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(2, 2, 2, 2)
 
-        title_bar = DialogTitleBar("Edit Pelanggan", self)
+        title_bar = DialogTitleBar("Tambah Pelanggan Baru", self)
         main_layout.addWidget(title_bar)
 
         header_widget = QWidget()
@@ -43,12 +43,12 @@ class EditPelangganDialog(QDialog):
 
         icon_label = QLabel()
         icon_label.setFixedSize(60, 60)
-        icon_label.setPixmap(QPixmap("data/pelanggan putih.png"))
+        icon_label.setPixmap(QPixmap(asset_path("pelanggan putih.png")))
         icon_label.setScaledContents(True)
         header_layout.addWidget(icon_label)
         header_layout.addSpacing(10)
 
-        label_formulir = QLabel("Formulir Edit Pelanggan")
+        label_formulir = QLabel("Formulir Tambah Pelanggan")
         label_formulir.setStyleSheet("""
             color: #FFFFFF;
             font-size: 22px;
@@ -65,16 +65,13 @@ class EditPelangganDialog(QDialog):
         conten_grid.setContentsMargins(30, 0, 30, 20)
         conten_grid.setSpacing(10)
 
-        self.input_nama = WidgetKecil("data/nama_icon.svg", "Nama Pelanggan (*Wajib)", "Masukkan Nama Pelanggan...")
-        self.input_nama.data.setText(str(self.data_pelanggan.get("nama", "")))
+        self.input_nama = WidgetKecil(asset_path("nama_icon.svg"), "Nama Pelanggan (*Wajib)", "Masukkan Nama Pelanggan...")
         conten_grid.addWidget(self.input_nama, 0, 0)
 
-        self.input_nohp = WidgetKecil("data/satuan.png", "Nomor Handphone", "Contoh: 081234567890")
-        self.input_nohp.data.setText(str(self.data_pelanggan.get("nomer_hp", "")))
+        self.input_nohp = WidgetKecil(asset_path("satuan.png"), "Nomor Handphone", "Contoh: 081234567890")
         conten_grid.addWidget(self.input_nohp, 1, 0)
 
-        self.input_alamat = WidgetKecil("data/box.png", "Alamat Pelanggan", "Masukkan Alamat Lengkap...")
-        self.input_alamat.data.setText(str(self.data_pelanggan.get("alamat", "")))
+        self.input_alamat = WidgetKecil(asset_path("box.png"), "Alamat Pelanggan", "Masukkan Alamat Lengkap...")
         conten_grid.addWidget(self.input_alamat, 2, 0)
 
         main_layout.addLayout(conten_grid)
@@ -114,10 +111,10 @@ class EditPelangganDialog(QDialog):
         self.btn_batal.clicked.connect(self.reject)
         button_layout.addWidget(self.btn_batal)
 
-        self.btn_simpan = QPushButton("Simpan")
-        self.btn_simpan.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_simpan.setFixedHeight(45)
-        self.btn_simpan.setStyleSheet("""
+        self.btn_tambahkan = QPushButton("Tambahkan")
+        self.btn_tambahkan.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_tambahkan.setFixedHeight(45)
+        self.btn_tambahkan.setStyleSheet("""
             QPushButton {
                 background-color: #ffff00;
                 color: #000000;
@@ -133,8 +130,8 @@ class EditPelangganDialog(QDialog):
                 border: 2px solid #ffff00;
             }
         """)
-        self.btn_simpan.clicked.connect(self.validasi_data)
-        button_layout.addWidget(self.btn_simpan)
+        self.btn_tambahkan.clicked.connect(self.validasi_data)
+        button_layout.addWidget(self.btn_tambahkan)
 
         main_layout.addLayout(button_layout)
 
@@ -160,7 +157,6 @@ class EditPelangganDialog(QDialog):
 
     def get_data(self):
         return {
-            "id": self.data_pelanggan.get("id"),
             "nama": self.input_nama.get_data(),
             "nomer_hp": self.input_nohp.get_data(),
             "alamat": self.input_alamat.get_data(),

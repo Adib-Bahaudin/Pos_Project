@@ -6,11 +6,12 @@ from PySide6.QtWidgets import (
     QFrame, QLabel, QLineEdit, QComboBox, QPushButton, QTableWidget, QAbstractItemView, QHeaderView, QGridLayout,
     QTextEdit, QCompleter, QTableWidgetItem, QSpinBox, QAbstractSpinBox, QScrollArea, QCheckBox, QDialog
 )
+from config import asset_path, asset_uri
 
-from database import DatabaseManager
-from discount import DiscountPopup
-from nota_printer import NotaPrinter
-from printer_selection import PrinterSelectionDialog
+from src.database.database import DatabaseManager
+from src.ui.discount import DiscountPopup
+from src.ui.nota_printer import NotaPrinter
+from src.ui.printer_selection import PrinterSelectionDialog
 
 
 class PenjualanWindow(QWidget):
@@ -99,7 +100,7 @@ class PenjualanWindow(QWidget):
         layout.setContentsMargins(10, 0, 0, 0)
         layout.setSpacing(10)
 
-        icon = QSvgWidget("data/kasir_100.svg")
+        icon = QSvgWidget(asset_path("kasir_100.svg"))
         icon.setFixedSize(QSize(50, 50))
 
         header_layout = QVBoxLayout()
@@ -349,7 +350,7 @@ class PenjualanWindow(QWidget):
         self.print_checkbox = QCheckBox(" Cetak Nota Transaksi")
         self.print_checkbox.setChecked(False)
         self.print_checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.print_checkbox.setStyleSheet("""
+        self.print_checkbox.setStyleSheet(f"""
             QCheckBox {
                 color: #b8c4d0;
                 font-size: 13px;
@@ -368,7 +369,7 @@ class PenjualanWindow(QWidget):
             QCheckBox::indicator:checked {
                 background-color: #00ff85;
                 border: 2px solid #00ff85;
-                image: url(data/check.svg);
+                image: url({asset_uri("check.svg")});
             }
         """)
         layout.addWidget(self.print_checkbox)
@@ -659,7 +660,7 @@ class PenjualanWindow(QWidget):
         button.setToolTip(f"Hapus {product_name}")
         button.setCursor(Qt.CursorShape.PointingHandCursor)
         button.setFixedSize(34, 34)
-        button.setIcon(QIcon("data/tong_sampah_putih.svg"))
+        button.setIcon(QIcon(asset_path("tong_sampah_putih.svg")))
         button.setIconSize(QSize(18, 18))
         button.setObjectName("deleteCartButton")
         button.clicked.connect(lambda _=False, current_row=row: self._remove_cart_item(current_row))
@@ -1018,7 +1019,7 @@ class PenjualanWindow(QWidget):
 
     @staticmethod
     def _get_stylesheet() -> str:
-        return """
+        return f"""
                 QWidget {
                     background-color: transparent;
                     color: #ffffff;
@@ -1062,12 +1063,12 @@ class PenjualanWindow(QWidget):
                     border-left: 1px solid #2a3745;
                 }
                 QSpinBox::up-arrow {
-                    image: url(data/icon_up.svg);
+                    image: url({asset_uri("icon_up.svg")});
                     width: 10px;
                     height: 10px;
                 }
                 QSpinBox::down-arrow {
-                    image: url(data/icon_down.svg);
+                    image: url({asset_uri("icon_down.svg")});
                     width: 10px;
                     height: 10px;
                 }

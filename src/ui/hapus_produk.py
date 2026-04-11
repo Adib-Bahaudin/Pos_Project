@@ -10,10 +10,11 @@ from PySide6.QtWidgets import (
     QFrame,
     QApplication, QWidget,
 )
+from config import asset_path
 
-from dialog_title_bar import DialogTitleBar
-from fungsi import ScreenSize
-from database import DatabaseManager
+from src.ui.dialog_title_bar import DialogTitleBar
+from src.utils.fungsi import ScreenSize
+from src.database.database import DatabaseManager
 
 
 class HapusProdukDialog(QDialog):
@@ -55,7 +56,7 @@ class HapusProdukDialog(QDialog):
 
         icon_delete = QLabel()
         icon_delete.setFixedSize(80, 80)
-        icon_delete.setPixmap(QPixmap("data/icon_delete_big.png"))
+        icon_delete.setPixmap(QPixmap(asset_path("icon_delete_big.png")))
         icon_delete.setScaledContents(True)
         icon_delete.setStyleSheet("border:none;")
         header_layout.addWidget(icon_delete, alignment=Qt.AlignmentFlag.AlignCenter)
@@ -172,7 +173,7 @@ class HapusProdukDialog(QDialog):
 
         icon_warning = QLabel()
         icon_warning.setFixedSize(24, 24)
-        icon_warning.setPixmap(QPixmap("data/warning_.svg"))
+        icon_warning.setPixmap(QPixmap(asset_path("warning_.svg")))
         icon_warning.setScaledContents(True)
         icon_warning.setStyleSheet("border:none;")
 

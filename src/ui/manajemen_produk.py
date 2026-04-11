@@ -9,12 +9,12 @@ from PySide6.QtWidgets import (
     QComboBox, QStackedWidget, QPushButton, QFileDialog
 )
 
-from barang_baru import TambahBarangBaru
-from database import DatabaseManager
-from edit_produk import EditProduk
-from hapus_produk import HapusProdukDialog
-from message import CustomMessageBox
-from ui_base import BaseTableWidget, BaseDataPage
+from src.ui.barang_baru import TambahBarangBaru
+from src.database.database import DatabaseManager
+from src.ui.edit_produk import EditProduk
+from src.ui.hapus_produk import HapusProdukDialog
+from src.utils.message import CustomMessageBox
+from src.ui.ui_base import BaseTableWidget, BaseDataPage
 
 
 class ManajemenProduk(BaseDataPage):

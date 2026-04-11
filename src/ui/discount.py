@@ -2,7 +2,7 @@ from PySide6.QtGui import QIntValidator, Qt
 from PySide6.QtWidgets import (
     QDialog, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QPushButton, QGridLayout
 )
-from dialog_title_bar import DialogTitleBar
+from src.ui.dialog_title_bar import DialogTitleBar
 
 
 class DiscountPopup(QDialog):

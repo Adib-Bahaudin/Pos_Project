@@ -34,6 +34,7 @@ from PySide6.QtWidgets import (
 import sys
 import os
 
+from config import asset_path
 
 from PySide6.QtWidgets import QMessageBox
 
@@ -53,7 +54,7 @@ class _TitleBar(QWidget):
       • Close (×) button on the right
     """
 
-    LOGO_PATH = r"data\Black White Geometric Letter B Modern Logo.svg"
+    LOGO_PATH = asset_path("Black White Geometric Letter B Modern Logo.svg")
 
     def __init__(self, title: str, parent: QDialog) -> None:
         super().__init__(parent)

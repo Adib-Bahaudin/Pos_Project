@@ -1,5 +1,6 @@
 import sqlite3
 from datetime import datetime
+from config import asset_path, asset_uri
 
 import openpyxl
 from PySide6.QtCore import Qt, QDate
@@ -19,10 +20,10 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet
 HAS_REPORTLAB = True
 
-from database import DatabaseManager
-from fungsi import CustomCalendar, NavigationButton, CurrencyDelegate
-from transaction_detail import TransactionDetailModal
-from message import CustomMessageBox
+from src.database.database import DatabaseManager
+from src.utils.fungsi import CustomCalendar, NavigationButton, CurrencyDelegate
+from src.ui.transaction_detail import TransactionDetailModal
+from src.utils.message import CustomMessageBox
 
 
 class SejarahTransaksiWindow(QWidget):
@@ -113,8 +114,8 @@ class SejarahTransaksiWindow(QWidget):
         main_layout.addWidget(self.table)
         
         pagination_layout = QHBoxLayout()
-        self.btn_prev = NavigationButton("data/arah kiri.svg", "data/kiri-hover.svg")
-        self.btn_next = NavigationButton("data/arah kanan.svg", "data/kanan-hover.svg")
+        self.btn_prev = NavigationButton(asset_path("arah kiri.svg"), asset_path("kiri-hover.svg"))
+        self.btn_next = NavigationButton(asset_path("arah kanan.svg"), asset_path("kanan-hover.svg"))
 
         self.lbl_page = QLabel(f"Halaman {self.current_page}")
         self.lbl_page.setStyleSheet("color: white; background-color: transparent;")
@@ -153,10 +154,10 @@ class SejarahTransaksiWindow(QWidget):
         frame.setStyleSheet("background-color: transparent; border-radius: 8px;")
         layout = QHBoxLayout(frame)
         
-        self.lbl_stat_count = self._create_stat_card("Total Transaksi", "0", "#b174e7", "data/ikon_keranjang.svg")
-        self.lbl_stat_revenue = self._create_stat_card("Total Revenue", "Rp 0", "#5271ff", "data/ikon_koin.svg")
-        self.lbl_stat_avg = self._create_stat_card("Rata-rata", "Rp 0", "#ff914d", "data/ikon_rata-rata.svg")
-        self.lbl_stat_top = self._create_stat_card("Kasir Teratas", "-", "#ffde59", "data/ikon_medali.svg")
+        self.lbl_stat_count = self._create_stat_card("Total Transaksi", "0", "#b174e7", asset_path("ikon_keranjang.svg"))
+        self.lbl_stat_revenue = self._create_stat_card("Total Revenue", "Rp 0", "#5271ff", asset_path("ikon_koin.svg"))
+        self.lbl_stat_avg = self._create_stat_card("Rata-rata", "Rp 0", "#ff914d", asset_path("ikon_rata-rata.svg"))
+        self.lbl_stat_top = self._create_stat_card("Kasir Teratas", "-", "#ffde59", asset_path("ikon_medali.svg"))
         
         layout.addWidget(self.lbl_stat_count)
         layout.addWidget(self.lbl_stat_revenue)
@@ -228,7 +229,7 @@ class SejarahTransaksiWindow(QWidget):
         layout = QHBoxLayout(frame)
         
         # --- STYLESHEET KHUSUS DATE EDIT & CALENDAR POPUP ---
-        date_style = """
+        date_style = f"""
             QDateEdit {
                 background-color: #1e1e1e; 
                 color: white;
@@ -244,7 +245,7 @@ class SejarahTransaksiWindow(QWidget):
             }
             /* --- FIX: Menggunakan Ikon Custom --- */
             QDateEdit::down-arrow {
-                image: url(data/icon_down.svg);
+                image: url({asset_uri("icon_down.svg")});
                 width: 12px;  /* Sesuaikan ukuran ikon jika dirasa kurang besar/kecil */
                 height: 12px;
             }
@@ -299,7 +300,7 @@ class SejarahTransaksiWindow(QWidget):
         """
 
         # --- STYLESHEET KHUSUS COMBOBOX ---
-        combo_style = """
+        combo_style = f"""
             QComboBox {
                 background-color: #1e1e1e; 
                 color: white; 
@@ -315,7 +316,7 @@ class SejarahTransaksiWindow(QWidget):
             }
             /* --- FIX: Menggunakan Ikon Custom --- */
             QComboBox::down-arrow {
-                image: url(data/icon_down.svg);
+                image: url({asset_uri("icon_down.svg")});
                 width: 12px;
                 height: 12px;
             }

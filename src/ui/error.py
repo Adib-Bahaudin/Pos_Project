@@ -1,13 +1,15 @@
 from PySide6.QtGui import QPixmap, Qt
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QFrame, QLabel
 
+from config import asset_path
+
 
 class ErrorWindow(QWidget):
     """Window untuk menampilkan halaman error 404"""
 
     # Konstanta
     CONTENT_SIZE = 500
-    ERROR_IMAGE_PATH = "data/error 404.png"
+    ERROR_IMAGE_PATH = asset_path("error 404.png")
 
     def __init__(self):
         super().__init__()

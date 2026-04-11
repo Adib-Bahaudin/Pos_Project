@@ -5,11 +5,11 @@ from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QStackedWidget, QDialog
 )
 
-from database import DatabaseManager
-from ui_base import BaseTableWidget, BaseDataPage
-from tambah_pelanggan import TambahPelangganDialog
-from edit_pelanggan import EditPelangganDialog
-from message import CustomMessageBox
+from src.database.database import DatabaseManager
+from src.ui.ui_base import BaseTableWidget, BaseDataPage
+from src.ui.tambah_pelanggan import TambahPelangganDialog
+from src.ui.edit_pelanggan import EditPelangganDialog
+from src.utils.message import CustomMessageBox
 
 class PelangganTable(BaseTableWidget):
     TABLE_WIDTH = 800
