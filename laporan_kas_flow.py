@@ -12,6 +12,7 @@ from PySide6.QtCharts import (
 )
 
 from fungsi import CustomCalendar
+from database import DatabaseManager
 
 class KasFlowTableModel(QAbstractTableModel):
     def __init__(self, data=None):
@@ -73,8 +74,10 @@ class KasFlowTableModel(QAbstractTableModel):
 class LaporanKasFlow(QWidget):
     def __init__(self):
         super().__init__()
+        self.db_manager = DatabaseManager()
         self._setup_ui()
-        self._load_mock_data()
+        self._connect_signals()
+        self._on_filter_changed()
 
     def _setup_ui(self):
         self.setStyleSheet("background-color: #000000; color: #ffffff;")
@@ -183,6 +186,11 @@ class LaporanKasFlow(QWidget):
         
         main_layout.addWidget(self.table_view)
 
+    def _connect_signals(self):
+        self.cb_rentang.currentIndexChanged.connect(self._on_filter_changed)
+        self.date_start.dateChanged.connect(self._on_filter_changed)
+        self.date_end.dateChanged.connect(self._on_filter_changed)
+
     def _create_card(self, title: str, value: str, value_color: str) -> tuple[QFrame, QLabel]:
         card = QFrame()
         
@@ -219,25 +227,36 @@ class LaporanKasFlow(QWidget):
 
         return card, lbl_value
 
-    def _update_chart(self):
+    def _update_chart(self, daily_data: list[dict]):
         chart = QChart()
         chart.layout().setContentsMargins(0, 0, 0, 0)
         chart.setMargins(QMargins(10, 10, 10, 10))
         chart.setAnimationOptions(QChart.AnimationOption.SeriesAnimations)
         chart.setTheme(QChart.ChartTheme.ChartThemeDark)
         chart.setBackgroundBrush(QBrush(QColor("#141414")))
-        chart.setTitle("Arus Kas 7 Hari Terakhir")
+        chart.setTitle("Arus Kas")
         chart.setTitleFont(QFont("Segoe UI", 12, QFont.Weight.Bold))
         
         bar_series = QBarSeries()
         
         set_income = QBarSet("Pemasukan")
         set_income.setColor(QColor("#00aa00"))
-        set_income.append([500000, 700000, 450000, 800000, 600000, 950000, 1200000])
         
         set_expense = QBarSet("Pengeluaran")
         set_expense.setColor(QColor("#aa0000"))
-        set_expense.append([150000, 200000, 100000, 250000, 150000, 300000, 400000])
+
+        categories = []
+        max_abs_val = 0
+        net_values = []
+        for row in daily_data:
+            categories.append(row["label"])
+            income = row["income"]
+            expense = row["expense"]
+            net = row["net"]
+            set_income.append(income)
+            set_expense.append(expense)
+            net_values.append(net)
+            max_abs_val = max(max_abs_val, income, expense, abs(net))
 
         bar_series.append(set_income)
         bar_series.append(set_expense)
@@ -249,13 +268,16 @@ class LaporanKasFlow(QWidget):
         pen = line_series.pen()
         pen.setWidth(3)
         line_series.setPen(pen)
-        net_flows = [350000, 500000, 350000, 550000, 450000, 650000, 800000]
-        for i, val in enumerate(net_flows):
+        for i, val in enumerate(net_values):
             line_series.append(i, val)
         chart.addSeries(line_series)
 
-        categories = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"]
         axis_x = QBarCategoryAxis()
+        if not categories:
+            categories = ["-"]
+            set_income.append(0)
+            set_expense.append(0)
+            line_series.append(0, 0)
         axis_x.append(categories)
         chart.addAxis(axis_x, Qt.AlignmentFlag.AlignBottom)
         bar_series.attachAxis(axis_x)
@@ -263,7 +285,7 @@ class LaporanKasFlow(QWidget):
 
         axis_y = QValueAxis()
         axis_y.setLabelFormat("Rp %i")
-        axis_y.setRange(0, 1500000)
+        axis_y.setRange(0, max(max_abs_val, 1))
         chart.addAxis(axis_y, Qt.AlignmentFlag.AlignLeft)
         bar_series.attachAxis(axis_y)
         line_series.attachAxis(axis_y)
@@ -275,26 +297,128 @@ class LaporanKasFlow(QWidget):
 
         self.chart_view.setChart(chart)
 
-    def _load_mock_data(self):
-        # Memperbarui ringkasan (Mock)
-        self.lbl_pemasukan_val.setText("Rp 5.200.000")
-        self.lbl_pengeluaran_val.setText("Rp 1.550.000")
-        self.lbl_net_val.setText("Rp 3.650.000")
-        self.lbl_awal_val.setText("Rp 10.000.000")
-        
-        # Memperbarui grafik (Mock)
-        self._update_chart()
+    @staticmethod
+    def _to_rupiah(value: int) -> str:
+        return f"Rp {value:,.0f}"
 
-        # Memperbarui tabel (Mock)
-        mock_transactions = [
-            {"tanggal": "2026-04-11 10:00", "no_transaksi": "TRX-1001", "tipe": "Income", "jumlah": 150000, "laba": 50000},
-            {"tanggal": "2026-04-11 11:30", "no_transaksi": "TRX-1002", "tipe": "Expense", "jumlah": -50000, "laba": -50000},
-            {"tanggal": "2026-04-11 12:15", "no_transaksi": "TRX-1003", "tipe": "Income", "jumlah": 300000, "laba": 120000},
-            {"tanggal": "2026-04-11 14:00", "no_transaksi": "TRX-1004", "tipe": "Expense", "jumlah": -20000, "laba": -20000},
-            {"tanggal": "2026-04-11 15:45", "no_transaksi": "TRX-1005", "tipe": "Income", "jumlah": 750000, "laba": 250000},
-        ]
-        self.table_model = KasFlowTableModel(mock_transactions)
+    def _get_date_range(self) -> tuple[QDate, QDate]:
+        today = QDate.currentDate()
+        selected = self.cb_rentang.currentText()
+
+        if selected == "Hari Ini":
+            start_date = today
+            end_date = today
+        elif selected == "Minggu Ini":
+            start_date = today.addDays(-(today.dayOfWeek() - 1))
+            end_date = start_date.addDays(6)
+        elif selected == "Bulan Ini":
+            start_date = QDate(today.year(), today.month(), 1)
+            end_date = start_date.addMonths(1).addDays(-1)
+        else:
+            start_date = self.date_start.date()
+            end_date = self.date_end.date()
+
+        if start_date > end_date:
+            start_date, end_date = end_date, start_date
+        return start_date, end_date
+
+    def _sync_date_widgets(self, start_date: QDate, end_date: QDate):
+        for widget, value in ((self.date_start, start_date), (self.date_end, end_date)):
+            widget.blockSignals(True)
+            widget.setDate(value)
+            widget.blockSignals(False)
+
+    def _on_filter_changed(self):
+        start_date, end_date = self._get_date_range()
+        if self.cb_rentang.currentText() != "Custom":
+            self._sync_date_widgets(start_date, end_date)
+        self._load_data(start_date, end_date)
+
+    def _load_data(self, start_date: QDate, end_date: QDate):
+        date_from = start_date.toString("yyyy-MM-dd")
+        date_to = end_date.toString("yyyy-MM-dd")
+        filter_sql, params = self.db_manager._build_transaction_filter_clauses({
+            "date_from": date_from,
+            "date_to": date_to
+        })
+
+        import sqlite3
+        conn = sqlite3.connect(self.db_manager.db_name)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute(f"""
+            SELECT
+                t.id AS id_transaksi,
+                t.tanggal AS tanggal,
+                COALESCE(t.total, 0) AS total_pemasukan,
+                COALESCE(l.total_hpp, 0) AS total_pengeluaran,
+                COALESCE(l.laba_bersih, 0) AS laba_bersih
+            FROM transaksi t
+            LEFT JOIN laba_transaksi l ON l.id_transaksi = t.id
+            WHERE 1=1 {filter_sql}
+            ORDER BY datetime(t.tanggal) DESC
+        """, params)
+        transactions = [dict(row) for row in cursor.fetchall()]
+
+        cursor.execute(f"""
+            SELECT
+                date(t.tanggal) AS tanggal,
+                COALESCE(SUM(t.total), 0) AS income,
+                COALESCE(SUM(l.total_hpp), 0) AS expense,
+                COALESCE(SUM(l.laba_bersih), 0) AS net
+            FROM transaksi t
+            LEFT JOIN laba_transaksi l ON l.id_transaksi = t.id
+            WHERE 1=1 {filter_sql}
+            GROUP BY date(t.tanggal)
+            ORDER BY date(t.tanggal)
+        """, params)
+        daily_rows = [dict(row) for row in cursor.fetchall()]
+
+        cursor.execute("""
+            SELECT COALESCE(SUM(COALESCE(l.laba_bersih, 0)), 0) AS saldo_awal
+            FROM transaksi t
+            LEFT JOIN laba_transaksi l ON l.id_transaksi = t.id
+            WHERE date(t.tanggal) < date(?)
+        """, (date_from,))
+        saldo_awal = int(cursor.fetchone()["saldo_awal"])
+        conn.close()
+
+        total_pemasukan = sum(int(row["total_pemasukan"]) for row in transactions)
+        total_pengeluaran = sum(int(row["total_pengeluaran"]) for row in transactions)
+        total_net = sum(int(row["laba_bersih"]) for row in transactions)
+
+        self.lbl_pemasukan_val.setText(self._to_rupiah(total_pemasukan))
+        self.lbl_pengeluaran_val.setText(self._to_rupiah(total_pengeluaran))
+        self.lbl_net_val.setText(self._to_rupiah(total_net))
+        self.lbl_awal_val.setText(self._to_rupiah(saldo_awal))
+
+        table_rows = []
+        for row in transactions:
+            laba = int(row["laba_bersih"])
+            tipe = "Income" if laba >= 0 else "Expense"
+            jumlah = int(row["total_pemasukan"]) if tipe == "Income" else -int(row["total_pengeluaran"])
+            table_rows.append({
+                "tanggal": row["tanggal"],
+                "no_transaksi": row["id_transaksi"],
+                "tipe": tipe,
+                "jumlah": jumlah,
+                "laba": laba
+            })
+        self.table_model = KasFlowTableModel(table_rows)
         self.table_view.setModel(self.table_model)
+
+        grouped_chart_data = []
+        for row in daily_rows:
+            chart_date = QDate.fromString(row["tanggal"], "yyyy-MM-dd")
+            label = chart_date.toString("dd/MM") if chart_date.isValid() else row["tanggal"]
+            grouped_chart_data.append({
+                "label": label,
+                "income": int(row["income"] or 0),
+                "expense": int(row["expense"] or 0),
+                "net": int(row["net"] or 0),
+            })
+        self._update_chart(grouped_chart_data)
         
     def _combo_style(self) -> str:
         return """
