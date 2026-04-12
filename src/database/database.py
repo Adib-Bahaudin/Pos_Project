@@ -8,7 +8,8 @@ from typing import Any
 
 import jwt
 
-from init_database import InitDatabase
+from config import DATABASE_PATH
+from src.database.init_database import InitDatabase
 
 class DatabaseManager:
     """Manager untuk mengelola database dan operasi autentikasi"""
@@ -22,8 +23,8 @@ class DatabaseManager:
     KEY_LENGTH = 10
     FALLBACK_USER_ID = 1
 
-    def __init__(self, db_name="db_BarokahCopy.db"):
-        self.db_name = db_name
+    def __init__(self, db_name: str | None = None):
+        self.db_name = db_name or str(DATABASE_PATH)
 
         if not os.path.exists(self.db_name):
             InitDatabase()
@@ -31,7 +32,7 @@ class DatabaseManager:
         self._ensure_transaction_schema()
 
     @staticmethod
-    def hash_key(key):
+    def hash_key(key: str) -> str:
         """Menghasilkan hash SHA-512 dari key"""
         pwd_hash = key
         return hashlib.sha512(pwd_hash.encode()).hexdigest()
@@ -1530,4 +1531,3 @@ class DatabaseManager:
             return {"success": False, "message": str(e)}
         finally:
             conn.close()
-

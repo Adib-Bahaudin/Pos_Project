@@ -1,11 +1,12 @@
 from PySide6.QtGui import Qt, QPixmap, QIntValidator, QFont
 from PySide6.QtWidgets import QDialog, QVBoxLayout, QWidget, QPushButton, QHBoxLayout, QLabel, QLineEdit, \
     QGridLayout, QComboBox, QStackedWidget
+from config import asset_path
 
-from database import DatabaseManager
-from dialog_title_bar import DialogTitleBar
-from fungsi import ScreenSize
-from message import CustomMessageBox
+from src.database.database import DatabaseManager
+from src.ui.dialog_title_bar import DialogTitleBar
+from src.utils.fungsi import ScreenSize
+from src.utils.message import CustomMessageBox
 
 
 class TambahBarangBaru(QDialog):
@@ -50,7 +51,7 @@ class TambahBarangBaru(QDialog):
         icon_label = QLabel()
         icon_label.setFixedSize(60, 60)
         icon_label.setObjectName("iconLabel")
-        pixmap = QPixmap("data/Keranjang.png")
+        pixmap = QPixmap(asset_path("Keranjang.png"))
         icon_label.setPixmap(pixmap)
         icon_label.setScaledContents(True)
         header_layout.addWidget(icon_label)
@@ -71,7 +72,7 @@ class TambahBarangBaru(QDialog):
         conten_grid.addWidget(header_widget, 0,0,1,0,
                               Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignVCenter)
 
-        self.nama = WidgetKecil("data/box.png",
+        self.nama = WidgetKecil(asset_path("box.png"),
                                 "Nama Produk Baru",
                                 "Nama Produk ..."
                                 )
@@ -86,7 +87,7 @@ class TambahBarangBaru(QDialog):
         label_layout = QHBoxLayout()
 
         icon = QLabel()
-        icon.setPixmap(QPixmap("data/ikon jenis.png"))
+        icon.setPixmap(QPixmap(asset_path("ikon jenis.png")))
         icon.setFixedSize(25, 25)
         icon.setScaledContents(True)
         label_layout.addWidget(icon)
@@ -151,7 +152,7 @@ class TambahBarangBaru(QDialog):
 
         conten_grid.addWidget(selector_widget, 1,1)
 
-        self.harga_jual = WidgetKecil("data/buy.png",
+        self.harga_jual = WidgetKecil(asset_path("buy.png"),
                                       "Harga Jual",
                                       "4000",
                                       int_validator)
@@ -160,25 +161,25 @@ class TambahBarangBaru(QDialog):
         self.stack0 = QStackedWidget()
         self.stack0.setStyleSheet("border: none;")
 
-        self.harga_beli = WidgetKecil("data/uang.png",
+        self.harga_beli = WidgetKecil(asset_path("uang.png"),
                                       "harga_beli",
                                       "2000",
                                       int_validator)
         self.stack0.addWidget(self.harga_beli)
 
-        self.nama_barang = WidgetKecil("data/satuan.png",
+        self.nama_barang = WidgetKecil(asset_path("satuan.png"),
                                        "Nama Barang Satuan",
                                        "bolpoin")
         self.stack0.addWidget(self.nama_barang)
 
         conten_grid.addWidget(self.stack0, 2,1)
 
-        self.stok = WidgetKecil("data/stok.png",
+        self.stok = WidgetKecil(asset_path("stok.png"),
                                 "Stok",
                                 "100",
                                 int_validator)
 
-        self.convert = WidgetKecil("data/convert.png",
+        self.convert = WidgetKecil(asset_path("convert.png"),
                                    "Paket Persatuan",
                                    "12",
                                    int_validator)
@@ -191,7 +192,7 @@ class TambahBarangBaru(QDialog):
 
         conten_grid.addWidget(self.stack, 3,0)
 
-        self.sku = WidgetKecil("data/sku.png",
+        self.sku = WidgetKecil(asset_path("sku.png"),
                                "SKU",
                                "ABC123")
         conten_grid.addWidget(self.sku, 3,1)
@@ -550,4 +551,3 @@ class WidgetKecil(QWidget):
 
     def get_data(self):
         return self.data.text().strip()
-

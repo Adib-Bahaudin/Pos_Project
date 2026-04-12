@@ -6,10 +6,10 @@ from PySide6.QtWidgets import (
     QGridLayout
 )
 
-from dialog_title_bar import DialogTitleBar
-from fungsi import CurrencyDelegate
-from nota_printer import NotaPrinter
-from printer_selection import PrinterSelectionDialog
+from src.ui.dialog_title_bar import DialogTitleBar
+from src.utils.fungsi import CurrencyDelegate
+from src.ui.nota_printer import NotaPrinter
+from src.ui.printer_selection import PrinterSelectionDialog
 
 class TransactionDetailModal(QDialog):
     def __init__(self, db_manager, transaction_id, parent=None):

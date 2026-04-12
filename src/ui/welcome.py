@@ -1,13 +1,15 @@
 from PySide6.QtGui import QPixmap, Qt
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QFrame, QVBoxLayout, QLabel
 
+from config import asset_path
+
 
 class WelcomeWindow(QWidget):
     """Window untuk menampilkan halaman welcome"""
 
     # Konstanta
     CONTENT_SIZE = 500
-    WELCOME_IMAGE_PATH = "data/welcome.png"
+    WELCOME_IMAGE_PATH = asset_path("welcome.png")
 
     def __init__(self):
         super().__init__()

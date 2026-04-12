@@ -10,9 +10,10 @@ from PySide6.QtCharts import (
     QChart, QChartView, QBarSeries, QBarSet, QLineSeries, 
     QValueAxis, QBarCategoryAxis
 )
+from config import asset_uri
 
-from fungsi import CustomCalendar
-from database import DatabaseManager
+from src.utils.fungsi import CustomCalendar
+from src.database.database import DatabaseManager
 
 class KasFlowTableModel(QAbstractTableModel):
     def __init__(self, data=None):
@@ -413,7 +414,7 @@ class LaporanKasFlow(QWidget):
         self._update_chart(grouped_chart_data)
         
     def _combo_style(self) -> str:
-        return """
+        return f"""
             QComboBox {
                 background-color: #1e1e1e; 
                 color: white; 
@@ -429,7 +430,7 @@ class LaporanKasFlow(QWidget):
             }
             /* --- FIX: Menggunakan Ikon Custom --- */
             QComboBox::down-arrow {
-                image: url(data/icon_down.svg);
+                image: url({asset_uri("icon_down.svg")});
                 width: 12px;
                 height: 12px;
             }
@@ -443,7 +444,7 @@ class LaporanKasFlow(QWidget):
         """
 
     def _date_style(self) -> str:
-        return """
+        return f"""
             QDateEdit {
                 background-color: #1e1e1e; 
                 color: white;
@@ -459,7 +460,7 @@ class LaporanKasFlow(QWidget):
             }
             /* --- FIX: Menggunakan Ikon Custom --- */
             QDateEdit::down-arrow {
-                image: url(data/icon_down.svg);
+                image: url({asset_uri("icon_down.svg")});
                 width: 12px;  /* Sesuaikan ukuran ikon jika dirasa kurang besar/kecil */
                 height: 12px;
             }

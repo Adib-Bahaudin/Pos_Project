@@ -1,10 +1,11 @@
 from PySide6.QtGui import Qt, QFont, QPixmap, QShortcut, QIntValidator, QKeySequence
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QWidget, QPushButton, QFrame,
                                QHBoxLayout, QLabel, QComboBox, QLineEdit, QGridLayout, QApplication)
+from config import asset_path, asset_uri
 
-from dialog_title_bar import DialogTitleBar
-from fungsi import ScreenSize
-from database import DatabaseManager
+from src.ui.dialog_title_bar import DialogTitleBar
+from src.utils.fungsi import ScreenSize
+from src.database.database import DatabaseManager
 
 
 class EditProduk(QDialog):
@@ -41,7 +42,7 @@ class EditProduk(QDialog):
 
         header_icon = QLabel()
         header_icon.setFixedSize(60,60)
-        header_icon.setPixmap(QPixmap("data/edit produk.svg"))
+        header_icon.setPixmap(QPixmap(asset_path("edit produk.svg")))
         header_icon.setStyleSheet("""
             border : none;
         """)
@@ -77,7 +78,7 @@ class EditProduk(QDialog):
         search_content_layout = QVBoxLayout()
 
         label_satu = self.create_label_and_icon(
-            "data/cari_label.svg",
+            asset_path("cari_label.svg"),
             "Cari Produk : "
         )
         search_content_layout.addWidget(label_satu)
@@ -87,7 +88,7 @@ class EditProduk(QDialog):
         self.combo_box = QComboBox()
         self.combo_box.setFixedSize(150,45)
         self.combo_box.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.combo_box.setStyleSheet("""
+        self.combo_box.setStyleSheet(f"""
             QComboBox {
                 background-color: #1a1a1a;
                 border: 2px solid #333333;
@@ -109,7 +110,7 @@ class EditProduk(QDialog):
                 width: 30px;
             }
             QComboBox::down-arrow {
-                image: url(data/panah atas bawah.png);
+                image: url({asset_uri("panah atas bawah.png")});
                 width: 25px;
                 height: 25px;
             }
@@ -177,40 +178,40 @@ class EditProduk(QDialog):
         data_conten_layout = QGridLayout()
 
         self.data_nama = WidgetData(
-            "data/produk tangan.svg",
+            asset_path("produk tangan.svg"),
             "Nama Produk : "
         )
         data_conten_layout.addWidget(self.data_nama, 0, 0)
 
         self.data_stok = WidgetData(
-            "data/stok.svg",
+            asset_path("stok.svg"),
             "Stok Saat Ini"
         )
         self.data_stok.set_validator(QIntValidator(0, 999999999))
         data_conten_layout.addWidget(self.data_stok, 0, 1)
 
         self.nama_satuan = WidgetData(
-            "data/nama_icon.svg",
+            asset_path("nama_icon.svg"),
             "Nama Satuan"
         )
         self.nama_satuan.hide()
         data_conten_layout.addWidget(self.nama_satuan, 0, 1)
 
         self.sku = WidgetData(
-            "data/barcode.svg",
+            asset_path("barcode.svg"),
             "SKU"
         )
         data_conten_layout.addWidget(self.sku, 0, 2)
 
         self.data_beli = WidgetData(
-            "data/harga beli.svg",
+            asset_path("harga beli.svg"),
             "Harga Beli : "
         )
         self.data_beli.set_validator(QIntValidator(0, 999999999))
         data_conten_layout.addWidget(self.data_beli, 1, 0)
 
         self.konversi = WidgetData(
-            "data/konversi_icon.svg",
+            asset_path("konversi_icon.svg"),
             "Konversi ke Satuan"
         )
         self.konversi.set_validator(QIntValidator(1, 999999999))
@@ -218,7 +219,7 @@ class EditProduk(QDialog):
         data_conten_layout.addWidget(self.konversi, 1, 0)
 
         self.harga_jual = WidgetData(
-            "data/hargajual.svg",
+            asset_path("hargajual.svg"),
             "Harga Jual"
         )
         self.harga_jual.set_validator(QIntValidator(0, 999999999))
