@@ -7,3 +7,5 @@ tzdata>=2025.2
 PyJWT
 openpyxl
 reportlab
+python-dotenv
+packaging

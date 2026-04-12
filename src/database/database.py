@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import hashlib
 import sqlite3
 import os
+from dotenv import load_dotenv
 import csv
 from zoneinfo import ZoneInfo
 from typing import Any
@@ -11,11 +12,14 @@ import jwt
 from config import DATABASE_PATH
 from src.database.init_database import InitDatabase
 
+load_dotenv()
+
 class DatabaseManager:
     """Manager untuk mengelola database dan operasi autentikasi"""
 
     # Konstanta
-    SECRET_KEY = "kunci-rahasia-anda-yang-kuat"
+    SECRET_KEY = os.getenv("SECRET_KEY")
+    ALGORITHM = os.getenv("ALGORITHM") or "HS256"
     TIMEZONE = "Asia/Jakarta"
     MAX_FAILED_ATTEMPTS = 5
     LOCKOUT_DURATION_MINUTES = 1
@@ -316,7 +320,7 @@ class DatabaseManager:
             'exp': (current_time + timedelta(minutes=self.SESSION_DURATION_MINUTES)).timestamp()
         }
 
-        token_login = jwt.encode(payload, self.SECRET_KEY, algorithm='HS256')
+        token_login = jwt.encode(payload, self.SECRET_KEY, algorithm=self.ALGORITHM)
 
         conn = sqlite3.connect(self.db_name)
         cursor = conn.cursor()
@@ -351,14 +355,14 @@ class DatabaseManager:
 
         try:
             token = result[0]
-            decoded_token = jwt.decode(token, self.SECRET_KEY, algorithms=['HS256'])
+            decoded_token = jwt.decode(token, self.SECRET_KEY, algorithms=[self.ALGORITHM])
             return True, {
                 "user_id": decoded_token['userid'],
                 "username": decoded_token['nama'],
                 "role": decoded_token['role']
             }
         except jwt.ExpiredSignatureError:
-            return False, "token tidak sudah expaired"
+            return False, "token already expired"
         except jwt.InvalidTokenError:
             return False, "token tidak valid"
 

@@ -176,7 +176,7 @@ class MainWindow(QMainWindow):
 
     def _setup_window(self):
         """Konfigurasi window utama"""
-        self.setWindowTitle("coba")
+        self.setWindowTitle("BarokahCopy & Printing")
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
 
