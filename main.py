@@ -228,7 +228,7 @@ class MainWindow(QMainWindow):
         database_manager = DatabaseManager()
         is_logged_in, session_data = database_manager.verify_session()
 
-        if is_logged_in:
+        if is_logged_in and isinstance(session_data, dict):
             self.on_login_success(session_data)
         else:
             if session_data == "token tidak sudah expaired":
