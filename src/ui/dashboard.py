@@ -395,7 +395,7 @@ class Dashboard(QWidget):
         elif self.button_kas_left.isChecked():
             self.button_kas_right.setMinimumWidth(self.BUTTON_EXPANDED_WIDTH)
             if not self.kas_widget:
-                from laporan_kas_flow import LaporanKasFlow
+                from src.ui.laporan_kas_flow import LaporanKasFlow
                 self.kas_widget = LaporanKasFlow()
                 if self.main_stack.indexOf(self.kas_widget) == -1:
                     self.main_stack.addWidget(self.kas_widget)

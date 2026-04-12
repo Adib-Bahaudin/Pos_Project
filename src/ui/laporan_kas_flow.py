@@ -415,103 +415,103 @@ class LaporanKasFlow(QWidget):
         
     def _combo_style(self) -> str:
         return f"""
-            QComboBox {
+            QComboBox {{
                 background-color: #1e1e1e; 
                 color: white; 
                 padding: 4px 8px; /* Padding sedikit lebih lebar agar teks tidak menempel border */
                 border: 1px solid #444;
                 border-radius: 4px;
-            }
-            QComboBox::drop-down {
+            }}
+            QComboBox::drop-down {{
                 subcontrol-origin: padding;
                 subcontrol-position: top right;
                 width: 24px;
                 border-left: 1px solid #444;
-            }
+            }}
             /* --- FIX: Menggunakan Ikon Custom --- */
-            QComboBox::down-arrow {
+            QComboBox::down-arrow {{
                 image: url({asset_uri("icon_down.svg")});
                 width: 12px;
                 height: 12px;
-            }
+            }}
             /* Styling list dropdown saat Combo Box diklik agar senada */
-            QComboBox QAbstractItemView {
+            QComboBox QAbstractItemView {{
                 background-color: #2b2b2b;
                 color: white;
                 border: 1px solid #444;
                 selection-background-color: #0078D7;
-            }
+            }}
         """
 
     def _date_style(self) -> str:
         return f"""
-            QDateEdit {
+            QDateEdit {{
                 background-color: #1e1e1e; 
                 color: white;
                 border: 1px solid #444;
                 border-radius: 4px;
                 padding: 4px;
-            }
-            QDateEdit::drop-down {
+            }}
+            QDateEdit::drop-down {{
                 subcontrol-origin: padding;
                 subcontrol-position: top right;
                 width: 24px;
                 border-left: 1px solid #444;
-            }
+            }}
             /* --- FIX: Menggunakan Ikon Custom --- */
-            QDateEdit::down-arrow {
+            QDateEdit::down-arrow {{
                 image: url({asset_uri("icon_down.svg")});
                 width: 12px;  /* Sesuaikan ukuran ikon jika dirasa kurang besar/kecil */
                 height: 12px;
-            }
-            QCalendarWidget QWidget {
+            }}
+            QCalendarWidget QWidget {{
                 background-color: #1e1e1e;
                 color: white;
-            }
-            QCalendarWidget QWidget#qt_calendar_navigationbar {
+            }}
+            QCalendarWidget QWidget#qt_calendar_navigationbar {{
                 background-color: #2b2b2b;
                 border-bottom: 1px solid #444;
                 min-height: 30px;
-            }
-            QCalendarWidget QToolButton {
+            }}
+            QCalendarWidget QToolButton {{
                 color: white;
                 background-color: transparent;
                 font-weight: bold;
                 padding: 4px;
                 margin: 2px;
-            }
-            QCalendarWidget QToolButton:hover {
+            }}
+            QCalendarWidget QToolButton:hover {{
                 background-color: #555;
                 border-radius: 4px;
-            }
-            QCalendarWidget QToolButton::menu-indicator {
+            }}
+            QCalendarWidget QToolButton::menu-indicator {{
                 image: none;
-            }
-            QMenu {
+            }}
+            QMenu {{
                 background-color: #2b2b2b;
                 color: white;
                 border: 1px solid #555;
-            }
-            QMenu::item {
+            }}
+            QMenu::item {{
                 background-color: transparent;
                 color: white;
                 padding: 6px 20px;
-            }
-            QMenu::item:selected {
+            }}
+            QMenu::item:selected {{
                 background-color: #0078D7;
                 color: white;
-            }
-            QCalendarWidget QTableView {
+            }}
+            QCalendarWidget QTableView {{
                 background-color: #1e1e1e;
                 color: white;
                 selection-background-color: #0078D7;
                 selection-color: white;
-            }
-            QCalendarWidget QSpinBox {
+            }}
+            QCalendarWidget QSpinBox {{
                 background-color: #1e1e1e;
                 color: white;
                 border: 1px solid #444;
-            }
+            }}
         """
 
     def _table_style(self) -> str:

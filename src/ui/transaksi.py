@@ -351,26 +351,26 @@ class PenjualanWindow(QWidget):
         self.print_checkbox.setChecked(False)
         self.print_checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
         self.print_checkbox.setStyleSheet(f"""
-            QCheckBox {
+            QCheckBox {{
                 color: #b8c4d0;
                 font-size: 13px;
                 margin-top: 10px;
-            }
-            QCheckBox::indicator {
+            }}
+            QCheckBox::indicator {{
                 width: 18px;
                 height: 18px;
                 border-radius: 4px;
                 border: 2px solid #263241;
                 background-color: #111827;
-            }
-            QCheckBox::indicator:hover {
+            }}
+            QCheckBox::indicator:hover {{
                 border: 2px solid #00c2ff;
-            }
-            QCheckBox::indicator:checked {
+            }}
+            QCheckBox::indicator:checked {{
                 background-color: #00ff85;
                 border: 2px solid #00ff85;
                 image: url({asset_uri("check.svg")});
-            }
+            }}
         """)
         layout.addWidget(self.print_checkbox)
 
@@ -1020,17 +1020,17 @@ class PenjualanWindow(QWidget):
     @staticmethod
     def _get_stylesheet() -> str:
         return f"""
-                QWidget {
+                QWidget {{
                     background-color: transparent;
                     color: #ffffff;
                     font-family: "Segoe UI";
-                }
-                QFrame#card {
+                }}
+                QFrame#card {{
                     background-color: #0d1117;
                     border: 2px solid #1d2630;
                     border-radius: 18px;
-                }
-                QLabel#smallBadge {
+                }}
+                QLabel#smallBadge {{
                     background-color: rgba(0, 255, 133, 0.12);
                     color: #7dfcc4;
                     border: 2px solid rgba(0, 255, 133, 0.4);
@@ -1038,64 +1038,64 @@ class PenjualanWindow(QWidget):
                     padding: 4px 10px;
                     font-size: 11px;
                     font-weight: 700;
-                }
-                QLineEdit, QComboBox, QDoubleSpinBox, QTextEdit, QSpinBox {
+                }}
+                QLineEdit, QComboBox, QDoubleSpinBox, QTextEdit, QSpinBox {{
                     background-color: #111827;
                     border: 2px solid #263241;
                     border-radius: 12px;
                     color: #ffffff;
                     padding: 10px 12px;
                     font-size: 13px;
-                }
-                QLineEdit:focus, QComboBox:focus, QDoubleSpinBox:focus, QTextEdit:focus, QSpinBox:focus {
+                }}
+                QLineEdit:focus, QComboBox:focus, QDoubleSpinBox:focus, QTextEdit:focus, QSpinBox:focus {{
                     border: 2px solid #00c2ff;
-                }
-                QSpinBox::up-button {
+                }}
+                QSpinBox::up-button {{
                     subcontrol-origin: border;
                     subcontrol-position: top right;
                     width: 20px;
                     border-left: 1px solid #2a3745;
-                    }
-                QSpinBox::down-button {
+                }}
+                QSpinBox::down-button {{
                     subcontrol-origin: border;
                     subcontrol-position: bottom right;
                     width: 20px;
                     border-left: 1px solid #2a3745;
-                }
-                QSpinBox::up-arrow {
+                }}
+                QSpinBox::up-arrow {{
                     image: url({asset_uri("icon_up.svg")});
                     width: 10px;
                     height: 10px;
-                }
-                QSpinBox::down-arrow {
+                }}
+                QSpinBox::down-arrow {{
                     image: url({asset_uri("icon_down.svg")});
                     width: 10px;
                     height: 10px;
-                }
-                QComboBox::drop-down {
+                }}
+                QComboBox::drop-down {{
                     border: none;
                     width: 26px;
-                }
-                QPushButton {
+                }}
+                QPushButton {{
                     min-height: 44px;
                     border-radius: 12px;
                     border: none;
                     font-size: 13px;
                     font-weight: 700;
                     padding: 0 16px;
-                }
-                QPushButton#deleteCartButton {
+                }}
+                QPushButton#deleteCartButton {{
                     min-height: 34px;
                     max-height: 34px;
                     background-color: #241316;
                     border: 2px solid #59242a;
                     padding: 0;
-                }
-                QPushButton#deleteCartButton:hover {
+                }}
+                QPushButton#deleteCartButton:hover {{
                     background-color: #3b1c20;
-                }
+                }}
 
-                QTableWidget {
+                QTableWidget {{
                     background-color: #0a0f14;
                     border: 1px solid #202a35;
                     border-radius: 14px;
@@ -1103,8 +1103,8 @@ class PenjualanWindow(QWidget):
                     color: #ffffff;
                     padding: 6px;
                     selection-background-color: transparent;
-                }
-                QHeaderView::section {
+                }}
+                QHeaderView::section {{
                     background-color: #121a24;
                     color: #93a1af;
                     padding: 10px;
@@ -1112,9 +1112,9 @@ class PenjualanWindow(QWidget):
                     border-bottom: 1px solid #263241;
                     font-size: 12px;
                     font-weight: 700;
-                }
-                QTableWidget::item {
+                }}
+                QTableWidget::item {{
                     padding: 10px;
                     border-bottom: 1px solid #18212b;
-                }
+                }}
         """

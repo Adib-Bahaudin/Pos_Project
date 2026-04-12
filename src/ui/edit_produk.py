@@ -89,39 +89,39 @@ class EditProduk(QDialog):
         self.combo_box.setFixedSize(150,45)
         self.combo_box.setCursor(Qt.CursorShape.PointingHandCursor)
         self.combo_box.setStyleSheet(f"""
-            QComboBox {
+            QComboBox {{
                 background-color: #1a1a1a;
                 border: 2px solid #333333;
                 border-radius: 8px;
                 padding: 10px 15px;
                 color: #ffffff;
                 font-size: 14px;
-            }
-            QComboBox:hover {
+            }}
+            QComboBox:hover {{
                 border: 2px solid #90EE90;
                 background-color: #252525;
-            }
-            QComboBox:focus {
+            }}
+            QComboBox:focus {{
                 border: 2px solid #7FFF7F;
                 background-color: #2a2a2a;
-            }
-            QComboBox::drop-down {
+            }}
+            QComboBox::drop-down {{
                 border: none;
                 width: 30px;
-            }
-            QComboBox::down-arrow {
+            }}
+            QComboBox::down-arrow {{
                 image: url({asset_uri("panah atas bawah.png")});
                 width: 25px;
                 height: 25px;
-            }
-            QComboBox QAbstractItemView {
+            }}
+            QComboBox QAbstractItemView {{
                 background-color: #1a1a1a;
                 border: 2px solid #90EE90;
                 selection-background-color: #90EE90;
                 selection-color: #000000;
                 color: #FFFFFF;
                 padding: 5px;
-            }
+            }}
         """)
         self.combo_box.addItems(["Satuan", "Paket"])
         self.combo_box.currentIndexChanged.connect(self._on_change)
