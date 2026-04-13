@@ -280,6 +280,16 @@ if __name__ == "__main__":
     except Exception:
         pass
 
+    import os
+    from config import DATABASE_PATH, PROJECT_ROOT
+    from src.database.migrations import MigrationManager
+
+    print("Initiating Database Migrations...")
+    migration_dir = os.path.join(PROJECT_ROOT, "src", "database", "migrations")
+    migration_manager = MigrationManager(str(DATABASE_PATH), migration_dir)
+    migration_manager.migrate()
+    print("Database migrations completed.")
+
     app = QApplication([])
     app.setWindowIcon(QIcon(asset_path("Black White Geometric Letter B Modern Logo.svg")))
     window = MainWindow()
