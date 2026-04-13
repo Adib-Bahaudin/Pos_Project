@@ -283,24 +283,37 @@ if __name__ == "__main__":
     import os
     from config import DATABASE_PATH, PROJECT_ROOT, APP_VERSION
     from src.database.migrations import MigrationManager
+    from src.utils.logger import setup_logging, install_global_exception_handler
     from PySide6.QtCore import QSettings
+
+    # ── Inisialisasi Logging System ──────────────────────────────────────
+    # Harus dipanggil seawal mungkin agar semua proses berikutnya
+    # (migrasi, inisialisasi UI) sudah tercatat di log.
+    logger = setup_logging()
 
     settings = QSettings("Barokah", "PosProject")
     last_version = settings.value("app_version", APP_VERSION)
 
     if last_version != APP_VERSION:
-        print(f"Versi baru terdeteksi: {APP_VERSION} (sebelumnya: {last_version}). Menjalankan migrasi database...")
+        logger.info(f"Versi baru terdeteksi: {APP_VERSION} (sebelumnya: {last_version}). Menjalankan migrasi database...")
         migration_dir = os.path.join(PROJECT_ROOT, "src", "database", "migrations")
         migration_manager = MigrationManager(str(DATABASE_PATH), migration_dir)
         migration_manager.migrate()
         
         settings.setValue("app_version", APP_VERSION)
-        print("Database migrations completed.")
+        logger.info("Database migrations completed.")
     else:
-        print(f"Versi aplikasi saat ini: {APP_VERSION}. Melewati migrasi database.")
+        logger.info(f"Versi aplikasi saat ini: {APP_VERSION}. Melewati migrasi database.")
 
     app = QApplication([])
     app.setWindowIcon(QIcon(asset_path("Black White Geometric Letter B Modern Logo.svg")))
+
+    # ── Pasang Global Exception Handler ──────────────────────────────────
+    # Harus dipanggil SETELAH QApplication dibuat, agar dialog error
+    # (QMessageBox) dapat ditampilkan saat terjadi uncaught exception.
+    install_global_exception_handler()
+    logger.info("Aplikasi POS dimulai.")
+
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
