@@ -248,14 +248,12 @@ class MainWindow(QMainWindow):
             "role": data['role']
         }
 
-        # Hapus semua widget dari stack
         while self.stack.count() > 0:
             widget = self.stack.widget(0)
             if widget is not None:
                 self.stack.removeWidget(widget)
                 widget.deleteLater()
 
-        # Tambahkan dashboard
         dashboard = Dashboard(data)
         self.stack.addWidget(dashboard)
         self.stack.setCurrentWidget(dashboard)
@@ -286,9 +284,6 @@ if __name__ == "__main__":
     from src.utils.logger import setup_logging, install_global_exception_handler
     from PySide6.QtCore import QSettings
 
-    # ── Inisialisasi Logging System ──────────────────────────────────────
-    # Harus dipanggil seawal mungkin agar semua proses berikutnya
-    # (migrasi, inisialisasi UI) sudah tercatat di log.
     logger = setup_logging()
 
     settings = QSettings("Barokah", "PosProject")
@@ -308,9 +303,6 @@ if __name__ == "__main__":
     app = QApplication([])
     app.setWindowIcon(QIcon(asset_path("Black White Geometric Letter B Modern Logo.svg")))
 
-    # ── Pasang Global Exception Handler ──────────────────────────────────
-    # Harus dipanggil SETELAH QApplication dibuat, agar dialog error
-    # (QMessageBox) dapat ditampilkan saat terjadi uncaught exception.
     install_global_exception_handler()
     logger.info("Aplikasi POS dimulai.")
 
