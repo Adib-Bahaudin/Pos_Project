@@ -1,10 +1,18 @@
+import os
+from PySide6.QtCore import QStandardPaths, QCoreApplication
 from pathlib import Path
+
+QCoreApplication.setApplicationName("BarokahCopyPOS")
+app_data_dir = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppLocalDataLocation)
+
+if not os.path.exists(app_data_dir):
+    os.makedirs(app_data_dir)
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 SRC_DIR = PROJECT_ROOT / "src"
 DATA_DIR = PROJECT_ROOT / "data"
 DATABASE_FILENAME = "db_BarokahCopy.db"
-DATABASE_PATH = PROJECT_ROOT / DATABASE_FILENAME
+DATABASE_PATH = Path(app_data_dir) / DATABASE_FILENAME
 APP_VERSION = "1.0.0"
 
 
