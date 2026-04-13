@@ -19,7 +19,7 @@ class DatabaseManager:
 
     # Konstanta
     SECRET_KEY = os.getenv("SECRET_KEY")
-    ALGORITHM = os.getenv("ALGORITHM") or "HS256"
+    ALGORITHM = os.getenv("ALGORITHM")
     TIMEZONE = "Asia/Jakarta"
     MAX_FAILED_ATTEMPTS = 5
     LOCKOUT_DURATION_MINUTES = 1
@@ -355,6 +355,10 @@ class DatabaseManager:
 
         try:
             token = result[0]
+
+            if not self.ALGORITHM:
+                raise RuntimeError("ALGORITHM belum diset di environment/.env")
+
             decoded_token = jwt.decode(token, self.SECRET_KEY, algorithms=[self.ALGORITHM])
             return True, {
                 "user_id": decoded_token['userid'],

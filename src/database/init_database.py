@@ -181,12 +181,26 @@ class InitDatabase:
         coon.commit()
 
         from src.database.database import DatabaseManager
+        import os
+        from dotenv import load_dotenv
+
+        load_dotenv()
+
+        MASTER_KEY=os.getenv("MASTER_KEY")
 
         engk = DatabaseManager(self.db_name)
-        kunci = engk.hash_key('0987654322')
-        cursor.execute("""
-            INSERT INTO users (nama, hash_kunci, role) VALUES (?,?,?)
-        """,("Adib", kunci, "Super_user"))
 
-        coon.commit()
-        coon.close()
+        if MASTER_KEY:
+            kunci = engk.hash_key(MASTER_KEY)
+
+            cursor.execute("""
+            INSERT INTO users (nama, hash_kunci, role) VALUES (?,?,?)
+            """,("Adib", kunci, "Super_user"))
+
+            coon.commit()
+            coon.close()
+
+        else:
+            print("Master Key Tidak ditemukan di file .env")
+
+        
