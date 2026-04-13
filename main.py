@@ -286,7 +286,7 @@ if __name__ == "__main__":
     from PySide6.QtCore import QSettings
 
     settings = QSettings("Barokah", "PosProject")
-    last_version = settings.value("app_version", "0.0.0")
+    last_version = settings.value("app_version", APP_VERSION)
 
     if last_version != APP_VERSION:
         print(f"Versi baru terdeteksi: {APP_VERSION} (sebelumnya: {last_version}). Menjalankan migrasi database...")
