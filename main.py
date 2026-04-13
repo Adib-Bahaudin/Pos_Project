@@ -281,17 +281,28 @@ if __name__ == "__main__":
         pass
 
     import os
-    from config import DATABASE_PATH, PROJECT_ROOT
+    from config import DATABASE_PATH, PROJECT_ROOT, APP_VERSION
     from src.database.migrations import MigrationManager
+    from PySide6.QtCore import QSettings
 
-    print("Initiating Database Migrations...")
-    migration_dir = os.path.join(PROJECT_ROOT, "src", "database", "migrations")
-    migration_manager = MigrationManager(str(DATABASE_PATH), migration_dir)
-    migration_manager.migrate()
-    print("Database migrations completed.")
+    settings = QSettings("Barokah", "PosProject")
+    last_version = settings.value("app_version", "0.0.0")
+
+    if last_version != APP_VERSION:
+        print(f"Versi baru terdeteksi: {APP_VERSION} (sebelumnya: {last_version}). Menjalankan migrasi database...")
+        migration_dir = os.path.join(PROJECT_ROOT, "src", "database", "migrations")
+        migration_manager = MigrationManager(str(DATABASE_PATH), migration_dir)
+        migration_manager.migrate()
+        
+        # Update versi terakhir ke versi saat ini
+        settings.setValue("app_version", APP_VERSION)
+        print("Database migrations completed.")
+    else:
+        print(f"Versi aplikasi saat ini: {APP_VERSION}. Melewati migrasi database.")
 
     app = QApplication([])
     app.setWindowIcon(QIcon(asset_path("Black White Geometric Letter B Modern Logo.svg")))
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
+
