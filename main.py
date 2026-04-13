@@ -294,7 +294,6 @@ if __name__ == "__main__":
         migration_manager = MigrationManager(str(DATABASE_PATH), migration_dir)
         migration_manager.migrate()
         
-        # Update versi terakhir ke versi saat ini
         settings.setValue("app_version", APP_VERSION)
         print("Database migrations completed.")
     else:
