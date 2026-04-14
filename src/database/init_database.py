@@ -185,11 +185,9 @@ class InitDatabase:
             coon.commit()
 
             from src.database.database import DatabaseManager
-            from dotenv import load_dotenv
+            from src.utils.security import get_master_key
 
-            load_dotenv()
-
-            MASTER_KEY = os.getenv("MASTER_KEY")
+            MASTER_KEY = get_master_key()
             engk = DatabaseManager(self.db_name)
 
             if MASTER_KEY:
@@ -201,7 +199,7 @@ class InitDatabase:
 
                 coon.commit()
             else:
-                self.logger.warning("Master Key Tidak ditemukan di file .env")
+                self.logger.warning("Master Key Tidak ditemukan di file security")
 
             coon.close()
 

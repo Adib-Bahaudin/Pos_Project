@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 import hashlib
 import sqlite3
 import os
-from dotenv import load_dotenv
 import csv
 from zoneinfo import ZoneInfo
 from typing import Any
@@ -12,15 +11,14 @@ import jwt
 from config import DATABASE_PATH
 from src.database.init_database import InitDatabase
 from src.utils.logger import get_logger, log_error
-
-load_dotenv()
+from src.utils.security import get_secret_key, get_algorithm
 
 class DatabaseManager:
     """Manager untuk mengelola database dan operasi autentikasi"""
 
     # Konstanta
-    SECRET_KEY = os.getenv("SECRET_KEY")
-    ALGORITHM = os.getenv("ALGORITHM")
+    SECRET_KEY = get_secret_key()
+    ALGORITHM = get_algorithm()
     TIMEZONE = "Asia/Jakarta"
     MAX_FAILED_ATTEMPTS = 5
     LOCKOUT_DURATION_MINUTES = 1
@@ -366,7 +364,7 @@ class DatabaseManager:
             token = result[0]
 
             if not self.ALGORITHM:
-                raise RuntimeError("ALGORITHM belum diset di environment/.env")
+                raise RuntimeError("ALGORITHM belum diset di file security")
 
             decoded_token = jwt.decode(token, self.SECRET_KEY, algorithms=[self.ALGORITHM])
             return True, {
