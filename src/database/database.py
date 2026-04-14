@@ -11,6 +11,7 @@ import jwt
 
 from config import DATABASE_PATH
 from src.database.init_database import InitDatabase
+from src.utils.logger import get_logger, log_error
 
 load_dotenv()
 
@@ -28,12 +29,16 @@ class DatabaseManager:
     FALLBACK_USER_ID = 1
 
     def __init__(self, db_name: str | None = None):
+        self.logger = get_logger("DatabaseManager")
         self.db_name = db_name or str(DATABASE_PATH)
 
         if not os.path.exists(self.db_name):
             InitDatabase()
 
-        self._ensure_transaction_schema()
+        try:
+            self._ensure_transaction_schema()
+        except Exception as e:
+            log_error(e, context="saat memastikan skema transaksi", logger=self.logger)
 
     @staticmethod
     def hash_key(key: str) -> str:
@@ -168,8 +173,12 @@ class DatabaseManager:
                            ''', (username, hash_key, role))
             conn.commit()
             return True
-        except sqlite3.IntegrityError:
+        except sqlite3.IntegrityError as e:
+            log_error(e, context="register_user (Integrity Error)", logger=self.logger)
             raise ValueError("Nama atau Kunci Sudah Terdaftar")
+        except Exception as e:
+            log_error(e, context="register_user", logger=self.logger)
+            raise
         finally:
             conn.close()
 
@@ -365,10 +374,15 @@ class DatabaseManager:
                 "username": decoded_token['nama'],
                 "role": decoded_token['role']
             }
-        except jwt.ExpiredSignatureError:
+        except jwt.ExpiredSignatureError as e:
+            log_error(e, context="verify_session (Expired)", logger=self.logger)
             return False, "token already expired"
-        except jwt.InvalidTokenError:
+        except jwt.InvalidTokenError as e:
+            log_error(e, context="verify_session (Invalid)", logger=self.logger)
             return False, "token tidak valid"
+        except Exception as e:
+            msg = log_error(e, context="verify_session", logger=self.logger)
+            return False, msg
 
     def delete_session(self):
         """Menghapus semua session dari database"""
@@ -841,7 +855,12 @@ class DatabaseManager:
         
         except (sqlite3.Error, ValueError) as error:
             conn.rollback()
-            return {"success": False, "message": str(error)}
+            msg = log_error(error, context="create_sale_transaction", logger=self.logger)
+            return {"success": False, "message": msg}
+        except Exception as e:
+            conn.rollback()
+            msg = log_error(e, context="create_sale_transaction (Uncaught)", logger=self.logger)
+            return {"success": False, "message": msg}
         finally:
             conn.close()
 
@@ -1114,7 +1133,13 @@ class DatabaseManager:
             return result
         except sqlite3.Error as error:
             conn.rollback()
-            result["error"] = str(error)
+            msg = log_error(error, context="update_produk", logger=self.logger)
+            result["error"] = msg
+            return result
+        except Exception as e:
+            conn.rollback()
+            msg = log_error(e, context="update_produk (Uncaught)", logger=self.logger)
+            result["error"] = msg
             return result
         finally:
             conn.close()
@@ -1184,8 +1209,13 @@ class DatabaseManager:
 
             conn.commit()
             return result
-        except sqlite3.Error:
+        except sqlite3.Error as error:
             conn.rollback()
+            log_error(error, context="delete_produk_bersih", logger=self.logger)
+            raise
+        except Exception as e:
+            conn.rollback()
+            log_error(e, context="delete_produk_bersih (Uncaught)", logger=self.logger)
             raise
         finally:
             conn.close()
@@ -1419,7 +1449,8 @@ class DatabaseManager:
                         hasil["errors"].append(f"Baris {r_idx}: Jenis '{jenis}' tidak dimengerti.")
                         
         except Exception as e:
-            hasil["error_format"] = f"Error membaca file CSV: {str(e)}"
+            msg = log_error(e, context="import_batch_csv", logger=self.logger)
+            hasil["error_format"] = f"Error membaca file CSV: {msg}"
             
         return hasil
 
@@ -1498,7 +1529,8 @@ class DatabaseManager:
             return {"success": True}
         except Exception as e:
             conn.rollback()
-            return {"success": False, "message": str(e)}
+            msg = log_error(e, context="insert_customer", logger=self.logger)
+            return {"success": False, "message": msg}
         finally:
             conn.close()
 
@@ -1515,7 +1547,8 @@ class DatabaseManager:
             return {"success": True}
         except Exception as e:
             conn.rollback()
-            return {"success": False, "message": str(e)}
+            msg = log_error(e, context="update_customer", logger=self.logger)
+            return {"success": False, "message": msg}
         finally:
             conn.close()
 
@@ -1536,6 +1569,7 @@ class DatabaseManager:
             return {"success": True}
         except Exception as e:
             conn.rollback()
-            return {"success": False, "message": str(e)}
+            msg = log_error(e, context="delete_customer", logger=self.logger)
+            return {"success": False, "message": msg}
         finally:
             conn.close()

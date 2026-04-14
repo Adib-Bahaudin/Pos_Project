@@ -289,6 +289,11 @@ if __name__ == "__main__":
     settings = QSettings("Barokah", "PosProject")
     last_version = settings.value("app_version", "0.0.0")
 
+    if not os.path.exists(str(DATABASE_PATH)):
+        from src.database.init_database import InitDatabase
+        logger.info("Database belum ada. Melakukan inisialisasi awal...")
+        InitDatabase()
+
     if last_version != APP_VERSION:
         logger.info(f"Versi baru terdeteksi: {APP_VERSION} (sebelumnya: {last_version}). Menjalankan migrasi database...")
         migration_dir = os.path.join(PROJECT_ROOT, "src", "database", "migrations")
