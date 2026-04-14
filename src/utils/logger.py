@@ -28,7 +28,7 @@ from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from typing import Type
 
-from config import PROJECT_ROOT
+from config import APP_DATA_DIR
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -36,7 +36,7 @@ from config import PROJECT_ROOT
 # ══════════════════════════════════════════════════════════════════════════════
 
 # Konfigurasi default
-LOG_DIR = os.path.join(PROJECT_ROOT, "logs")
+LOG_DIR = os.path.join(APP_DATA_DIR, "logs")
 LOG_FILE = "app.log"
 LOG_MAX_BYTES = 5 * 1024 * 1024   # 5 MB per file
 LOG_BACKUP_COUNT = 3              # Simpan 3 file backup

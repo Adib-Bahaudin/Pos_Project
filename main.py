@@ -287,7 +287,7 @@ if __name__ == "__main__":
     logger = setup_logging()
 
     settings = QSettings("Barokah", "PosProject")
-    last_version = settings.value("app_version", APP_VERSION)
+    last_version = settings.value("app_version", "0.0.0")
 
     if last_version != APP_VERSION:
         logger.info(f"Versi baru terdeteksi: {APP_VERSION} (sebelumnya: {last_version}). Menjalankan migrasi database...")
