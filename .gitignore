@@ -213,3 +213,5 @@ identifier.sqlite
 # Application Logs
 logs/
 
+# Real Security File
+security.py

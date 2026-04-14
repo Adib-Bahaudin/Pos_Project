@@ -1,5 +1,5 @@
 from PySide6.QtCore import QSize
-from PySide6.QtGui import QFont, Qt, QCursor, QIcon
+from PySide6.QtGui import QFont, Qt, QCursor, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QWidget, QFrame, QHBoxLayout, QVBoxLayout, QLabel,
     QLineEdit, QPushButton
@@ -141,8 +141,8 @@ class LoginPage(QWidget):
         login_content.addWidget(self.login_button)
 
         # Tombol register
-        register_widget = self._create_register_widget()
-        login_content.addWidget(register_widget)
+        self.register_widget = self._create_register_widget()
+        login_content.addWidget(self.register_widget)
 
         frame_login.setLayout(login_content)
         login_layout.addWidget(frame_login)
@@ -200,6 +200,9 @@ class LoginPage(QWidget):
 
         input_layout.addWidget(self.toggle_visibility_button)
 
+        self.shortcut_numpad_enter = QShortcut(QKeySequence(Qt.Key.Key_Enter), self)
+        self.shortcut_numpad_enter.activated.connect(self._handle_login)
+
         input_widget.setLayout(input_layout)
         return input_widget
 
@@ -222,8 +225,7 @@ class LoginPage(QWidget):
         button.setShortcut("Return")
         return button
 
-    @staticmethod
-    def _create_register_widget() -> QWidget:
+    def _create_register_widget(self) -> QWidget:
         """Membuat widget dengan tombol register"""
         register_button = QPushButton("KLIK Disini! Untuk Membuat Kunci Akses")
         register_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
@@ -252,7 +254,20 @@ class LoginPage(QWidget):
         register_layout.addStretch()
 
         register_widget.setLayout(register_layout)
+        
+        # Connect signal
+        register_button.clicked.connect(self._open_register_dialog)
+        
         return register_widget
+
+    def _open_register_dialog(self):
+        """Membuka dialog registrasi user baru"""
+        from src.ui.register import RegisterDialog
+        dialog = RegisterDialog(self)
+        if dialog.exec():
+            self.error_info.setStyleSheet("color: #00ff7f;")
+            self.error_info.setText("✅ User Rekan Berhasil Diregistrasi")
+            self.text_input.setFocus()
 
     @staticmethod
     def _create_footer() -> QWidget:
