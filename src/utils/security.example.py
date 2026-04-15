@@ -1,4 +1,5 @@
 '''
+kamu harus merubah nama modul ini menjadi security.py
 kamu harus merubah value dari semua return.
 kamu dapat menggunakan Cythonize untuk lebih mengamankan isi file ini.
 '''
