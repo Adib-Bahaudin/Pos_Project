@@ -15,7 +15,7 @@ DATA_DIR = PROJECT_ROOT / "data"
 DATABASE_FILENAME = "db_BarokahCopy.db"
 DATABASE_PATH = PROJECT_ROOT / DATABASE_FILENAME      #testing
 # DATABASE_PATH = APP_DATA_DIR / DATABASE_FILENAME    #production
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.1.1"
 
 
 def asset_path(filename: str) -> str:
