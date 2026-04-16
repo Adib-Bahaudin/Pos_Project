@@ -390,12 +390,15 @@ class TambahBarangBaru(QDialog):
 
     def import_csv_dialog(self):
         from PySide6.QtWidgets import QFileDialog
+        from PySide6.QtCore import QStandardPaths
         import csv
+
+        download_path = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DownloadLocation)
 
         filepath, _ = QFileDialog.getOpenFileName(
             self,
             "Pilih File CSV",
-            "",
+            download_path,
             "CSV Files (*.csv)"
         )
         if filepath:
@@ -437,9 +440,10 @@ class TambahBarangBaru(QDialog):
         import os
         import shutil
         from PySide6.QtWidgets import QFileDialog
+        from PySide6.QtCore import QStandardPaths
+        from config import DATA_DIR
 
-        sumber = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                              "data", "system_files", "template_import.csv")
+        sumber = os.path.join(DATA_DIR, "system_files", "template_import.csv")
 
         if not os.path.exists(sumber):
             CustomMessageBox.critical(
@@ -449,10 +453,13 @@ class TambahBarangBaru(QDialog):
             )
             return
 
+        download_path = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.DownloadLocation)
+        default_save_path = os.path.join(download_path, "Template_Impor_Produk.csv")
+
         tujuan, _ = QFileDialog.getSaveFileName(
             self,
             "Simpan Template CSV",
-            "Template_Impor_Produk.csv",
+            default_save_path,
             "CSV Files (*.csv)"
         )
 
