@@ -4,6 +4,10 @@ import shutil
 from datetime import datetime
 from threading import Lock
 
+from src.utils.logger import get_logger
+
+logger = get_logger("migrations")
+
 class MigrationManager:
     def __init__(self, db_path: str, migrations_dir: str):
         self.db_path = db_path
@@ -35,7 +39,7 @@ class MigrationManager:
                     """)
                     conn.commit()
             except sqlite3.Error as e:
-                print(f"Error initializing schema_version table: {e}")
+                logger.error(f"Error initializing schema_version table: {e}")
 
     def _backup_database(self):
         """Backup database sebelum menjalankan migrasi apa pun."""
@@ -52,9 +56,9 @@ class MigrationManager:
         
         try:
             shutil.copy2(self.db_path, backup_path)
-            print(f"Database backed up to: {backup_path}")
+            logger.info(f"Database backed up to: {backup_path}")
         except IOError as e:
-            print(f"Failed to backup database: {e}")
+            logger.error(f"Failed to backup database: {e}")
             raise
 
     def _parse_migration_file(self, filepath: str):
@@ -83,7 +87,7 @@ class MigrationManager:
                 results = cursor.fetchall()
                 return [row[0] for row in results]
         except sqlite3.Error as e:
-            print(f"Error checking applied migrations: {e}")
+            logger.error(f"Error checking applied migrations: {e}")
             return []
             
     def _get_last_applied_migration(self):
@@ -95,7 +99,7 @@ class MigrationManager:
                 result = cursor.fetchone()
                 return result
         except sqlite3.Error as e:
-            print(f"Error fetching last applied migration: {e}")
+            logger.error(f"Error fetching last applied migration: {e}")
             return None
 
     def migrate(self):
@@ -113,13 +117,13 @@ class MigrationManager:
                     if version not in applied_versions:
                         pending_migrations.append((version, file))
                 except ValueError:
-                    print(f"Skipping file {file}: Prefix is not a valid integer.")
+                    logger.warning(f"Skipping file {file}: Prefix is not a valid integer.")
                     
             if not pending_migrations:
-                print("Database is up to date.")
+                logger.info("Database is up to date.")
                 return
 
-            print(f"Found {len(pending_migrations)} pending migrations.")
+            logger.info(f"Found {len(pending_migrations)} pending migrations.")
             self._backup_database()
 
             for version, script_name in pending_migrations:
@@ -127,9 +131,9 @@ class MigrationManager:
                 up_script, _ = self._parse_migration_file(filepath)
                 
                 if not up_script:
-                    print(f"Warning: No 'Up' script found in {script_name}. Skipping execution but logging it.")
+                    logger.warning(f"No 'Up' script found in {script_name}. Skipping execution but logging it.")
 
-                print(f"Applying migration: {script_name}...")
+                logger.info(f"Applying migration: {script_name}...")
                 try:
                     with self._get_connection() as conn:
                         cursor = conn.cursor()
@@ -142,8 +146,8 @@ class MigrationManager:
                         )
                         conn.commit()
                 except sqlite3.Error as e:
-                    print(f"Failed to apply migration {script_name}: {e}")
-                    print("Aborting further migrations.")
+                    logger.error(f"Failed to apply migration {script_name}: {e}")
+                    logger.error("Aborting further migrations.")
                     break
 
     def rollback(self):
@@ -151,22 +155,22 @@ class MigrationManager:
         with self.lock:
             last_migration = self._get_last_applied_migration()
             if not last_migration:
-                print("No migrations to rollback.")
+                logger.info("No migrations to rollback.")
                 return
 
             version, script_name = last_migration
             filepath = os.path.join(self.migrations_dir, script_name)
             
             if not os.path.exists(filepath):
-                print(f"Error: Migration file {script_name} not found for rollback.")
+                logger.error(f"Migration file {script_name} not found for rollback.")
                 return
 
             _, down_script = self._parse_migration_file(filepath)
             
             if not down_script:
-                print(f"Warning: No 'Down' script found in {script_name}.")
+                logger.warning(f"No 'Down' script found in {script_name}.")
 
-            print(f"Rolling back migration: {script_name}...")
+            logger.info(f"Rolling back migration: {script_name}...")
             
             try:
                 with self._get_connection() as conn:
@@ -176,6 +180,6 @@ class MigrationManager:
                     
                     cursor.execute("DELETE FROM schema_version WHERE version = ?", (version,))
                     conn.commit()
-                    print(f"Successfully rolled back {script_name}.")
+                    logger.info(f"Successfully rolled back {script_name}.")
             except sqlite3.Error as e:
-                print(f"Failed to rollback migration {script_name}: {e}")
+                logger.error(f"Failed to rollback migration {script_name}: {e}")
