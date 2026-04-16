@@ -33,10 +33,15 @@ git clone https://github.com/Adib-Bahaudin/Pos_Project.git
 # 2️⃣ Masuk ke folder proyek
 cd Pos_Project
 
-# 3️⃣ Install dependensi
+# 3️⃣ Ubah nama file konfigurasi keamanan
+mv src/utils/security.example.py src/utils/security.py
+# (Atau untuk pengguna Windows Command Prompt):
+# ren src\utils\security.example.py security.py
+
+# 4️⃣ Install dependensi
 python -m pip install -r requirements.txt
 
-# 4️⃣ Jalankan aplikasi
+# 5️⃣ Jalankan aplikasi
 python main.py
 ````
 
@@ -52,19 +57,22 @@ python main.py
 
 🧠 Menggunakan sistem **session yang cerdas**
 
-🚧 Fitur-fitur tambahan lainnya sedang dikembangkan dan akan segera tersedia!
+💯 Fitur-fitur penting lainnya yang dibutuhkan untuk sistem **POS**, termasuk laporan **Laba Transaksi**
+
+🚧 Dan proyek ini akan selalu di update agar menjadi lebih baik!
 
 ---
 
 ## ⚠️ Disclaimer
 
-Proyek ini merupakan **gambaran besar** dari sistem POS kasir yang dibangun dengan Python.
-Saya **tidak menampilkan seluruh ide dan implementasi penuh** untuk mencegah penyalahgunaan atau penggunaan komersial tanpa izin.
+Proyek ini dikembangkan berdasarkan studi kasus dari **Toko Barokah Copy & Printing**, yang merepresentasikan kebutuhan nyata dalam operasional usaha percetakan dan layanan serupa.
 
-Namun, saya tetap berkomitmen untuk memberikan **hasil terbaik** agar portofolio ini menarik dan informatif bagi Anda.
+Sistem POS ini dirancang agar **sangat relevan untuk UMKM**, khususnya yang bergerak di bidang jasa dan retail, dengan fitur-fitur yang cukup lengkap untuk mendukung aktivitas penjualan, manajemen pengguna, serta keamanan data.
 
-> 💡 Jika Anda seorang **pelaku bisnis** yang tertarik untuk mengembangkan proyek ini menjadi produk lengkap,
-> jangan ragu untuk **menghubungi saya** untuk kerja sama lebih lanjut. 🤝
+Selain itu, proyek ini juga memiliki potensi untuk dikembangkan lebih lanjut agar dapat digunakan dalam **skala bisnis yang lebih besar**. Saya terbuka untuk melakukan **penyesuaian, pengembangan fitur tambahan, maupun integrasi sistem** sesuai dengan kebutuhan spesifik bisnis Anda.
+
+> 💡 Jika Anda tertarik untuk mengadaptasi atau mengembangkan proyek ini lebih lanjut,  
+> jangan ragu untuk **menghubungi saya** untuk diskusi dan kerja sama. 🤝
 
 ---
 
