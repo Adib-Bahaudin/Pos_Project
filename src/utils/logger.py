@@ -363,7 +363,6 @@ _ERROR_MESSAGE_MAP: dict[str, str] = {
     ),
 }
 
-# Pesan default jika tipe error tidak ada di mapping
 _DEFAULT_USER_MESSAGE = (
     "Terjadi kesalahan yang tidak terduga pada aplikasi.\n"
     "Silakan coba lagi atau hubungi admin jika masalah berlanjut."
@@ -388,11 +387,9 @@ def get_user_friendly_message(exception: Exception) -> str:
     """
     error_type = type(exception).__name__
 
-    # Cek langsung di mapping
     if error_type in _ERROR_MESSAGE_MAP:
         return _ERROR_MESSAGE_MAP[error_type]
 
-    # Cek parent classes (untuk error turunan, misal sqlite3.OperationalError)
     for parent_class in type(exception).__mro__:
         parent_name = parent_class.__name__
         if parent_name in _ERROR_MESSAGE_MAP:
@@ -479,23 +476,19 @@ def _show_crash_dialog(
 
         app = QApplication.instance()
         if app is None:
-            # QApplication belum ada — tidak bisa menampilkan dialog GUI
             print(f"[CRITICAL ERROR] {error_type}: {technical_detail}", file=sys.stderr)
             return
 
-        # Buat dialog error
         msg_box = QMessageBox()
         msg_box.setIcon(QMessageBox.Icon.Critical)
         msg_box.setWindowTitle("⚠ Terjadi Kesalahan — Barokah POS")
 
-        # Pesan utama (user-friendly)
         msg_box.setText(
             "<b style='font-size: 14px; color: #d93025;'>"
             "Terjadi Kesalahan Pada Aplikasi"
             "</b>"
         )
 
-        # Pesan informatif (penjelasan & instruksi)
         informative_text = (
             f"{user_message}\n\n"
             f"──────────────────────────────────\n"
@@ -507,7 +500,6 @@ def _show_crash_dialog(
         )
         msg_box.setInformativeText(informative_text)
 
-        # Detail teknis (bisa di-expand oleh admin)
         detail_text = (
             f"Error Type : {error_type}\n"
             f"Detail     : {technical_detail}\n"
@@ -516,7 +508,6 @@ def _show_crash_dialog(
         )
         msg_box.setDetailedText(detail_text)
 
-        # Styling dialog
         msg_box.setStyleSheet("""
             QMessageBox {
                 background-color: #1a1a1a;
@@ -545,14 +536,12 @@ def _show_crash_dialog(
             }
         """)
 
-        # Tombol: OK (tutup dialog, TIDAK menutup aplikasi)
         msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
         msg_box.button(QMessageBox.StandardButton.Ok).setText("Mengerti")
 
         msg_box.exec()
 
     except Exception as dialog_error:
-        # Jika dialog sendiri gagal, fallback ke stderr
         print(
             f"[CRITICAL ERROR] Gagal menampilkan dialog error:\n"
             f"  Original: {error_type}: {technical_detail}\n"

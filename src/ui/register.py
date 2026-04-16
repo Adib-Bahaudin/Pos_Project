@@ -1,4 +1,4 @@
-from PySide6.QtGui import Qt, QFont
+from PySide6.QtGui import Qt, QFont, QPixmap
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QWidget, QPushButton, QHBoxLayout,
     QLabel, QLineEdit, QComboBox, QFormLayout
@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
 from src.database.database import DatabaseManager
 from src.ui.dialog_title_bar import DialogTitleBar
 from src.utils.fungsi import ScreenSize
+from config import asset_path
 
 
 class RegisterDialog(QDialog):
@@ -15,11 +16,11 @@ class RegisterDialog(QDialog):
 
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        self.setFixedSize(450, 600)
+        self.setFixedSize(500, 600)
         self.setModal(True)
 
         screen_size = ScreenSize()
-        x, y = screen_size.get_centered_position(450, 600)
+        x, y = screen_size.get_centered_position(500, 600)
         self.move(x, y)
 
         self._setup_ui()
@@ -44,6 +45,16 @@ class RegisterDialog(QDialog):
         title_bar = DialogTitleBar("Register User Baru", self)
         main_layout.addWidget(title_bar)
 
+        self.logo_label = QLabel()
+        pixmap = QPixmap(asset_path("logo_register(150px).png"))
+
+        if not pixmap.isNull():
+            pixmap = pixmap.scaled(150, 150, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            self.logo_label.setPixmap(pixmap)
+
+        self.logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        main_layout.addWidget(self.logo_label)
+
         # Formulir Input
         form_widget = QWidget()
         form_layout = QFormLayout(form_widget)
@@ -52,7 +63,7 @@ class RegisterDialog(QDialog):
         form_layout.setSpacing(15)
 
         input_style = """
-            QLineEdit, QComboBox {
+            QLineEdit {
                 background-color: #1E1E1E;
                 color: #FFFFFF;
                 border: 1px solid #90EE90;
@@ -60,8 +71,38 @@ class RegisterDialog(QDialog):
                 padding: 8px;
                 font-size: 14px;
             }
+            QComboBox {
+                background-color: #1a1a1a;
+                border: 2px solid #333333;
+                border-radius: 8px;
+                padding: 10px 15px;
+                color: #ffffff;
+                font-size: 14px;
+            }
+            QComboBox:hover {
+                border: 2px solid #90EE90;
+                background-color: #252525;
+            }
+            QComboBox:focus {
+                border: 2px solid #7FFF7F;
+                background-color: #2a2a2a;
+            }
             QComboBox::drop-down {
                 border: none;
+                width: 30px;
+            }
+            QComboBox::down-arrow {
+                image: url(data/panah atas bawah.png);
+                width: 25px;
+                height: 25px;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #1a1a1a;
+                border: 2px solid #90EE90;
+                selection-background-color: #90EE90;
+                selection-color: #000000;
+                color: #FFFFFF;
+                padding: 5px;
             }
         """
         label_style = "color: #FFFFFF; font-size: 14px; font-weight: bold;"
@@ -177,11 +218,11 @@ class RegisterDialog(QDialog):
 
         # 4. Tentukan Role User Baru
         if role_text == "Admin":
-            role_to_insert = "default"
+            role_to_insert = "Admin"
         elif role_text == "Super User":
             role_to_insert = "Super_user"
         else:
-            role_to_insert = "default"
+            role_to_insert = ""
 
         # 5. Daftarkan User
         try:

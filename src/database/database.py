@@ -148,7 +148,7 @@ class DatabaseManager:
         Args:
             username: Nama pengguna
             key: Kunci akses (harus 10 digit angka)
-            role: Role pengguna (admin, user, dll)
+            role: Role pengguna (admin, Super_user)
 
         Returns:
             True jika berhasil
@@ -166,7 +166,7 @@ class DatabaseManager:
 
         try:
             cursor.execute('''
-                           INSERT INTO users (username, h_key, u_role)
+                           INSERT INTO users (nama, hash_kunci, role)
                            VALUES (?, ?, ?)
                            ''', (username, hash_key, role))
             conn.commit()
