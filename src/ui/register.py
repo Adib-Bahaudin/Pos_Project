@@ -16,11 +16,11 @@ class RegisterDialog(QDialog):
 
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        self.setFixedSize(500, 600)
+        self.setFixedSize(500, 650)
         self.setModal(True)
 
         screen_size = ScreenSize()
-        x, y = screen_size.get_centered_position(500, 600)
+        x, y = screen_size.get_centered_position(500, 650)
         self.move(x, y)
 
         self._setup_ui()
@@ -63,15 +63,7 @@ class RegisterDialog(QDialog):
         form_layout.setSpacing(15)
 
         input_style = """
-            QLineEdit {
-                background-color: #1E1E1E;
-                color: #FFFFFF;
-                border: 1px solid #90EE90;
-                border-radius: 5px;
-                padding: 8px;
-                font-size: 14px;
-            }
-            QComboBox {
+            QComboBox, QLineEdit {
                 background-color: #1a1a1a;
                 border: 2px solid #333333;
                 border-radius: 8px;
@@ -79,11 +71,11 @@ class RegisterDialog(QDialog):
                 color: #ffffff;
                 font-size: 14px;
             }
-            QComboBox:hover {
+            QComboBox:hover, QLineEdit:hover {
                 border: 2px solid #90EE90;
                 background-color: #252525;
             }
-            QComboBox:focus {
+            QComboBox:focus, QLineEdit:focus {
                 border: 2px solid #7FFF7F;
                 background-color: #2a2a2a;
             }
@@ -213,7 +205,7 @@ class RegisterDialog(QDialog):
         # 3. Verifikasi Key Admin
         status, result = db.verify_login(key_admin)
         if not status or not isinstance(result, dict) or result.get("role") != "Super_user":
-            self.label_peringatan.setText("Otorisasi Gagal: Key Admin tidak valid atau bukan Super User")
+            self.label_peringatan.setText("Otorisasi Gagal: Key Admin tidak valid")
             return
 
         # 4. Tentukan Role User Baru
