@@ -1,5 +1,5 @@
 from PySide6.QtCore import QSize, QStringListModel, QTimer
-from PySide6.QtGui import QFont, Qt, QIcon
+from PySide6.QtGui import QFont, Qt, QIcon, QShortcut, QKeySequence
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout,
@@ -449,6 +449,12 @@ class PenjualanWindow(QWidget):
         self.button_rounding.clicked.connect(self._apply_rounding)
         self.button_pay.clicked.connect(self._process_payment)
 
+        shortcut_pay = QShortcut(QKeySequence("Ctrl+B"), self)
+        shortcut_pay.activated.connect(self._process_payment)
+
+        shortcut_search = QShortcut(QKeySequence("Ctrl+F"), self)
+        shortcut_search.activated.connect(self._focus_search)
+
     def _setup_search_completer(self):
         self.search_model = QStringListModel(self)
         self.search_completer = QCompleter(self.search_model, self)
@@ -597,12 +603,10 @@ class PenjualanWindow(QWidget):
 
             item["qty"] = next_qty
             qty_widget = self.cart_table.cellWidget(existing_index, 4)
-            if qty_widget is not None:
-                spinbox = qty_widget.findChild(QSpinBox)
-                if spinbox is not None:
-                    spinbox.blockSignals(True)
-                    spinbox.setValue(next_qty)
-                    spinbox.blockSignals(False)
+            if isinstance(qty_widget, QSpinBox):
+                qty_widget.blockSignals(True)
+                qty_widget.setValue(next_qty)
+                qty_widget.blockSignals(False)
             self._refresh_row(existing_index)
             self._update_cart_summary()
             return
@@ -638,6 +642,7 @@ class PenjualanWindow(QWidget):
         self.cart_table.setCellWidget(row, 4, self._create_qty_editor(row, item))
         self._set_table_label(row, 5, self._format_currency(item["harga_jual"] * item["qty"]))
         self.cart_table.setCellWidget(row, 6, self._create_delete_button(row, item["nama_barang"]))
+        self._rebuild_tab_order()
 
     def _refresh_row(self, row: int):
         if row >= len(self.cart_items):
@@ -646,27 +651,16 @@ class PenjualanWindow(QWidget):
         subtotal = item["harga_jual"] * item["qty"]
         self._set_table_label(row, 5, self._format_currency(subtotal))
 
-    def _create_qty_editor(self, row: int, item: dict) -> QWidget:
-        wrapper = QWidget()
-        layout = QHBoxLayout(wrapper)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
+    def _create_qty_editor(self, row: int, item: dict) -> QSpinBox:
         spinbox = QSpinBox()
         spinbox.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.UpDownArrows)
         spinbox.setRange(1, item.get("max_qty", self.MAX_QTY))
         spinbox.setValue(item["qty"])
         spinbox.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        spinbox.setFixedSize(75, 33)
-        spinbox.setStyleSheet("""
-            QSpinBox {
-                padding: 0px 12px;
-            }
-        """)
+        spinbox.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        spinbox.setStyleSheet("QSpinBox { padding: 0px 6px; }")
         spinbox.valueChanged.connect(lambda value, current_row=row: self._update_cart_qty(current_row, value))
-
-        layout.addWidget(spinbox)
-        return wrapper
+        return spinbox
 
     def _create_delete_button(self, row: int, product_name: str) -> QWidget:
         wrapper = QWidget()
@@ -706,24 +700,21 @@ class PenjualanWindow(QWidget):
         self.cart_items.pop(row)
         self.cart_table.removeRow(row)
         self._rebuild_cart_actions()
+        self._rebuild_tab_order()
         self._update_cart_summary()
         self.search_hint_label.setText(f"Produk {nama_barang} dihapus dari keranjang.")
 
     def _rebuild_cart_actions(self):
         for row, item in enumerate(self.cart_items):
             qty_widget = self.cart_table.cellWidget(row, 4)
-            if qty_widget is not None:
-                spinbox = qty_widget.findChild(QSpinBox)
-                if spinbox is not None:
-                    try:
-                        spinbox.valueChanged.disconnect()
-                    except RuntimeError:
-                        pass
-                    except TypeError:
-                        pass
-                    spinbox.valueChanged.connect(
-                        lambda value, current_row=row: self._update_cart_qty(current_row, value)
-                    )
+            if isinstance(qty_widget, QSpinBox):
+                try:
+                    qty_widget.valueChanged.disconnect()
+                except (RuntimeError, TypeError):
+                    pass
+                qty_widget.valueChanged.connect(
+                    lambda value, current_row=row: self._update_cart_qty(current_row, value)
+                )
 
             action_widget = self.cart_table.cellWidget(row, 6)
             if action_widget is not None:
@@ -738,6 +729,38 @@ class PenjualanWindow(QWidget):
                     button.clicked.connect(
                         lambda _=False, current_row=row: self._remove_cart_item(current_row)
                     )
+
+    def _rebuild_tab_order(self):
+        """
+        Rebuild TAB order setiap kali baris cart berubah.
+
+        Root cause masalah fokus:
+        - QTableWidget.setFocusPolicy(NoFocus) mengecualikan seluruh subtree
+          tabel dari automatic TAB traversal Qt.
+        - Solusi: panggil QWidget.setTabOrder() secara eksplisit untuk setiap
+          QSpinBox sehingga mereka masuk ke focus chain terlepas dari kebijakan
+          fokus parent mereka.
+        """
+        spinboxes: list[QSpinBox] = []
+        for row in range(self.cart_table.rowCount()):
+            widget = self.cart_table.cellWidget(row, 4)
+            if isinstance(widget, QSpinBox):
+                spinboxes.append(widget)
+
+        if not spinboxes:
+            return
+
+        # Hubungkan: search_input → spinbox pertama
+        QWidget.setTabOrder(self.search_input, spinboxes[0])
+
+        # Hubungkan antar spinbox berurutan
+        for i in range(len(spinboxes) - 1):
+            QWidget.setTabOrder(spinboxes[i], spinboxes[i + 1])
+
+    def _focus_search(self):
+        """Fokus ke search input dan select semua teks (untuk Ctrl+F shortcut)."""
+        self.search_input.setFocus()
+        self.search_input.selectAll()
 
     def _set_table_label(self, row: int, column: int, value: str):
         item = self.cart_table.item(row, column)
