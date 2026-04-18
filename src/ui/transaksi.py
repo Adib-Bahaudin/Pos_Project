@@ -455,6 +455,12 @@ class PenjualanWindow(QWidget):
         shortcut_search = QShortcut(QKeySequence("Ctrl+F"), self)
         shortcut_search.activated.connect(self._focus_search)
 
+        shortcut_nominal = QShortcut(QKeySequence("Ctrl+S"), self)
+        shortcut_nominal.activated.connect(self._fokus_nominal)
+
+    def _fokus_nominal(self):
+        self.payment_input.setFocus()
+
     def _setup_search_completer(self):
         self.search_model = QStringListModel(self)
         self.search_completer = QCompleter(self.search_model, self)
@@ -657,7 +663,6 @@ class PenjualanWindow(QWidget):
         spinbox.setRange(1, item.get("max_qty", self.MAX_QTY))
         spinbox.setValue(item["qty"])
         spinbox.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        spinbox.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         spinbox.setStyleSheet("QSpinBox { padding: 0px 6px; }")
         spinbox.valueChanged.connect(lambda value, current_row=row: self._update_cart_qty(current_row, value))
         return spinbox
@@ -675,6 +680,7 @@ class PenjualanWindow(QWidget):
         button.setIcon(QIcon(asset_path("tong_sampah_putih.svg")))
         button.setIconSize(QSize(18, 18))
         button.setObjectName("deleteCartButton")
+        button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         button.clicked.connect(lambda _=False, current_row=row: self._remove_cart_item(current_row))
 
         layout.addWidget(button)
@@ -734,12 +740,11 @@ class PenjualanWindow(QWidget):
         """
         Rebuild TAB order setiap kali baris cart berubah.
 
-        Root cause masalah fokus:
-        - QTableWidget.setFocusPolicy(NoFocus) mengecualikan seluruh subtree
-          tabel dari automatic TAB traversal Qt.
-        - Solusi: panggil QWidget.setTabOrder() secara eksplisit untuk setiap
-          QSpinBox sehingga mereka masuk ke focus chain terlepas dari kebijakan
-          fokus parent mereka.
+        Aturan fokus:
+        - Hanya QSpinBox (kolom Qty) yang boleh menerima TAB fokus di dalam tabel.
+        - Delete button (kolom Aksi) diberi NoFocus agar tidak masuk TAB chain.
+        - Setelah spinbox terakhir, TAB langsung menuju payment_method (input card),
+          sehingga fokus tidak terjebak berputar di dalam tabel.
         """
         spinboxes: list[QSpinBox] = []
         for row in range(self.cart_table.rowCount()):
@@ -748,14 +753,15 @@ class PenjualanWindow(QWidget):
                 spinboxes.append(widget)
 
         if not spinboxes:
+            QWidget.setTabOrder(self.search_input, self.payment_method)
             return
 
-        # Hubungkan: search_input → spinbox pertama
         QWidget.setTabOrder(self.search_input, spinboxes[0])
 
-        # Hubungkan antar spinbox berurutan
         for i in range(len(spinboxes) - 1):
             QWidget.setTabOrder(spinboxes[i], spinboxes[i + 1])
+
+        QWidget.setTabOrder(spinboxes[-1], self.payment_method)
 
     def _focus_search(self):
         """Fokus ke search input dan select semua teks (untuk Ctrl+F shortcut)."""
