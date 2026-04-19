@@ -33,6 +33,7 @@ class PenjualanWindow(QWidget):
         self.cart_items = []
         self.search_suggestions = []
         self.search_lookup = {}
+        self._pending_search_add_signature = None
         self.discount_popup = None
 
         self.setup_ui()
@@ -540,7 +541,7 @@ class PenjualanWindow(QWidget):
         if not product:
             return
 
-        self._add_product_to_cart(product)
+        self._add_product_to_cart_once_per_event_cycle(product)
         self.search_hint_label.setText(f"Produk {product['nama_barang']} ditambahkan ke keranjang.")
         QTimer.singleShot(0, self.search_input.clear)
 
@@ -624,11 +625,41 @@ class PenjualanWindow(QWidget):
             self.search_hint_label.setText(f"Stok produk {product['nama_barang']} sedang habis.")
             return
 
-        self._add_product_to_cart(product)
+        self._add_product_to_cart_once_per_event_cycle(product)
         QTimer.singleShot(0, self.search_input.clear)
         self._refresh_search_suggestions()
         self.search_hint_label.setText(f"Produk {product['nama_barang']} ditambahkan ke keranjang.")
 
+    def _clear_pending_search_add_signature(self):
+        self._pending_search_add_signature = None
+
+    def _get_product_signature(self, product: dict):
+        """
+        Signature untuk mencegah double-add pada siklus event Qt yang sama
+        (mis. activated completer + returnPressed dipanggil berurutan).
+        """
+        product_id = product.get("id")
+        sku = product.get("sku")
+        tipe = product.get("tipe")
+
+        if product_id is None and sku is None and tipe is None:
+            return ("__object__", str(id(product)))
+
+        return (
+            str(product_id or ""),
+            str(sku or ""),
+            str(tipe or "").casefold(),
+        )
+
+    def _add_product_to_cart_once_per_event_cycle(self, product: dict):
+        signature = self._get_product_signature(product)
+        if signature == self._pending_search_add_signature:
+            return
+
+        self._pending_search_add_signature = signature
+        QTimer.singleShot(0, self._clear_pending_search_add_signature)
+        self._add_product_to_cart(product)
+    
     def _add_product_to_cart(self, product: dict):
         existing_index = self._get_cart_index(product["sku"], product["tipe"])
         if existing_index is not None:
