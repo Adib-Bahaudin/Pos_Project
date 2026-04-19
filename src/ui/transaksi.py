@@ -196,7 +196,29 @@ class PenjualanWindow(QWidget):
         self.cart_table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.cart_table.verticalHeader().setVisible(False)
         self.cart_table.verticalHeader().setDefaultSectionSize(50)
-        self.cart_table.setStyleSheet("QTableWidget::item { padding: 0px; }")
+        self.cart_table.setStyleSheet("""
+            QTableWidget::item { padding: 0px; }
+            QScrollBar:vertical {
+                border: none;
+                background: transparent;
+                width: 8px;
+                margin: 0px 0px 0px 0px;
+            }
+            QScrollBar::handle:vertical {
+                background: rgba(100, 100, 100, 150);
+                min-height: 20px;
+                border-radius: 4px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: rgba(150, 150, 150, 255);
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+                background: none;
+            }
+        """)
         self.cart_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.cart_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         self.cart_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
