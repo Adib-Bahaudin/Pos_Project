@@ -107,25 +107,37 @@ class CustomCalendar(QCalendarWidget):
             painter.restore()
 
 class MacroSpinBox(QSpinBox):
+    """SpinBox dengan macro keyboard otomatis saat Tab ditekan.
+
+    Properti:
+        is_last_spinbox (bool): Jika True, Tab akan mensimulasikan Ctrl+S
+            (fokus ke nominal bayar). Jika False (default), Tab akan
+            menjalankan macro Down+Left pada widget yang mendapat fokus.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.is_last_spinbox: bool = False
+
     def event(self, e):
         if e.type() == QEvent.Type.KeyPress:
             if e.key() == Qt.Key.Key_Tab:
-                print("Tab ditekan di QSpinBox! Memindahkan fokus lalu menjadwalkan macro...")
-                
                 hasil = super().event(e)
-                
-                QTimer.singleShot(0, self.jalankan_macro)
-                
+
+                if self.is_last_spinbox:
+                    QTimer.singleShot(0, self.jalankan_macro_ctrl_s)
+                else:
+                    QTimer.singleShot(0, self.jalankan_macro)
+
                 return hasil
-                
+
         return super().event(e)
 
     def jalankan_macro(self):
+        """Simulasikan penekanan Down lalu Left pada widget yang sedang fokus."""
         target_widget = QApplication.focusWidget()
-        
+
         if target_widget:
-            print(f"- Macro berjalan pada elemen: {target_widget.__class__.__name__}")
-            
             down_press = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Down, Qt.KeyboardModifier.NoModifier)
             down_release = QKeyEvent(QEvent.Type.KeyRelease, Qt.Key.Key_Down, Qt.KeyboardModifier.NoModifier)
             QCoreApplication.postEvent(target_widget, down_press)
@@ -135,8 +147,24 @@ class MacroSpinBox(QSpinBox):
             left_release = QKeyEvent(QEvent.Type.KeyRelease, Qt.Key.Key_Left, Qt.KeyboardModifier.NoModifier)
             QCoreApplication.postEvent(target_widget, left_press)
             QCoreApplication.postEvent(target_widget, left_release)
-            
-            print("- Macro selesai dieksekusi!\n")
+
+    def jalankan_macro_ctrl_s(self):
+        """Simulasikan penekanan Ctrl+S pada aplikasi (dipakai oleh spinbox terakhir)."""
+        target_widget = QApplication.focusWidget()
+
+        if target_widget:
+            ctrl_s_press = QKeyEvent(
+                QEvent.Type.KeyPress,
+                Qt.Key.Key_S,
+                Qt.KeyboardModifier.ControlModifier,
+            )
+            ctrl_s_release = QKeyEvent(
+                QEvent.Type.KeyRelease,
+                Qt.Key.Key_S,
+                Qt.KeyboardModifier.ControlModifier,
+            )
+            QCoreApplication.postEvent(target_widget, ctrl_s_press)
+            QCoreApplication.postEvent(target_widget, ctrl_s_release)
 
 class NavigationButton(QPushButton):
     """Tombol navigasi dengan efek hover"""
@@ -175,15 +203,12 @@ class NavigationButton(QPushButton):
         super().leaveEvent(event)
 
 class CurrencyDelegate(QStyledItemDelegate):
-    # 1. Tambahkan parameter horizontal_padding di init
     def __init__(self, horizontal_padding=15, parent=None):
         super().__init__(parent)
         self.horizontal_padding = horizontal_padding
 
-    # 2. Tambahkan sizeHint untuk memanipulasi lebar kolom saat di-ResizeToContents
     def sizeHint(self, option, index):
         size = super().sizeHint(option, index)
-        # Tambahkan ruang ekstra ke kiri dan kanan sesuai nilai padding
         size.setWidth(size.width() + (self.horizontal_padding * 2))
         size.setHeight(size.height() + 8) 
         return size
@@ -217,11 +242,9 @@ class CurrencyDelegate(QStyledItemDelegate):
                 simbol = parts[0]
                 nominal = parts[1]
 
-                # 3. Gunakan self.horizontal_padding sebagai jarak dari tepi kiri
                 rect_kiri = opt.rect.adjusted(self.horizontal_padding, 0, 0, 0)
                 painter.drawText(rect_kiri, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, simbol)
 
-                # 4. Gunakan -self.horizontal_padding sebagai jarak dari tepi kanan
                 rect_kanan = opt.rect.adjusted(0, 0, -self.horizontal_padding, 0)
                 painter.drawText(rect_kanan, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter, nominal)
             else:

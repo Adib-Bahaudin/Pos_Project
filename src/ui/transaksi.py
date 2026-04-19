@@ -42,6 +42,7 @@ class PenjualanWindow(QWidget):
         self._refresh_search_suggestions()
         self._refresh_customer_suggestions()
         self._update_cart_summary()
+        self._rebuild_tab_order()
 
     def setup_ui(self):
         root_layout = QHBoxLayout(self)
@@ -152,6 +153,7 @@ class PenjualanWindow(QWidget):
         search_row.addWidget(self.search_input, 1)
 
         self.product_filter = QComboBox()
+        self.product_filter.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.product_filter.addItems(["Semua Produk", "Produk Satuan", "Produk Paket"])
         self.product_filter.setFixedWidth(170)
         self.product_filter.currentIndexChanged.connect(self._handle_search_filter_changed)
@@ -754,10 +756,18 @@ class PenjualanWindow(QWidget):
                 spinboxes.append(widget)
 
         if not spinboxes:
-            QWidget.setTabOrder(self.search_input, self.payment_method)
+            QWidget.setTabOrder(self.search_input, self.search_input)
             return
 
+        for sb in spinboxes:
+            if isinstance(sb, MacroSpinBox):
+                sb.is_last_spinbox = False
+        last_sb = spinboxes[-1]
+        if isinstance(last_sb, MacroSpinBox):
+            last_sb.is_last_spinbox = True
+
         QWidget.setTabOrder(self.search_input, spinboxes[0])
+        QWidget.setTabOrder(self.payment_input, self.payment_method)
 
     def _focus_search(self):
         """Fokus ke search input dan select semua teks (untuk Ctrl+F shortcut)."""
