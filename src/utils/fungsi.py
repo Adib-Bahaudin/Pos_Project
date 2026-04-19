@@ -1,6 +1,6 @@
-from PySide6.QtCore import QSize, Qt
-from PySide6.QtWidgets import QApplication, QCalendarWidget, QPushButton, QStyledItemDelegate, QStyle, QStyleOptionViewItem
-from PySide6.QtGui import QColor, QIcon, QBrush
+from PySide6.QtCore import QSize, Qt, QCoreApplication, QEvent, QTimer
+from PySide6.QtWidgets import QApplication, QCalendarWidget, QPushButton, QStyledItemDelegate, QStyle, QStyleOptionViewItem, QSpinBox
+from PySide6.QtGui import QColor, QIcon, QBrush, QKeyEvent
 
 
 class ScreenSize:
@@ -105,6 +105,38 @@ class CustomCalendar(QCalendarWidget):
             painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, str(date.day()))
             
             painter.restore()
+
+class MacroSpinBox(QSpinBox):
+    def event(self, e):
+        if e.type() == QEvent.Type.KeyPress:
+            if e.key() == Qt.Key.Key_Tab:
+                print("Tab ditekan di QSpinBox! Memindahkan fokus lalu menjadwalkan macro...")
+                
+                hasil = super().event(e)
+                
+                QTimer.singleShot(0, self.jalankan_macro)
+                
+                return hasil
+                
+        return super().event(e)
+
+    def jalankan_macro(self):
+        target_widget = QApplication.focusWidget()
+        
+        if target_widget:
+            print(f"- Macro berjalan pada elemen: {target_widget.__class__.__name__}")
+            
+            down_press = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Down, Qt.KeyboardModifier.NoModifier)
+            down_release = QKeyEvent(QEvent.Type.KeyRelease, Qt.Key.Key_Down, Qt.KeyboardModifier.NoModifier)
+            QCoreApplication.postEvent(target_widget, down_press)
+            QCoreApplication.postEvent(target_widget, down_release)
+
+            left_press = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Left, Qt.KeyboardModifier.NoModifier)
+            left_release = QKeyEvent(QEvent.Type.KeyRelease, Qt.Key.Key_Left, Qt.KeyboardModifier.NoModifier)
+            QCoreApplication.postEvent(target_widget, left_press)
+            QCoreApplication.postEvent(target_widget, left_release)
+            
+            print("- Macro selesai dieksekusi!\n")
 
 class NavigationButton(QPushButton):
     """Tombol navigasi dengan efek hover"""

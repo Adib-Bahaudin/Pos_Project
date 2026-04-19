@@ -13,6 +13,7 @@ from src.database.database import DatabaseManager
 from src.ui.discount import DiscountPopup
 from src.ui.nota_printer import NotaPrinter
 from src.ui.printer_selection import PrinterSelectionDialog
+from src.utils.fungsi import MacroSpinBox
 
 
 class PenjualanWindow(QWidget):
@@ -658,7 +659,7 @@ class PenjualanWindow(QWidget):
         self._set_table_label(row, 5, self._format_currency(subtotal))
 
     def _create_qty_editor(self, row: int, item: dict) -> QSpinBox:
-        spinbox = QSpinBox()
+        spinbox = MacroSpinBox()
         spinbox.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.UpDownArrows)
         spinbox.setRange(1, item.get("max_qty", self.MAX_QTY))
         spinbox.setValue(item["qty"])
@@ -757,11 +758,6 @@ class PenjualanWindow(QWidget):
             return
 
         QWidget.setTabOrder(self.search_input, spinboxes[0])
-
-        for i in range(len(spinboxes) - 1):
-            QWidget.setTabOrder(spinboxes[i], spinboxes[i + 1])
-
-        QWidget.setTabOrder(spinboxes[-1], self.payment_method)
 
     def _focus_search(self):
         """Fokus ke search input dan select semua teks (untuk Ctrl+F shortcut)."""
