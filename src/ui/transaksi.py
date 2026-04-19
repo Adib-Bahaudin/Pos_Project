@@ -461,8 +461,17 @@ class PenjualanWindow(QWidget):
         shortcut_nominal = QShortcut(QKeySequence("Ctrl+S"), self)
         shortcut_nominal.activated.connect(self._fokus_nominal)
 
+        self.payment_method.currentIndexChanged.connect(self._handle_payment_method_changed)
+
     def _fokus_nominal(self):
         self.payment_input.setFocus()
+
+    def _handle_payment_method_changed(self, index: int):
+        if index in (1, 2):
+            total_tagihan = self._calculate_final_total()
+            self.payment_input.setText(str(total_tagihan))
+        elif index == 0:
+            self.payment_input.setText("")
 
     def _setup_search_completer(self):
         self.search_model = QStringListModel(self)
