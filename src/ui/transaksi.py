@@ -1,4 +1,4 @@
-from PySide6.QtCore import QSize, QStringListModel, QTimer
+from PySide6.QtCore import QSize, QStringListModel, QTimer, QEvent
 from PySide6.QtGui import QFont, Qt, QIcon, QShortcut, QKeySequence
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
@@ -65,6 +65,13 @@ class PenjualanWindow(QWidget):
         content_layout.addWidget(right_panel, 3)
 
         self.setStyleSheet(self._get_stylesheet())
+
+    def eventFilter(self, obj, event):
+        if obj == self.customer_input and event.type() == QEvent.Type.FocusIn:
+            popup = self.customer_completer.popup()
+            if not (popup and popup.isVisible()):
+                self._refresh_customer_suggestions()
+        return super().eventFilter(obj, event)
 
     def _create_left_panel(self) -> QWidget:
         widget = QWidget()
@@ -355,7 +362,7 @@ class PenjualanWindow(QWidget):
             }
         """
         )
-        self.customer_input.textChanged.connect(self._handle_customer_text_changed)
+        self.customer_input.installEventFilter(self)
         form_layout.addWidget(pelanggan_label, 2, 0)
         form_layout.addWidget(self.customer_input, 2, 1)
 
@@ -511,6 +518,12 @@ class PenjualanWindow(QWidget):
         self.customer_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self.customer_completer.setFilterMode(Qt.MatchFlag.MatchContains)
         self.customer_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        self.customer_completer.activated.connect(self._on_customer_completer_activated)
+        
+        popup_view = self.customer_completer.popup()
+        if popup_view is not None:
+            popup_view.clicked.connect(self._on_popup_selected)
+            popup_view.activated.connect(self._on_popup_selected)
 
     def _handle_search_text_changed(self, text: str):
         if text in self.search_lookup:
@@ -564,11 +577,23 @@ class PenjualanWindow(QWidget):
     def _refresh_customer_suggestions(self):
         customers = self.db_manager.get_all_customer_names()
         self.customer_model.setStringList(customers)
-        self.customer_input.setCompleter(self.customer_completer)
+        if self.customer_input.completer() is None:
+            self.customer_input.setCompleter(self.customer_completer)
 
-    def _handle_customer_text_changed(self, text: str):
-        if text.strip():
-            self.customer_completer.complete()
+    def _on_customer_completer_activated(self, text: str):
+        self.customer_input.setText(text)
+        popup = self.customer_completer.popup()
+        if popup is not None:
+            popup.hide()
+
+    def _on_popup_selected(self, index):
+        if index.isValid():
+            text = index.data(Qt.ItemDataRole.DisplayRole)
+            if text:
+                self.customer_input.setText(text)
+                popup = self.customer_completer.popup()
+                if popup is not None:
+                    popup.hide()
 
     def _find_exact_product(self, keyword: str):
         keyword = keyword.strip().casefold()
@@ -1095,6 +1120,7 @@ class PenjualanWindow(QWidget):
                     printer.print_receipt(transaction_data)
 
         self._clear_cart()
+        self._refresh_customer_suggestions()
         self.search_hint_label.setText(
             f"Transaksi #{transaction_id} berhasil disimpan untuk {customer_name}."
         )
