@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
     QFrame, QLabel, QLineEdit, QComboBox, QPushButton, QTableWidget, QAbstractItemView, QHeaderView, QGridLayout,
     QTextEdit, QCompleter, QTableWidgetItem, QSpinBox, QAbstractSpinBox, QScrollArea, QCheckBox, QDialog
 )
-from shiboken6 import isValid
+
 from config import asset_path, asset_uri
 
 from src.database.database import DatabaseManager
