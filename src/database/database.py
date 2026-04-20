@@ -181,12 +181,12 @@ class DatabaseManager:
             conn.close()
 
     def get_users_for_table(self, role_filter="Semua", search_text="", limit=5, offset=0):
-        """Ambil list user untuk ditabelkan, tanpa memunculkan password sungguhan."""
+        """Ambil list user untuk ditabelkan."""
         conn = sqlite3.connect(self.db_name)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        query = "SELECT id, nama, role, '' as password, '' as aksi FROM users WHERE 1=1"
+        query = "SELECT id, nama, role, hash_kunci as password, '' as aksi FROM users WHERE 1=1"
         params = []
         
         if role_filter != "Semua":
@@ -203,9 +203,6 @@ class DatabaseManager:
         cursor.execute(query, params)
         result = [dict(row) for row in cursor.fetchall()]
         
-        for row in result:
-            row['password'] = "********"  # Dummy text for delegate masking
-            
         conn.close()
         return result
 

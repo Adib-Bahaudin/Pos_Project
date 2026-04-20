@@ -2,14 +2,11 @@
 user_administrator.py — Frontend UI untuk halaman User Management.
 
 Halaman ini menampilkan daftar user dalam tabel dengan fitur:
-- Filter berdasarkan role (Super_user, Kasir, dll.)
+- Filter berdasarkan role (Super_user, Admin, dll.)
 - Tombol aksi global: Tambah, Edit, Hapus User
 - Kolom password di-mask dengan karakter bulat (••••••••)
 - Kolom aksi berisi tombol Edit & Hapus per-baris
 
-CATATAN UNTUK DEVELOPER:
-    Semua method yang diawali komentar `# >>> BACKEND:` adalah
-    placeholder yang harus dihubungkan ke logika database.
 """
 
 from PySide6.QtCore import (
@@ -32,6 +29,7 @@ from src.database.database import DatabaseManager
 from config import asset_path, asset_uri
 from src.ui.ui_base import BaseTableWidget, BaseDataPage
 from src.utils.message import CustomMessageBox
+from src.ui.register import RegisterDialog
 
 class UserFormDialog(QDialog):
     def __init__(self, parent=None, user_data=None):
@@ -60,12 +58,12 @@ class UserFormDialog(QDialog):
         self.kunci_input.setMaxLength(10)
         
         self.role_input = QComboBox()
-        self.role_input.addItems(["Kasir", "Super_user"])
+        self.role_input.addItems(["Admin", "Super_user"])
         
         if user_data:
             self.id_user = user_data.get('id')
             self.nama_input.setText(user_data.get('nama', ''))
-            role = user_data.get('role', 'Kasir')
+            role = user_data.get('role', 'Admin')
             idx = self.role_input.findText(role)
             if idx >= 0: self.role_input.setCurrentIndex(idx)
         else:
@@ -427,7 +425,7 @@ class UserAdministrator(BaseDataPage):
         fc_layout.setContentsMargins(0, 0, 0, 0)
 
         self.filter_role = QComboBox()
-        self.filter_role.addItems(["Semua", "Super_user", "Kasir"])
+        self.filter_role.addItems(["Semua", "Super_user", "Admin"])
         self.filter_role.setFont(QFont("Segoe UI", 14))
         self.filter_role.setFixedSize(180, 35)
         self.filter_role.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -515,19 +513,10 @@ class UserAdministrator(BaseDataPage):
             self.search_input.returnPressed.connect(self._on_filter_changed)
 
     def _on_tambah_user(self):
-        dialog = UserFormDialog(self)
+        dialog = RegisterDialog(self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            data = dialog.get_data()
-            if not data['nama'] or not data['kunci']:
-                CustomMessageBox.warning(self, "Error", "Nama dan Kunci Akses tidak boleh kosong!")
-                return
-            try:
-                db = DatabaseManager()
-                db.register_user(data['nama'], data['kunci'], data['role'])
-                self.table_data()
-                CustomMessageBox.information(self, "Sukses", "User berhasil ditambahkan!")
-            except ValueError as e:
-                CustomMessageBox.critical(self, "Gagal", str(e))
+            self.table_data()
+            CustomMessageBox.information(self, "Sukses", "User berhasil ditambahkan!")
 
     def _on_edit_user(self):
         table = self.table_user.table
