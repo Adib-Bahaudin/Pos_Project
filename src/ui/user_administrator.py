@@ -28,26 +28,17 @@ from PySide6.QtWidgets import (
 from config import asset_path
 from src.ui.ui_base import BaseTableWidget, BaseDataPage
 
+_PASSWORD_CHAR = "●"
+_ACTION_ICON_SIZE = 20 
+_ACTION_BUTTON_GAP = 12
+_ACTION_BUTTON_PADDING = 14
 
-# ---------------------------------------------------------------------------
-#  Constants
-# ---------------------------------------------------------------------------
-_PASSWORD_CHAR = "●"           # Karakter mask untuk kolom password
-_ACTION_ICON_SIZE = 20         # Ukuran ikon edit/hapus (px)
-_ACTION_BUTTON_GAP = 12        # Jarak antar ikon aksi (px)
-_ACTION_BUTTON_PADDING = 14    # Padding kiri area ikon di cell
-
-# Kolom index (sesuai HEADERS pada UserTable)
 COL_ID = 0
 COL_NAMA = 1
 COL_ROLE = 2
 COL_PASSWORD = 3
 COL_AKSI = 4
 
-
-# ============================================================================
-#  Delegate: PasswordDelegate
-# ============================================================================
 class PasswordDelegate(QStyledItemDelegate):
     """
     Menampilkan teks pada kolom password sebagai karakter bulat (●●●●●●●●).
@@ -58,9 +49,7 @@ class PasswordDelegate(QStyledItemDelegate):
         super().__init__(parent)
         self._mask_font = QFont("Segoe UI", 12)
 
-    # -- Paint ---------------------------------------------------------------
     def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex | QPersistentModelIndex):
-        # Gambar background default (selection highlight, alternating color)
         self.initStyleOption(option, index)
         style = option.widget.style() if option.widget else QApplication.style()
         style.drawPrimitive(QStyle.PrimitiveElement.PE_PanelItemViewItem, option, painter, option.widget)
@@ -75,7 +64,6 @@ class PasswordDelegate(QStyledItemDelegate):
         painter.setFont(self._mask_font)
         painter.setPen(QPen(QColor("#ffffff")))
 
-        # Padding agar teks tidak menempel di tepi cell
         text_rect = option.rect.adjusted(12, 0, -8, 0)
         painter.drawText(
             text_rect,
@@ -85,9 +73,6 @@ class PasswordDelegate(QStyledItemDelegate):
         painter.restore()
 
 
-# ============================================================================
-#  Delegate: ActionDelegate
-# ============================================================================
 class ActionDelegate(QStyledItemDelegate):
     """
     Render dua ikon (Edit & Hapus) secara berdampingan di dalam cell kolom AKSI.
@@ -100,21 +85,17 @@ class ActionDelegate(QStyledItemDelegate):
 
     def __init__(self, table_widget, parent=None):
         super().__init__(parent)
-        self._table = table_widget  # referensi ke QTableWidget
+        self._table = table_widget
 
-        # Muat ikon dari aset proyek
         self._icon_edit = QIcon(asset_path("edit produk.svg"))
         self._icon_delete = QIcon(asset_path("tong_sampah_putih.svg"))
 
-        # State tracking untuk hover
         self._hover_row = -1
-        self._hover_zone = ""  # "edit" | "delete" | ""
+        self._hover_zone = ""
 
-        # Install event filter pada viewport tabel
         self._table.viewport().installEventFilter(self)
         self._table.viewport().setMouseTracking(True)
 
-    # -- Helper: hitung rect setiap ikon ------------------------------------
     def _icon_rects(self, cell_rect: QRect):
         """Kembalikan tuple (edit_rect, delete_rect) relatif terhadap cell."""
         y_center = cell_rect.center().y() - _ACTION_ICON_SIZE // 2
@@ -130,9 +111,7 @@ class ActionDelegate(QStyledItemDelegate):
         )
         return edit_rect, delete_rect
 
-    # -- Paint ---------------------------------------------------------------
     def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex | QPersistentModelIndex):
-        # Background
         self.initStyleOption(option, index)
         style = option.widget.style() if option.widget else QApplication.style()
         style.drawPrimitive(QStyle.PrimitiveElement.PE_PanelItemViewItem, option, painter, option.widget)
@@ -141,22 +120,18 @@ class ActionDelegate(QStyledItemDelegate):
 
         painter.save()
 
-        # Tentukan opacity berdasarkan hover state
         is_hover_row = (index.row() == self._hover_row)
 
-        # --- Edit icon ---
         edit_opacity = 1.0 if (is_hover_row and self._hover_zone == "edit") else 0.55
         painter.setOpacity(edit_opacity)
         self._icon_edit.paint(painter, edit_rect)
 
-        # --- Delete icon ---
         delete_opacity = 1.0 if (is_hover_row and self._hover_zone == "delete") else 0.55
         painter.setOpacity(delete_opacity)
         self._icon_delete.paint(painter, delete_rect)
 
         painter.restore()
 
-    # -- Event Filter (hover + click + tooltip) ------------------------------
     def eventFilter(self, obj, event: QEvent):
         if obj is not self._table.viewport():
             return super().eventFilter(obj, event)
@@ -221,7 +196,6 @@ class ActionDelegate(QStyledItemDelegate):
 
         return super().eventFilter(obj, event)
 
-    # -- Callbacks -----------------------------------------------------------
     def _on_edit_clicked(self, row: int):
         """
         Dipanggil saat ikon Edit pada baris tertentu diklik.
@@ -247,9 +221,6 @@ class ActionDelegate(QStyledItemDelegate):
         print(f"[ActionDelegate] Delete clicked — row {row}")
 
 
-# ============================================================================
-#  UserTable (BaseTableWidget)
-# ============================================================================
 class UserTable(BaseTableWidget):
     """
     Tabel daftar user dengan kolom: ID, NAMA, ROLE, KUNCI/PASSWORD, AKSI.
@@ -259,8 +230,6 @@ class UserTable(BaseTableWidget):
     TABLE_WIDTH = 800
     TABLE_ROW_COUNT = 5
     COLUMN_WIDTHS = [60, 0, 120, 0, 120]
-    #                ID   NAMA  ROLE  PASSWORD  AKSI
-    #                60   flex  120   flex      120
     HEADERS = ["ID", "NAMA", "ROLE", "KUNCI/PASSWORD", "AKSI"]
     FIELDS = ["id", "nama", "role", "password", "aksi"]
     LEFT_ALIGN_FIELDS = ["nama"]
@@ -325,7 +294,6 @@ class UserTable(BaseTableWidget):
             }
         """)
 
-        # Row height lebih besar agar readable & proporsional
         for row in range(self.TABLE_ROW_COUNT):
             self.table.setRowHeight(row, 45)
 
@@ -344,9 +312,6 @@ class UserTable(BaseTableWidget):
             self.table.setRowHeight(row, 45)
 
 
-# ============================================================================
-#  UserAdministrator (BaseDataPage)
-# ============================================================================
 class UserAdministrator(BaseDataPage):
     """
     Halaman utama User Management.
@@ -364,7 +329,6 @@ class UserAdministrator(BaseDataPage):
         shortcut = QShortcut(QKeySequence("Return"), self)
         shortcut.activated.connect(self.handle_shortcut)
 
-    # -- Custom Widgets (Filter + Tombol Aksi) --------------------------------
     def _add_custom_widgets(self, layout):
         """Tambahkan filter role dan tombol aksi di atas search bar."""
         controls_widget = self._create_controls_bar()
@@ -382,7 +346,6 @@ class UserAdministrator(BaseDataPage):
         layout.setSpacing(10)
         layout.addStretch()
 
-        # --- Filter Role ComboBox ---
         self.filter_role = QComboBox()
         self.filter_role.addItems(["Semua", "Super_user", "Kasir"])
         self.filter_role.setFont(QFont("Segoe UI", 14))
@@ -442,7 +405,6 @@ class UserAdministrator(BaseDataPage):
         layout.addWidget(self.filter_role)
         layout.addSpacing(20)
 
-        # --- Tombol Aksi ---
         self.button_tambah = self._create_action_button("Tambah User", "#00ff00")
         self.button_edit = self._create_action_button("Edit User", "#ff8000")
         self.button_hapus = self._create_action_button("Hapus User", "#ff0000")
@@ -455,7 +417,6 @@ class UserAdministrator(BaseDataPage):
         widget.setLayout(layout)
         return widget
 
-    # -- Data Widget (Tabel + Navigasi) --------------------------------------
     def _create_data_widget(self) -> QWidget:
         """Buat widget berisi tabel user dan navigasi halaman."""
         widget = QWidget()
@@ -480,7 +441,6 @@ class UserAdministrator(BaseDataPage):
         widget.setLayout(layout)
         return widget
 
-    # -- Connections ---------------------------------------------------------
     def _setup_connections(self):
         """Hubungkan sinyal tombol ke handler."""
         self.button_tambah.clicked.connect(self._on_tambah_user)
@@ -571,12 +531,10 @@ class UserAdministrator(BaseDataPage):
             {"id": "U005", "nama": "Dewi Lestari",   "role": "Kasir",      "password": "hashed_pw_5", "aksi": ""},
         ]
 
-        # Terapkan filter role pada dummy data
         role_filter = self.filter_role.currentText()
         if role_filter != "Semua":
             dummy_data = [d for d in dummy_data if d["role"] == role_filter]
 
-        # Terapkan pencarian pada dummy data
         search_text = self.search_input.text().strip().lower()
         if search_text:
             dummy_data = [
@@ -586,7 +544,6 @@ class UserAdministrator(BaseDataPage):
 
         self.table_user.set_data(dummy_data)
 
-        # Update halaman
         if offset == 0:
             self.page_input.setText("1")
         else:
