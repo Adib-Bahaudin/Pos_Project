@@ -25,7 +25,7 @@ from PySide6.QtWidgets import (
     QStyleOptionViewItem, QApplication, QToolTip
 )
 
-from config import asset_path
+from config import asset_path, asset_uri
 from src.ui.ui_base import BaseTableWidget, BaseDataPage
 
 _PASSWORD_CHAR = "●"
@@ -337,73 +337,14 @@ class UserAdministrator(BaseDataPage):
 
     def _create_controls_bar(self) -> QWidget:
         """
-        Susun Filter Role dan Tombol Aksi secara horizontal.
-        Layout: [Filter Role] -- spacer -- [Tambah] [Edit] [Hapus]
+        Susun Tombol Aksi secara horizontal.
+        Layout: spacer -- [Tambah] [Edit] [Hapus]
         """
         widget = QWidget()
         layout = QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(10)
         layout.addStretch()
-
-        self.filter_role = QComboBox()
-        self.filter_role.addItems(["Semua", "Super_user", "Kasir"])
-        self.filter_role.setFont(QFont("Segoe UI", 14))
-        self.filter_role.setFixedSize(180, 35)
-        self.filter_role.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.filter_role.setStyleSheet("""
-            QComboBox {
-                background-color: #1a1a1a;
-                color: #ffffff;
-                border: 2px solid #444444;
-                border-radius: 10px;
-                padding-left: 12px;
-                font-family: "Segoe UI";
-                font-size: 14px;
-            }
-            QComboBox:hover {
-                border-color: #00aaff;
-            }
-            QComboBox:focus {
-                border-color: #00aaff;
-            }
-            QComboBox::drop-down {
-                subcontrol-origin: padding;
-                subcontrol-position: top right;
-                width: 30px;
-                border-left: 1px solid #444444;
-                border-top-right-radius: 10px;
-                border-bottom-right-radius: 10px;
-            }
-            QComboBox::down-arrow {
-                image: none;
-                border: none;
-                width: 0;
-                height: 0;
-                border-left: 5px solid transparent;
-                border-right: 5px solid transparent;
-                border-top: 6px solid #ffffff;
-                margin-right: 8px;
-            }
-            QComboBox QAbstractItemView {
-                background-color: #1a1a1a;
-                color: #ffffff;
-                selection-background-color: #0d47a1;
-                selection-color: #ffffff;
-                border: 1px solid #444444;
-                outline: none;
-                padding: 4px;
-            }
-            QComboBox QAbstractItemView::item {
-                min-height: 30px;
-                padding-left: 10px;
-            }
-            QComboBox QAbstractItemView::item:hover {
-                background-color: #333333;
-            }
-        """)
-        layout.addWidget(self.filter_role)
-        layout.addSpacing(20)
 
         self.button_tambah = self._create_action_button("Tambah User", "#00ff00")
         self.button_edit = self._create_action_button("Edit User", "#ff8000")
@@ -418,11 +359,80 @@ class UserAdministrator(BaseDataPage):
         return widget
 
     def _create_data_widget(self) -> QWidget:
-        """Buat widget berisi tabel user dan navigasi halaman."""
+        """Buat widget berisi filter, tabel user, dan navigasi halaman."""
         widget = QWidget()
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
+
+        filter_layout = QHBoxLayout()
+        filter_layout.setContentsMargins(0, 0, 0, 10)
+        
+        filter_layout.addStretch()
+        
+        filter_container = QWidget()
+        filter_container.setFixedWidth(800)
+        fc_layout = QHBoxLayout(filter_container)
+        fc_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.filter_role = QComboBox()
+        self.filter_role.addItems(["Semua", "Super_user", "Kasir"])
+        self.filter_role.setFont(QFont("Segoe UI", 14))
+        self.filter_role.setFixedSize(180, 35)
+        self.filter_role.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.filter_role.setStyleSheet(f"""
+            QComboBox {{
+                background-color: #1a1a1a;
+                color: #ffffff;
+                border: 2px solid #444444;
+                border-radius: 10px;
+                padding-left: 12px;
+                font-family: "Segoe UI";
+                font-size: 14px;
+            }}
+            QComboBox:hover {{
+                border-color: #00aaff;
+            }}
+            QComboBox:focus {{
+                border-color: #00aaff;
+            }}
+            QComboBox::drop-down {{
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 30px;
+                border-left: 1px solid #444444;
+                border-top-right-radius: 10px;
+                border-bottom-right-radius: 10px;
+            }}
+            QComboBox::down-arrow {{
+                image: url({asset_uri("icon_down.svg")});
+                width: 12px;
+                height: 12px;
+            }}
+            QComboBox QAbstractItemView {{
+                background-color: #1a1a1a;
+                color: #ffffff;
+                selection-background-color: #0d47a1;
+                selection-color: #ffffff;
+                border: 1px solid #444444;
+                outline: none;
+                padding: 4px;
+            }}
+            QComboBox QAbstractItemView::item {{
+                min-height: 30px;
+                padding-left: 10px;
+            }}
+            QComboBox QAbstractItemView::item:hover {{
+                background-color: #333333;
+            }}
+        """)
+        fc_layout.addWidget(self.filter_role)
+        fc_layout.addStretch()
+        
+        filter_layout.addWidget(filter_container)
+        filter_layout.addStretch()
+        
+        layout.addLayout(filter_layout)
 
         self.stack = QStackedWidget()
         self.table_user = UserTable()
