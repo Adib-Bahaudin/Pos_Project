@@ -37,6 +37,7 @@ class Dashboard(QWidget):
         self.sejarah_widget = None
         self.pelanggan_widget = None
         self.kas_widget = None
+        self.user_widget = None
 
         self._setup_ui()
         self._setup_connections()
@@ -419,6 +420,16 @@ class Dashboard(QWidget):
         elif self.button_buku_left.isChecked():
             self.button_buku_right.setMinimumWidth(self.BUTTON_EXPANDED_WIDTH)
             self.main_stack.setCurrentWidget(self.error_widget)
+        elif self.button_user_left.isChecked():
+            self.button_user_right.setMinimumWidth(self.BUTTON_EXPANDED_WIDTH)
+            if not self.user_widget:
+                from src.ui.user_administrator import UserAdministrator
+                self.user_widget = UserAdministrator()
+                if self.main_stack.indexOf(self.user_widget) == -1:
+                    self.main_stack.addWidget(self.user_widget)
+            else:
+                self.user_widget.refresh_data()
+            self.main_stack.setCurrentWidget(self.user_widget)
 
     def _reset_all_button_widths(self):
         """Reset semua lebar tombol sidebar kanan ke ukuran default"""
@@ -428,6 +439,7 @@ class Dashboard(QWidget):
         self.button_pelanggan_right.setMinimumWidth(self.BUTTON_COLLAPSED_WIDTH)
         self.button_kas_right.setMinimumWidth(self.BUTTON_COLLAPSED_WIDTH)
         self.button_buku_right.setMinimumWidth(self.BUTTON_COLLAPSED_WIDTH)
+        self.button_user_right.setMinimumWidth(self.BUTTON_COLLAPSED_WIDTH)
 
     def _handle_logout(self):
         """Handler logout: hapus session dan kembali ke login"""
