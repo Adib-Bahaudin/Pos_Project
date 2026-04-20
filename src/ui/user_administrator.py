@@ -145,8 +145,8 @@ class ActionDelegate(QStyledItemDelegate):
         super().__init__(parent)
         self._table = table_widget
 
-        self._icon_edit = QIcon(asset_path("edit produk.svg"))
-        self._icon_delete = QIcon(asset_path("tong_sampah_putih.svg"))
+        self._icon_edit = QIcon(asset_path("edit_button.svg"))
+        self._icon_delete = QIcon(asset_path("remove_button.svg"))
 
         self._hover_row = -1
         self._hover_zone = ""
