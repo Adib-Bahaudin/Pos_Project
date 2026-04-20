@@ -13,7 +13,7 @@ CATATAN UNTUK DEVELOPER:
 """
 
 from PySide6.QtCore import (
-    Qt, QRect, QSize, QPoint, QModelIndex, QPersistentModelIndex, QEvent
+    Qt, QRect, QSize, QPoint, QModelIndex, QPersistentModelIndex, QEvent, Signal
 )
 from PySide6.QtGui import (
     QFont, QShortcut, QKeySequence, QIcon, QPainter, QPen,
@@ -22,11 +22,71 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QComboBox,
     QStackedWidget, QStyledItemDelegate, QStyle,
-    QStyleOptionViewItem, QApplication, QToolTip
+    QStyleOptionViewItem, QApplication, QToolTip,
+    QMessageBox, QDialog, QFormLayout, QLineEdit, QDialogButtonBox, QLabel
 )
+
+import math
+from src.database.database import DatabaseManager
 
 from config import asset_path, asset_uri
 from src.ui.ui_base import BaseTableWidget, BaseDataPage
+from src.utils.message import CustomMessageBox
+
+class UserFormDialog(QDialog):
+    def __init__(self, parent=None, user_data=None):
+        super().__init__(parent)
+        self.setWindowTitle("Edit User" if user_data else "Tambah User")
+        self.setStyleSheet("""
+            QDialog { background-color: #1a1a1a; color: #ffffff; font-family: "Segoe UI"; }
+            QLabel { color: #ffffff; font-size: 14px; }
+            QLineEdit, QComboBox { 
+                background-color: #333333; color: #ffffff; 
+                border: 1px solid #555555; padding: 5px; border-radius: 4px;
+                font-size: 14px;
+            }
+            QPushButton { 
+                background-color: #0d47a1; color: #ffffff; 
+                padding: 6px 12px; border-radius: 4px; font-weight: bold;
+            }
+            QPushButton:hover { background-color: #1565c0; }
+        """)
+        
+        self._layout = QFormLayout(self)
+        
+        self.nama_input = QLineEdit()
+        self.kunci_input = QLineEdit()
+        self.kunci_input.setPlaceholderText("Harus 10 digit angka" if not user_data else "Kosongkan jika tidak diubah")
+        self.kunci_input.setMaxLength(10)
+        
+        self.role_input = QComboBox()
+        self.role_input.addItems(["Kasir", "Super_user"])
+        
+        if user_data:
+            self.id_user = user_data.get('id')
+            self.nama_input.setText(user_data.get('nama', ''))
+            role = user_data.get('role', 'Kasir')
+            idx = self.role_input.findText(role)
+            if idx >= 0: self.role_input.setCurrentIndex(idx)
+        else:
+            self.id_user = None
+            
+        self._layout.addRow("Nama User:", self.nama_input)
+        self._layout.addRow("Kunci Akses:", self.kunci_input)
+        self._layout.addRow("Role:", self.role_input)
+        
+        self.buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        self.buttons.accepted.connect(self.accept)
+        self.buttons.rejected.connect(self.reject)
+        self._layout.addWidget(self.buttons)
+        
+    def get_data(self):
+        return {
+            "id": self.id_user,
+            "nama": self.nama_input.text().strip(),
+            "kunci": self.kunci_input.text().strip(),
+            "role": self.role_input.currentText()
+        }
 
 _PASSWORD_CHAR = "●"
 _ACTION_ICON_SIZE = 20 
@@ -197,28 +257,16 @@ class ActionDelegate(QStyledItemDelegate):
         return super().eventFilter(obj, event)
 
     def _on_edit_clicked(self, row: int):
-        """
-        Dipanggil saat ikon Edit pada baris tertentu diklik.
-
-        # >>> BACKEND: Hubungkan ke dialog edit user.
-        #     Contoh:
-        #         user_data = self._table.parent()._all_rows[row]
-        #         dialog = EditUserDialog(user_data, self._table)
-        #         dialog.exec()
-        """
-        print(f"[ActionDelegate] Edit clicked — row {row}")
+        table = self._table
+        user_table = table.parent()
+        if hasattr(user_table, 'edit_requested'):
+            user_table.edit_requested.emit(row)
 
     def _on_delete_clicked(self, row: int):
-        """
-        Dipanggil saat ikon Hapus pada baris tertentu diklik.
-
-        # >>> BACKEND: Hubungkan ke konfirmasi & logika hapus user.
-        #     Contoh:
-        #         user_data = self._table.parent()._all_rows[row]
-        #         confirm = CustomMessageBox.question(...)
-        #         if confirm: database.delete_user(user_data['id'])
-        """
-        print(f"[ActionDelegate] Delete clicked — row {row}")
+        table = self._table
+        user_table = table.parent()
+        if hasattr(user_table, 'delete_requested'):
+            user_table.delete_requested.emit(row)
 
 
 class UserTable(BaseTableWidget):
@@ -226,6 +274,9 @@ class UserTable(BaseTableWidget):
     Tabel daftar user dengan kolom: ID, NAMA, ROLE, KUNCI/PASSWORD, AKSI.
     Menggunakan delegate khusus pada kolom PASSWORD dan AKSI.
     """
+
+    edit_requested = Signal(int)
+    delete_requested = Signal(int)
 
     TABLE_WIDTH = 800
     TABLE_ROW_COUNT = 5
@@ -457,102 +508,87 @@ class UserAdministrator(BaseDataPage):
         self.button_edit.clicked.connect(self._on_edit_user)
         self.button_hapus.clicked.connect(self._on_hapus_user)
         self.filter_role.currentIndexChanged.connect(self._on_filter_changed)
-
-    # == PLACEHOLDER METHODS =================================================
-    # Semua method di bawah ini adalah placeholder frontend.
-    # Hubungkan ke backend/database manager sesungguhnya saat integrasi.
-    # ========================================================================
+        self.table_user.edit_requested.connect(self._on_edit_user_by_row)
+        self.table_user.delete_requested.connect(self._on_hapus_user_by_row)
+        
+        if hasattr(self, 'search_input'):
+            self.search_input.returnPressed.connect(self._on_filter_changed)
 
     def _on_tambah_user(self):
-        """
-        Handler tombol Tambah User.
-
-        # >>> BACKEND: Tampilkan dialog tambah user, lalu panggil
-        #     database.insert_user(...) jika dialog diterima.
-        """
-        print("[UserAdministrator] Tambah User clicked")
+        dialog = UserFormDialog(self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            data = dialog.get_data()
+            if not data['nama'] or not data['kunci']:
+                CustomMessageBox.warning(self, "Error", "Nama dan Kunci Akses tidak boleh kosong!")
+                return
+            try:
+                db = DatabaseManager()
+                db.register_user(data['nama'], data['kunci'], data['role'])
+                self.table_data()
+                CustomMessageBox.information(self, "Sukses", "User berhasil ditambahkan!")
+            except ValueError as e:
+                CustomMessageBox.critical(self, "Gagal", str(e))
 
     def _on_edit_user(self):
-        """
-        Handler tombol Edit User (dari toolbar atas).
-
-        # >>> BACKEND: Ambil baris terpilih dari tabel, tampilkan dialog
-        #     edit, lalu panggil database.update_user(...).
-        """
         table = self.table_user.table
         current_row = table.currentRow()
-
         if current_row < 0:
-            # >>> BACKEND: Ganti print dengan CustomMessageBox.critical(...)
-            print("[UserAdministrator] Pilih user terlebih dahulu!")
+            CustomMessageBox.critical(self, "Error", "Pilih user terlebih dahulu!")
             return
+        self._on_edit_user_by_row(current_row)
 
-        print(f"[UserAdministrator] Edit User clicked — row {current_row}")
+    def _on_edit_user_by_row(self, row: int):
+        user_data = self.table_user._all_rows[row]
+        dialog = UserFormDialog(self, user_data)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            data = dialog.get_data()
+            try:
+                db = DatabaseManager()
+                db.update_user(data['id'], data['nama'], data['kunci'], data['role'])
+                self.table_data()
+                CustomMessageBox.information(self, "Sukses", "User berhasil diupdate!")
+            except ValueError as e:
+                CustomMessageBox.critical(self, "Gagal", str(e))
 
     def _on_hapus_user(self):
-        """
-        Handler tombol Hapus User (dari toolbar atas).
-
-        # >>> BACKEND: Ambil baris terpilih, konfirmasi, lalu panggil
-        #     database.delete_user(user_id).
-        """
         table = self.table_user.table
         current_row = table.currentRow()
-
         if current_row < 0:
-            # >>> BACKEND: Ganti print dengan CustomMessageBox.critical(...)
-            print("[UserAdministrator] Pilih user terlebih dahulu!")
+            CustomMessageBox.critical(self, "Error", "Pilih user terlebih dahulu!")
             return
+        self._on_hapus_user_by_row(current_row)
 
-        print(f"[UserAdministrator] Hapus User clicked — row {current_row}")
+    def _on_hapus_user_by_row(self, row: int):
+        user_data = self.table_user._all_rows[row]
+        confirm = CustomMessageBox.question(
+            self, "Konfirmasi Hapus",
+            f"Apakah Anda yakin ingin menghapus user {user_data.get('nama')}?"
+        )
+        if confirm == QMessageBox.StandardButton.Yes:
+            try:
+                db = DatabaseManager()
+                db.delete_user(user_data['id'])
+                self.table_data()
+                CustomMessageBox.information(self, "Sukses", "User berhasil dihapus!")
+            except ValueError as e:
+                CustomMessageBox.critical(self, "Gagal", str(e))
 
-    def _on_filter_changed(self, index: int):
-        """
-        Handler saat filter role berubah.
 
-        # >>> BACKEND: Panggil table_data() ulang dengan filter role.
-        """
-        role = self.filter_role.currentText()
-        print(f"[UserAdministrator] Filter role changed: {role}")
+    def _on_filter_changed(self, index=None):
         self.table_data()
 
-    # -- Data Loading (Placeholder) ------------------------------------------
     def table_data(self, offset=0):
-        """
-        Muat data user ke tabel.
-
-        # >>> BACKEND: Ganti dummy_data dengan query dari database.
-        #     Contoh:
-        #         database = DatabaseManager()
-        #         role_filter = self.filter_role.currentText()
-        #         search_text = self.search_input.text().strip()
-        #         if role_filter == "Semua":
-        #             data = database.get_users(limit=5, offset=offset)
-        #         else:
-        #             data = database.get_users_by_role(role_filter, limit=5, offset=offset)
-        #         self.table_user.set_data(data)
-        """
-        # --- Dummy Data (hapus saat integrasi backend) ---
-        dummy_data = [
-            {"id": "U001", "nama": "Admin Utama",   "role": "Super_user", "password": "hashed_pw_1", "aksi": ""},
-            {"id": "U002", "nama": "Siti Rahayu",    "role": "Kasir",      "password": "hashed_pw_2", "aksi": ""},
-            {"id": "U003", "nama": "Budi Santoso",   "role": "Kasir",      "password": "hashed_pw_3", "aksi": ""},
-            {"id": "U004", "nama": "Ahmad Yani",     "role": "Super_user", "password": "hashed_pw_4", "aksi": ""},
-            {"id": "U005", "nama": "Dewi Lestari",   "role": "Kasir",      "password": "hashed_pw_5", "aksi": ""},
-        ]
-
+        db = DatabaseManager()
         role_filter = self.filter_role.currentText()
-        if role_filter != "Semua":
-            dummy_data = [d for d in dummy_data if d["role"] == role_filter]
+        search_text = getattr(self, 'search_input', None)
+        search_str = search_text.text().strip() if search_text else ""
 
-        search_text = self.search_input.text().strip().lower()
-        if search_text:
-            dummy_data = [
-                d for d in dummy_data
-                if search_text in d["nama"].lower() or search_text in d["id"].lower()
-            ]
+        data = db.get_users_for_table(role_filter, search_str, limit=5, offset=offset)
+        self.table_user.set_data(data)
 
-        self.table_user.set_data(dummy_data)
+        total_rows = db.get_users_count(role_filter, search_str)
+        pages = math.ceil(total_rows / 5) if total_rows > 0 else 1
+        self.pages = pages
 
         if offset == 0:
             self.page_input.setText("1")
@@ -561,48 +597,36 @@ class UserAdministrator(BaseDataPage):
             self.page_input.setText(str(text_page))
 
     def custom_page(self):
-        """
-        Navigasi ke halaman tertentu berdasarkan input.
-
-        # >>> BACKEND: Hitung total halaman dari database.
-        #     self.pages = math.ceil(database.get_users_count() / 5)
-        """
         page = int(self.page_input.text().strip() or "1")
-        self.pages = 1  # Placeholder
         if page >= self.pages:
             self.page_input.setText(str(self.pages))
             self.table_data((self.pages - 1) * 5)
         elif page <= 0:
+            self.page_input.setText("1")
             self.table_data()
         else:
             self.table_data((page - 1) * 5)
 
     def next_page(self):
-        """
-        Navigasi ke halaman berikutnya.
-
-        # >>> BACKEND: Hitung total halaman dari database.
-        """
         page = int(self.page_input.text().strip() or "1")
-        self.pages = 1  # Placeholder
         if page < self.pages:
             page += 1
             self.table_data((page - 1) * 5)
 
     def prev_page(self):
-        """Navigasi ke halaman sebelumnya."""
         page = int(self.page_input.text().strip() or "1")
         if page > 1:
             page -= 1
             self.table_data((page - 1) * 5)
 
     def on_reset_click(self):
-        """Reset filter dan pencarian."""
         self.filter_role.setCurrentIndex(0)
+        if hasattr(self, 'search_input'):
+            self.search_input.clear()
 
     def refresh_data(self):
-        """Refresh seluruh halaman (dipanggil dari dashboard saat navigasi)."""
-        self.table_data()
-        self.search_input.clear()
+        if hasattr(self, 'search_input'):
+            self.search_input.clear()
         self.filter_role.setCurrentIndex(0)
         self.page_input.setText("1")
+        self.table_data()

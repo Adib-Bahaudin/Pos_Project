@@ -180,6 +180,102 @@ class DatabaseManager:
         finally:
             conn.close()
 
+    def get_users_for_table(self, role_filter="Semua", search_text="", limit=5, offset=0):
+        """Ambil list user untuk ditabelkan, tanpa memunculkan password sungguhan."""
+        conn = sqlite3.connect(self.db_name)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        query = "SELECT id, nama, role, '' as password, '' as aksi FROM users WHERE 1=1"
+        params = []
+        
+        if role_filter != "Semua":
+            query += " AND role = ?"
+            params.append(role_filter)
+            
+        if search_text:
+            query += " AND (nama LIKE ? OR CAST(id AS TEXT) LIKE ?)"
+            params.extend([f"%{search_text}%", f"%{search_text}%"])
+            
+        query += " ORDER BY id ASC LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
+        
+        cursor.execute(query, params)
+        result = [dict(row) for row in cursor.fetchall()]
+        
+        for row in result:
+            row['password'] = "********"  # Dummy text for delegate masking
+            
+        conn.close()
+        return result
+
+    def get_users_count(self, role_filter="Semua", search_text=""):
+        """Hitung jumlah total baris user berdasarkan filter, untuk keperluan pagination."""
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+        
+        query = "SELECT COUNT(*) FROM users WHERE 1=1"
+        params = []
+        
+        if role_filter != "Semua":
+            query += " AND role = ?"
+            params.append(role_filter)
+            
+        if search_text:
+            query += " AND (nama LIKE ? OR CAST(id AS TEXT) LIKE ?)"
+            params.extend([f"%{search_text}%", f"%{search_text}%"])
+            
+        cursor.execute(query, params)
+        result = cursor.fetchone()[0]
+        
+        conn.close()
+        return result
+
+    def update_user(self, user_id, username, key=None, role=None):
+        """Update data user, kunci/password diupdate hanya jika diberikan."""
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+        
+        try:
+            if key and str(key).strip():
+                if not str(key).isdigit() or len(str(key)) != self.KEY_LENGTH:
+                    raise ValueError("Kunci harus Angka dan 10 Digit")
+                hash_key = self.hash_key(str(key))
+                if role:
+                    cursor.execute('''
+                        UPDATE users SET nama = ?, hash_kunci = ?, role = ? WHERE id = ?
+                    ''', (username, hash_key, role, user_id))
+                else:
+                    cursor.execute('''
+                        UPDATE users SET nama = ?, hash_kunci = ? WHERE id = ?
+                    ''', (username, hash_key, user_id))
+            else:
+                if role:
+                    cursor.execute('''
+                        UPDATE users SET nama = ?, role = ? WHERE id = ?
+                    ''', (username, role, user_id))
+                else:
+                    cursor.execute('''
+                        UPDATE users SET nama = ? WHERE id = ?
+                    ''', (username, user_id))
+            conn.commit()
+            return True
+        except sqlite3.IntegrityError:
+            raise ValueError("Nama atau Kunci Sudah Terdaftar")
+        finally:
+            conn.close()
+
+    def delete_user(self, user_id):
+        """Menghapus user. Cegah penghapusan admin fallback (id 1)."""
+        if str(user_id) == "1":
+            raise ValueError("Tidak dapat menghapus admin utama!")
+            
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        conn.commit()
+        conn.close()
+
     def verify_login(self, key):
         """
         Memverifikasi login user dengan key
