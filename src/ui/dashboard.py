@@ -131,6 +131,12 @@ class Dashboard(QWidget):
         )
         layout.addWidget(self.button_buku_left)
 
+        self.button_user_left = self._create_nav_button(
+            asset_path("perisai_putih.png"),
+            asset_path("perisai_hijau.png"),
+        )
+        layout.addWidget(self.button_user_left)
+
         layout.addStretch()
 
         # Tombol logout
@@ -196,9 +202,16 @@ class Dashboard(QWidget):
         self.button_buku_right = self._create_nav_button_with_text(
             asset_path("buku putih.png"),
             asset_path("buku hijau.png"),
-            " Tutup Buku"
+            " Catatan Beban Toko"
         )
         layout.addWidget(self.button_buku_right)
+
+        self.button_user_right = self._create_nav_button_with_text(
+            asset_path("perisai_putih.png"),
+            asset_path("perisai_hijau.png"),
+            " User Administrator"
+        )
+        layout.addWidget(self.button_user_right)
 
         layout.addStretch()
 
@@ -319,6 +332,7 @@ class Dashboard(QWidget):
         self._sync_buttons(self.button_pelanggan_left, self.button_pelanggan_right)
         self._sync_buttons(self.button_kas_left, self.button_kas_right)
         self._sync_buttons(self.button_buku_left, self.button_buku_right)
+        self._sync_buttons(self.button_user_left, self.button_user_right)
 
         # Handler navigasi
         self.button_transaksi_left.toggled.connect(self._handle_navigation)
@@ -327,6 +341,7 @@ class Dashboard(QWidget):
         self.button_pelanggan_left.toggled.connect(self._handle_navigation)
         self.button_kas_left.toggled.connect(self._handle_navigation)
         self.button_buku_left.toggled.connect(self._handle_navigation)
+        self.button_user_left.toggled.connect(self._handle_navigation)
 
         # Logout
         self.button_logout_left.clicked.connect(self._handle_logout)

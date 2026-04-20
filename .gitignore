@@ -215,3 +215,6 @@ logs/
 
 # Real Security File
 security.py
+
+# C Compiler File
+main.dist/
