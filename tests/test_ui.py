@@ -1,0 +1,1274 @@
+"""
+==============================================================================
+test_ui.py — Test Suite untuk Komponen UI Aplikasi POS
+==============================================================================
+
+Framework  : pytest + pytest-qt (qtbot)
+Deskripsi  : Berisi unit test dan integration test dasar untuk setiap
+             komponen UI di direktori src/ui/. Semua panggilan ke database
+             dan layer backend di-mock menggunakan unittest.mock agar tes
+             dapat berjalan tanpa koneksi database nyata (headless-friendly).
+
+Cara menjalankan:
+    pytest tests/test_ui.py -v
+    pytest tests/test_ui.py -v -k "test_login"   # filter nama tes tertentu
+
+Dependensi:
+    pip install pytest pytest-qt
+==============================================================================
+"""
+
+import sys
+import os
+import pytest
+from unittest.mock import MagicMock, patch, PropertyMock, mock_open
+
+# ---------------------------------------------------------------------------
+# Pastikan root proyek ada di sys.path agar import relatif berfungsi
+# ---------------------------------------------------------------------------
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QLineEdit, QPushButton, QDialog
+
+
+# ===========================================================================
+# SECTION 1: FIXTURES — Inisialisasi widget dengan mock backend
+# ===========================================================================
+
+@pytest.fixture
+def login_page(qtbot):
+    """
+    Fixture untuk LoginPage.
+
+    Mem-patch DatabaseManager agar tidak menyentuh SQLite sungguhan saat
+    tombol login diklik maupun saat inisialisasi widget.
+    """
+    with patch("src.ui.login.DatabaseManager") as MockDB:
+        MockDB.return_value = MagicMock()
+        from src.ui.login import LoginPage
+        widget = LoginPage(on_login_success=MagicMock())
+        qtbot.addWidget(widget)
+        yield widget, MockDB
+
+
+@pytest.fixture
+def register_dialog(qtbot):
+    """
+    Fixture untuk RegisterDialog.
+
+    Mem-patch DatabaseManager dan ScreenSize agar dialog dapat dibuat
+    tanpa koneksi DB dan tanpa bergantung pada resolusi layar fisik.
+    """
+    with patch("src.ui.register.DatabaseManager") as MockDB, \
+         patch("src.ui.register.ScreenSize") as MockScreen:
+        MockScreen.return_value.get_centered_position.return_value = (100, 100)
+        MockDB.return_value = MagicMock()
+        from src.ui.register import RegisterDialog
+        dialog = RegisterDialog()
+        qtbot.addWidget(dialog)
+        yield dialog, MockDB
+
+
+@pytest.fixture
+def tambah_barang_dialog(qtbot):
+    """
+    Fixture untuk TambahBarangBaru (dialog tambah produk baru).
+
+    Mem-patch DatabaseManager dan ScreenSize.
+    """
+    with patch("src.ui.barang_baru.DatabaseManager") as MockDB, \
+         patch("src.ui.barang_baru.ScreenSize") as MockScreen:
+        MockScreen.return_value.get_centered_position.return_value = (100, 100)
+        MockDB.return_value = MagicMock()
+        from src.ui.barang_baru import TambahBarangBaru
+        dialog = TambahBarangBaru()
+        qtbot.addWidget(dialog)
+        yield dialog, MockDB
+
+
+@pytest.fixture
+def hapus_produk_dialog(qtbot):
+    """
+    Fixture untuk HapusProdukDialog (dialog hapus produk).
+
+    Mem-patch DatabaseManager dan ScreenSize.
+    """
+    with patch("src.ui.hapus_produk.DatabaseManager") as MockDB, \
+         patch("src.ui.hapus_produk.ScreenSize") as MockScreen:
+        MockScreen.return_value.get_centered_position.return_value = (100, 100)
+        mock_db_instance = MagicMock()
+        MockDB.return_value = mock_db_instance
+        from src.ui.hapus_produk import HapusProdukDialog
+        dialog = HapusProdukDialog()
+        qtbot.addWidget(dialog)
+        yield dialog, mock_db_instance
+
+
+@pytest.fixture
+def discount_popup(qtbot):
+    """
+    Fixture untuk DiscountPopup.
+
+    Dialog ini tidak memerlukan database, namun membutuhkan
+    discount_state dict dan apply_callback callable.
+    """
+    from src.ui.discount import DiscountPopup
+    apply_cb = MagicMock()
+    state = {"mode": None, "percent": 0, "nominal_input": 0}
+    dialog = DiscountPopup(parent=None, discount_state=state, apply_callback=apply_cb)
+    qtbot.addWidget(dialog)
+    yield dialog, apply_cb
+
+
+@pytest.fixture
+def tambah_pelanggan_dialog(qtbot):
+    """
+    Fixture untuk TambahPelangganDialog.
+
+    Dialog ini tidak memanggil DB secara langsung (validasi dan submit
+    dilakukan oleh pemanggil), namun ScreenSize di-patch untuk keamanan.
+    """
+    with patch("src.ui.tambah_pelanggan.ScreenSize") as MockScreen:
+        MockScreen.return_value.get_centered_position.return_value = (100, 100)
+        from src.ui.tambah_pelanggan import TambahPelangganDialog
+        dialog = TambahPelangganDialog()
+        qtbot.addWidget(dialog)
+        yield dialog
+
+
+@pytest.fixture
+def welcome_window(qtbot):
+    """Fixture untuk WelcomeWindow (tidak ada dependency DB)."""
+    from src.ui.welcome import WelcomeWindow
+    widget = WelcomeWindow()
+    qtbot.addWidget(widget)
+    return widget
+
+
+@pytest.fixture
+def error_window(qtbot):
+    """Fixture untuk ErrorWindow (tidak ada dependency DB)."""
+    from src.ui.error import ErrorWindow
+    widget = ErrorWindow()
+    qtbot.addWidget(widget)
+    return widget
+
+
+@pytest.fixture
+def dialog_title_bar(qtbot):
+    """Fixture untuk DialogTitleBar."""
+    from src.ui.dialog_title_bar import DialogTitleBar
+    widget = DialogTitleBar("Judul Test")
+    qtbot.addWidget(widget)
+    return widget
+
+
+@pytest.fixture
+def manajemen_produk(qtbot):
+    """
+    Fixture untuk ManajemenProduk.
+
+    Kelas ini memanggil DatabaseManager saat inisialisasi (table_data).
+    Seluruh interaksi DB di-mock.
+    """
+    with patch("src.ui.manajemen_produk.DatabaseManager") as MockDB, \
+         patch("src.ui.barang_baru.DatabaseManager"), \
+         patch("src.ui.hapus_produk.DatabaseManager"), \
+         patch("src.ui.edit_produk.DatabaseManager"), \
+         patch("src.utils.fungsi.NavigationButton", new_callable=lambda: _MockNavButton):
+        mock_db = MagicMock()
+        mock_db.get_produk_satuan.return_value = []
+        mock_db.get_produk_paket.return_value = []
+        mock_db.get_rows_produk.return_value = 0
+        MockDB.return_value = mock_db
+
+        from src.ui.manajemen_produk import ManajemenProduk
+        widget = ManajemenProduk()
+        qtbot.addWidget(widget)
+        yield widget, mock_db
+
+
+@pytest.fixture
+def dashboard(qtbot):
+    """
+    Fixture untuk Dashboard.
+
+    Semua sub-widget yang memerlukan DB di-mock secara agresif agar
+    Dashboard bisa diinisialisasi dalam lingkungan headless.
+    """
+    user_data = {"role": "Super_user", "nama": "Tester"}
+    with patch("src.ui.dashboard.DatabaseManager") as MockDB, \
+         patch("src.ui.welcome.asset_path", return_value=""), \
+         patch("src.ui.error.asset_path", return_value=""), \
+         patch("src.ui.dashboard.asset_path", return_value=""), \
+         patch("src.ui.manajemen_produk.DatabaseManager"), \
+         patch("src.ui.transaksi.DatabaseManager"), \
+         patch("src.ui.sejarah_transaksi.DatabaseManager"):
+        MockDB.return_value = MagicMock()
+        from src.ui.dashboard import Dashboard
+        widget = Dashboard(data=user_data)
+        qtbot.addWidget(widget)
+        yield widget, MockDB
+
+
+# ---------------------------------------------------------------------------
+# Helper internal: NavigationButton pengganti untuk tes ManajemenProduk
+# (menghindari path asset yang tidak ada)
+# ---------------------------------------------------------------------------
+class _MockNavButton:
+    """Pengganti NavigationButton agar ManajemenProduk bisa diinisialisasi."""
+    def __new__(cls, *args, **kwargs):
+        from PySide6.QtWidgets import QPushButton
+        return QPushButton()
+
+
+# ===========================================================================
+# SECTION 2: TEST — LoginPage
+# ===========================================================================
+
+class TestLoginPage:
+    """Kumpulan tes untuk komponen LoginPage (src/ui/login.py)."""
+
+    def test_widget_terbuat_dan_terlihat(self, login_page):
+        """
+        Memastikan LoginPage berhasil diinstansiasi dan widget utama ada.
+        Widget harus memiliki atribut text_input dan login_button.
+        """
+        widget, _ = login_page
+        assert widget is not None
+        assert hasattr(widget, "text_input"), "LoginPage harus memiliki atribut text_input"
+        assert hasattr(widget, "login_button"), "LoginPage harus memiliki atribut login_button"
+
+    def test_text_input_adalah_qlineedit(self, login_page):
+        """
+        Memastikan text_input adalah instance QLineEdit dengan EchoMode Password
+        (karena ini field kunci/password).
+        """
+        widget, _ = login_page
+        assert isinstance(widget.text_input, QLineEdit)
+        assert widget.text_input.echoMode() == QLineEdit.EchoMode.Password
+
+    def test_ketik_teks_pada_input(self, qtbot, login_page):
+        """
+        Simulasi pengguna mengetik teks pada field input menggunakan
+        qtbot.keyClicks(). Memastikan teks berhasil masuk ke widget.
+        """
+        widget, _ = login_page
+        widget.show()
+        qtbot.keyClicks(widget.text_input, "123456")
+        assert widget.text_input.text() == "123456"
+
+    def test_login_gagal_input_bukan_angka(self, qtbot, login_page):
+        """
+        Memastikan pesan error muncul ketika pengguna mengetik teks bukan angka
+        (misalnya huruf) lalu mengklik tombol login.
+        """
+        widget, MockDB = login_page
+        widget.show()
+        widget.text_input.setText("abc")
+        qtbot.mouseClick(widget.login_button, Qt.MouseButton.LeftButton)
+        assert "Kunci Hanya Berupa Angka" in widget.error_info.text()
+
+    def test_login_berhasil_memanggil_callback(self, qtbot, login_page):
+        """
+        Memastikan on_login_success callback dipanggil ketika login berhasil.
+        DatabaseManager.verify_login di-mock untuk mengembalikan (True, {...}).
+        """
+        widget, MockDB = login_page
+        fake_user = {"nama": "Tester", "role": "Admin"}
+        MockDB.return_value.verify_login.return_value = (True, fake_user)
+        widget.show()
+        widget.text_input.setText("123456")
+        qtbot.mouseClick(widget.login_button, Qt.MouseButton.LeftButton)
+        widget.on_login_success.assert_called_once_with(fake_user)
+
+    def test_login_gagal_menampilkan_pesan_error(self, qtbot, login_page):
+        """
+        Memastikan pesan error dari DB ditampilkan di label error_info
+        ketika verify_login mengembalikan (False, pesan_error).
+        """
+        widget, MockDB = login_page
+        MockDB.return_value.verify_login.return_value = (False, "Kunci salah!")
+        widget.show()
+        widget.text_input.setText("999999")
+        qtbot.mouseClick(widget.login_button, Qt.MouseButton.LeftButton)
+        assert "Kunci salah!" in widget.error_info.text()
+
+    def test_toggle_password_visibility(self, qtbot, login_page):
+        """
+        Memastikan toggle_visibility_button mengubah EchoMode dari Password
+        ke Normal dan sebaliknya.
+        """
+        widget, _ = login_page
+        widget.show()
+        # Kondisi awal: password tersembunyi
+        assert widget.text_input.echoMode() == QLineEdit.EchoMode.Password
+        qtbot.mouseClick(widget.toggle_visibility_button, Qt.MouseButton.LeftButton)
+        # Setelah klik: seharusnya Normal
+        assert widget.text_input.echoMode() == QLineEdit.EchoMode.Normal
+        qtbot.mouseClick(widget.toggle_visibility_button, Qt.MouseButton.LeftButton)
+        # Setelah klik ke-2: kembali Password
+        assert widget.text_input.echoMode() == QLineEdit.EchoMode.Password
+
+    def test_session_info_mengubah_teks(self, login_page):
+        """
+        Memastikan metode session_info() mengubah teks label error_info.
+        Digunakan untuk menampilkan informasi sesi yang sudah berakhir.
+        """
+        widget, _ = login_page
+        widget.session_info("Sesi telah berakhir. Silakan login ulang.")
+        assert "Sesi telah berakhir" in widget.error_info.text()
+
+
+# ===========================================================================
+# SECTION 3: TEST — RegisterDialog
+# ===========================================================================
+
+class TestRegisterDialog:
+    """Kumpulan tes untuk komponen RegisterDialog (src/ui/register.py)."""
+
+    def test_dialog_terbuat_dengan_semua_field(self, register_dialog):
+        """
+        Memastikan RegisterDialog berhasil diinstansiasi dan memiliki
+        semua field input yang diperlukan: input_nama, input_key,
+        input_key_admin, combo_role.
+        """
+        dialog, _ = register_dialog
+        assert hasattr(dialog, "input_nama")
+        assert hasattr(dialog, "input_key")
+        assert hasattr(dialog, "input_key_admin")
+        assert hasattr(dialog, "combo_role")
+
+    def test_input_key_admin_mode_password(self, register_dialog):
+        """
+        Memastikan field input_key_admin menggunakan EchoMode.Password
+        untuk menyembunyikan kunci admin dari tampilan.
+        """
+        dialog, _ = register_dialog
+        assert dialog.input_key_admin.echoMode() == QLineEdit.EchoMode.Password
+
+    def test_validasi_gagal_jika_field_kosong(self, qtbot, register_dialog):
+        """
+        Memastikan label peringatan muncul ketika tombol Register diklik
+        tanpa mengisi semua field (validasi input kosong).
+        """
+        dialog, _ = register_dialog
+        dialog.show()
+        # Semua field dikosongkan
+        dialog.input_nama.clear()
+        dialog.input_key.clear()
+        dialog.input_key_admin.clear()
+        qtbot.mouseClick(dialog.btn_register, Qt.MouseButton.LeftButton)
+        assert dialog.label_peringatan.text() != "", \
+            "Peringatan harus muncul saat field kosong"
+
+    def test_ketik_nama_pada_input(self, qtbot, register_dialog):
+        """
+        Simulasi pengguna mengetik nama pada field input_nama menggunakan
+        qtbot.keyClicks(). Memastikan teks tersimpan dengan benar.
+        """
+        dialog, _ = register_dialog
+        dialog.show()
+        qtbot.keyClicks(dialog.input_nama, "Budi Santoso")
+        assert dialog.input_nama.text() == "Budi Santoso"
+
+    def test_tombol_batal_menutup_dialog(self, qtbot, register_dialog):
+        """
+        Memastikan klik tombol Batal menutup dialog (memanggil reject).
+        Menggunakan qtbot.waitSignal untuk menangkap sinyal rejected.
+        """
+        dialog, _ = register_dialog
+        dialog.show()
+        with qtbot.waitSignal(dialog.rejected, timeout=2000):
+            qtbot.mouseClick(dialog.btn_batal, Qt.MouseButton.LeftButton)
+
+    def test_otorisasi_gagal_key_admin_salah(self, qtbot, register_dialog):
+        """
+        Memastikan label peringatan muncul ketika key admin tidak valid
+        (bukan Super_user). DB di-mock untuk mengembalikan status gagal.
+        """
+        dialog, MockDB = register_dialog
+        dialog.show()
+        # Isi semua field
+        dialog.input_nama.setText("Citra")
+        dialog.input_key.setText("1234567890")
+        dialog.input_key_admin.setText("wrongkey")
+        # Mock: verifikasi gagal
+        MockDB.return_value.verify_login.return_value = (False, "Kunci salah")
+        qtbot.mouseClick(dialog.btn_register, Qt.MouseButton.LeftButton)
+        assert "Otorisasi Gagal" in dialog.label_peringatan.text()
+
+    def test_combo_role_berisi_pilihan_yang_benar(self, register_dialog):
+        """
+        Memastikan combo_role berisi pilihan 'Admin' dan 'Super User'
+        sesuai desain sistem.
+        """
+        dialog, _ = register_dialog
+        items = [dialog.combo_role.itemText(i) for i in range(dialog.combo_role.count())]
+        assert "Admin" in items
+        assert "Super User" in items
+
+
+# ===========================================================================
+# SECTION 4: TEST — TambahBarangBaru
+# ===========================================================================
+
+class TestTambahBarangBaru:
+    """Kumpulan tes untuk komponen TambahBarangBaru (src/ui/barang_baru.py)."""
+
+    def test_dialog_terbuat_dengan_field_utama(self, tambah_barang_dialog):
+        """
+        Memastikan TambahBarangBaru berhasil dibuat dan memiliki
+        field-field input utama: nama, harga_jual, sku, combo_selector.
+        """
+        dialog, _ = tambah_barang_dialog
+        assert hasattr(dialog, "nama")
+        assert hasattr(dialog, "harga_jual")
+        assert hasattr(dialog, "sku")
+        assert hasattr(dialog, "combo_selector")
+
+    def test_combo_selector_berisi_satuan_dan_paket(self, tambah_barang_dialog):
+        """
+        Memastikan combo_selector berisi pilihan 'Satuan' dan 'Paket'
+        yang merupakan dua jenis produk dalam sistem.
+        """
+        dialog, _ = tambah_barang_dialog
+        items = [dialog.combo_selector.itemText(i)
+                 for i in range(dialog.combo_selector.count())]
+        assert "Satuan" in items
+        assert "Paket" in items
+
+    def test_switch_ke_paket_mengubah_stack(self, qtbot, tambah_barang_dialog):
+        """
+        Memastikan mengubah pilihan combo_selector ke 'Paket' (index 1)
+        juga mengubah stack widget ke index 1 (form untuk produk paket).
+        """
+        dialog, _ = tambah_barang_dialog
+        dialog.show()
+        dialog.combo_selector.setCurrentIndex(1)
+        assert dialog.stack.currentIndex() == 1
+        assert dialog.stack0.currentIndex() == 1
+
+    def test_validasi_field_kosong_menampilkan_peringatan(self, qtbot, tambah_barang_dialog):
+        """
+        Memastikan label_peringatan terisi ketika tombol Tambahkan diklik
+        dengan semua field kosong (tidak ada data yang diinput).
+        """
+        dialog, _ = tambah_barang_dialog
+        dialog.show()
+        # Kosongkan semua field secara eksplisit
+        dialog.nama.data.clear()
+        dialog.harga_jual.data.clear()
+        dialog.sku.data.clear()
+        qtbot.mouseClick(dialog.btn_tambahkan, Qt.MouseButton.LeftButton)
+        # Peringatan harus muncul
+        assert dialog.label_peringatan.text() != ""
+
+    def test_get_data_satuan_mengembalikan_dict(self, tambah_barang_dialog):
+        """
+        Memastikan get_data() mengembalikan tuple (jenis, dict) yang benar
+        ketika mode 'Satuan' dipilih.
+        """
+        dialog, _ = tambah_barang_dialog
+        dialog.combo_selector.setCurrentIndex(0)
+        dialog.nama.data.setText("Bolpoin")
+        dialog.harga_jual.data.setText("5000")
+        dialog.harga_beli.data.setText("3000")
+        dialog.stok.data.setText("100")
+        dialog.sku.data.setText("BLP-001")
+
+        jenis, data = dialog.get_data()
+        assert jenis == "satuan"
+        assert data["nama_barang"] == "Bolpoin"
+        assert data["sku"] == "BLP-001"
+
+    def test_tombol_batal_memanggil_reject(self, qtbot, tambah_barang_dialog):
+        """
+        Memastikan klik tombol Batal mengirimkan sinyal rejected dari dialog.
+        """
+        dialog, _ = tambah_barang_dialog
+        dialog.show()
+        with qtbot.waitSignal(dialog.rejected, timeout=2000):
+            qtbot.mouseClick(dialog.btn_batal, Qt.MouseButton.LeftButton)
+
+    def test_ketik_nama_produk_pada_field(self, qtbot, tambah_barang_dialog):
+        """
+        Simulasi pengguna mengetik nama produk menggunakan qtbot.keyClicks()
+        pada field input nama produk baru.
+        """
+        dialog, _ = tambah_barang_dialog
+        dialog.show()
+        dialog.nama.data.clear()
+        qtbot.keyClicks(dialog.nama.data, "Mie Goreng")
+        assert dialog.nama.data.text() == "Mie Goreng"
+
+    def test_get_data_paket_mengembalikan_dict(self, tambah_barang_dialog):
+        """Memastikan get_data() untuk produk tipe Paket mengembalikan format dict yang benar."""
+        dialog, _ = tambah_barang_dialog
+        dialog.combo_selector.setCurrentIndex(1)  # Pilih mode Paket
+        dialog.nama.data.setText("Paket Hemat")
+        dialog.harga_jual.data.setText("15000")
+        dialog.nama_barang.data.setText("Pensil 2B")
+        dialog.convert.data.setText("5")
+        dialog.sku.data.setText("PKT-001")
+
+        jenis, data = dialog.get_data()
+        assert jenis == "paket"
+        assert data["nama_paket"] == "Paket Hemat"
+        assert data["nama_barang"] == "Pensil 2B"
+        assert data["per_satuan"] == "5"
+
+    def test_validasi_data_satuan_berhasil(self, qtbot, tambah_barang_dialog):
+        """Memastikan dialog diterima (accepted) jika validasi satuan di DB sukses."""
+        dialog, mock_db = tambah_barang_dialog
+        dialog.combo_selector.setCurrentIndex(0)
+        dialog.nama.data.setText("Buku")
+        dialog.harga_jual.data.setText("5000")
+        dialog.harga_beli.data.setText("3000")
+        dialog.stok.data.setText("10")
+        dialog.sku.data.setText("BK-01")
+
+        mock_db_instance = mock_db.return_value
+        mock_db_instance.verify_is_valid.return_value = {"is_valid": True}
+
+        with qtbot.waitSignal(dialog.accepted, timeout=1000):
+            qtbot.mouseClick(dialog.btn_tambahkan, Qt.MouseButton.LeftButton)
+
+    def test_validasi_data_satuan_gagal_duplikat(self, qtbot, tambah_barang_dialog):
+        """Memastikan label peringatan muncul jika validasi DB untuk satuan menemukan duplikat."""
+        dialog, mock_db = tambah_barang_dialog
+        dialog.combo_selector.setCurrentIndex(0)
+        dialog.nama.data.setText("Buku")
+        dialog.harga_jual.data.setText("5000")
+        dialog.harga_beli.data.setText("3000")
+        dialog.stok.data.setText("10")
+        dialog.sku.data.setText("BK-01")
+
+        mock_db_instance = mock_db.return_value
+        mock_db_instance.verify_is_valid.return_value = {
+            "is_valid": False, "nama_barang": True, "sku_barang": True
+        }
+
+        qtbot.mouseClick(dialog.btn_tambahkan, Qt.MouseButton.LeftButton)
+        assert "Nama Barang dan SKU sudah ada" in dialog.label_peringatan.text()
+
+    def test_validasi_data_paket_berhasil(self, qtbot, tambah_barang_dialog):
+        """Memastikan dialog diterima (accepted) jika validasi paket di DB sukses."""
+        dialog, mock_db = tambah_barang_dialog
+        dialog.combo_selector.setCurrentIndex(1)
+        dialog.nama.data.setText("Paket Buku")
+        dialog.harga_jual.data.setText("50000")
+        dialog.nama_barang.data.setText("Buku")
+        dialog.convert.data.setText("10")
+        dialog.sku.data.setText("PKT-BK")
+
+        mock_db_instance = mock_db.return_value
+        mock_db_instance.verify_is_valid.return_value = {"is_valid": True}
+
+        with qtbot.waitSignal(dialog.accepted, timeout=1000):
+            qtbot.mouseClick(dialog.btn_tambahkan, Qt.MouseButton.LeftButton)
+
+    def test_validasi_data_paket_gagal_barang_tidak_ditemukan(self, qtbot, tambah_barang_dialog):
+        """Memastikan label peringatan muncul jika produk isi paket tidak ditemukan di DB."""
+        dialog, mock_db = tambah_barang_dialog
+        dialog.combo_selector.setCurrentIndex(1)
+        dialog.nama.data.setText("Paket Kosong")
+        dialog.harga_jual.data.setText("100")
+        dialog.nama_barang.data.setText("BarangAneh")
+        dialog.convert.data.setText("2")
+        dialog.sku.data.setText("PKT-02")
+
+        mock_db_instance = mock_db.return_value
+        mock_db_instance.verify_is_valid.return_value = {
+            "is_valid": False, "nama_barang": False, "sku_barang": False, "nama_produk": True
+        }
+
+        qtbot.mouseClick(dialog.btn_tambahkan, Qt.MouseButton.LeftButton)
+        assert "Nama Barang Tidak Ditemukan" in dialog.label_peringatan.text()
+
+    @patch("PySide6.QtWidgets.QFileDialog.getOpenFileName")
+    @patch("src.ui.barang_baru.CustomMessageBox.critical")
+    def test_import_csv_batal_atau_kosong(self, mock_msg_critical, mock_filedialog, tambah_barang_dialog):
+        """Memastikan tidak terjadi crash saat dialog import CSV dibatalkan oleh user."""
+        dialog, _ = tambah_barang_dialog
+        mock_filedialog.return_value = ("", "")  # Simulasi batal pilih file
+        dialog.import_csv_dialog()
+        mock_msg_critical.assert_not_called()
+
+    @patch("PySide6.QtWidgets.QFileDialog.getOpenFileName")
+    @patch("src.ui.barang_baru.CustomMessageBox.critical")
+    def test_import_csv_format_error(self, mock_msg_critical, mock_filedialog, tambah_barang_dialog):
+        """Memastikan pesan error muncul ketika terjadi error saat membaca file CSV."""
+        dialog, _ = tambah_barang_dialog
+        mock_filedialog.return_value = ("dummy.csv", "CSV Files (*.csv)")
+        
+        # Simulasi mock_open melempar exception
+        with patch("builtins.open", side_effect=Exception("I/O Error")):
+            dialog.import_csv_dialog()
+            
+        mock_msg_critical.assert_called_once()
+        assert "Format file salah" in mock_msg_critical.call_args[0][2]
+
+    @patch("PySide6.QtWidgets.QFileDialog.getOpenFileName")
+    @patch("src.ui.barang_baru.CustomMessageBox.information")
+    def test_import_csv_berhasil_sepenuhnya(self, mock_msg_info, mock_filedialog, tambah_barang_dialog):
+        """Memastikan pesan sukses muncul ketika semua data CSV berhasil diimpor."""
+        dialog, mock_db = tambah_barang_dialog
+        mock_filedialog.return_value = ("dummy.csv", "CSV Files (*.csv)")
+        
+        csv_content = "Nama,SKU\nBarang1,SKU1\n"
+        mock_db_instance = mock_db.return_value
+        mock_db_instance.import_batch_csv.return_value = {"berhasil": 2, "gagal": 0, "errors": []}
+
+        with patch("builtins.open", mock_open(read_data=csv_content)):
+            dialog.import_csv_dialog()
+            
+        mock_msg_info.assert_called_once()
+        assert "Berhasil diimpor: 2" in mock_msg_info.call_args[0][2]
+
+    @patch("PySide6.QtWidgets.QFileDialog.getOpenFileName")
+    @patch("src.ui.barang_baru.CustomMessageBox.warning")
+    def test_import_csv_selesai_dengan_peringatan(self, mock_msg_warning, mock_filedialog, tambah_barang_dialog):
+        """Memastikan pesan peringatan muncul ketika ada sebagian data CSV yang gagal diimpor."""
+        dialog, mock_db = tambah_barang_dialog
+        mock_filedialog.return_value = ("dummy.csv", "CSV Files (*.csv)")
+        
+        csv_content = "Nama,SKU\nBarang1,SKU1\n"
+        mock_db_instance = mock_db.return_value
+        mock_db_instance.import_batch_csv.return_value = {
+            "berhasil": 1, "gagal": 1, "errors": ["Baris 2 gagal"]
+        }
+
+        with patch("builtins.open", mock_open(read_data=csv_content)):
+            dialog.import_csv_dialog()
+            
+        mock_msg_warning.assert_called_once()
+        assert "Gagal diimpor: 1" in mock_msg_warning.call_args[0][2]
+
+    @patch("os.path.exists")
+    @patch("src.ui.barang_baru.CustomMessageBox.critical")
+    def test_download_template_sumber_tidak_ada(self, mock_msg_critical, mock_exists, tambah_barang_dialog):
+        """Memastikan error muncul ketika file template sumber tidak ditemukan."""
+        dialog, _ = tambah_barang_dialog
+        mock_exists.return_value = False
+        dialog.download_template_csv()
+        
+        mock_msg_critical.assert_called_once()
+        assert "tidak ditemukan" in mock_msg_critical.call_args[0][2]
+
+    @patch("os.path.exists")
+    @patch("PySide6.QtWidgets.QFileDialog.getSaveFileName")
+    @patch("shutil.copy2")
+    @patch("src.ui.barang_baru.CustomMessageBox.information")
+    def test_download_template_berhasil(self, mock_msg_info, mock_copy, mock_filedialog, mock_exists, tambah_barang_dialog):
+        """Memastikan proses penyalinan (download) template berjalan dan memunculkan notifikasi sukses."""
+        dialog, _ = tambah_barang_dialog
+        mock_exists.return_value = True
+        mock_filedialog.return_value = ("C:/Downloads/Template.csv", "CSV Files (*.csv)")
+        
+        dialog.download_template_csv()
+        mock_copy.assert_called_once()
+        mock_msg_info.assert_called_once()
+        assert "berhasil disimpan" in mock_msg_info.call_args[0][2]
+
+
+# ===========================================================================
+# SECTION 5: TEST — HapusProdukDialog
+# ===========================================================================
+
+class TestHapusProdukDialog:
+    """Kumpulan tes untuk HapusProdukDialog (src/ui/hapus_produk.py)."""
+
+    def test_dialog_terbuat_dengan_elemen_utama(self, hapus_produk_dialog):
+        """
+        Memastikan HapusProdukDialog berhasil dibuat dan memiliki elemen
+        utama: input_sku, input_verifikasi, button_hapus, button_batal.
+        """
+        dialog, _ = hapus_produk_dialog
+        assert hasattr(dialog, "input_sku")
+        assert hasattr(dialog, "input_verifikasi")
+        assert hasattr(dialog, "button_hapus")
+        assert hasattr(dialog, "button_batal")
+
+    def test_button_hapus_nonaktif_saat_awal(self, hapus_produk_dialog):
+        """
+        Memastikan button_hapus dalam keadaan disabled saat dialog pertama
+        dibuka (sebelum produk dicari dan ditemukan).
+        """
+        dialog, _ = hapus_produk_dialog
+        assert not dialog.button_hapus.isEnabled(), \
+            "Tombol hapus harus disabled sebelum produk ditemukan"
+
+    def test_cari_tanpa_sku_menampilkan_status(self, qtbot, hapus_produk_dialog):
+        """
+        Memastikan mencari produk tanpa mengisi SKU menampilkan
+        pesan status error pada label_status.
+        """
+        dialog, _ = hapus_produk_dialog
+        dialog.show()
+        dialog.input_sku.clear()
+        qtbot.mouseClick(dialog.button_cari, Qt.MouseButton.LeftButton)
+        assert "SKU wajib diisi" in dialog.label_status.text()
+
+    def test_cari_sku_tidak_ditemukan(self, qtbot, hapus_produk_dialog):
+        """
+        Memastikan label detail dan status berubah ketika SKU yang dicari
+        tidak ada di database (DB di-mock mengembalikan None).
+        """
+        dialog, mock_db = hapus_produk_dialog
+        mock_db.get_produk_for_delete.return_value = None
+        dialog.show()
+        dialog.input_sku.setText("INVALID-SKU")
+        qtbot.mouseClick(dialog.button_cari, Qt.MouseButton.LeftButton)
+        assert "tidak ditemukan" in dialog.label_detail.text()
+        assert not dialog.button_hapus.isEnabled()
+
+    def test_cari_sku_berhasil_mengaktifkan_tombol_hapus(self, qtbot, hapus_produk_dialog):
+        """
+        Memastikan button_hapus menjadi enabled setelah pencarian
+        produk berhasil (DB mengembalikan data produk valid).
+        """
+        dialog, mock_db = hapus_produk_dialog
+        mock_db.get_produk_for_delete.return_value = {
+            "sku": "ABC-001",
+            "nama_barang": "Pensil 2B",
+            "stok": 50,
+            "harga_jual": 3000,
+            "harga_beli": 2000,
+        }
+        dialog.show()
+        dialog.input_sku.setText("ABC-001")
+        qtbot.mouseClick(dialog.button_cari, Qt.MouseButton.LeftButton)
+        assert dialog.button_hapus.isEnabled(), \
+            "Tombol hapus harus aktif setelah produk ditemukan"
+
+    def test_hapus_tanpa_verifikasi_ditolak(self, qtbot, hapus_produk_dialog):
+        """
+        Memastikan penghapusan gagal ketika teks verifikasi bukan 'HAPUS'.
+        Label status harus menampilkan pesan gagal verifikasi.
+        """
+        dialog, mock_db = hapus_produk_dialog
+        mock_db.get_produk_for_delete.return_value = {
+            "sku": "ABC-001", "nama_barang": "Pensil 2B",
+            "stok": 50, "harga_jual": 3000, "harga_beli": 2000,
+        }
+        dialog.show()
+        # Cari produk terlebih dahulu
+        dialog.input_sku.setText("ABC-001")
+        dialog.button_cari.click()
+        # Ketik verifikasi yang salah
+        dialog.input_verifikasi.setText("TIDAK")
+        qtbot.mouseClick(dialog.button_hapus, Qt.MouseButton.LeftButton)
+        assert "Verifikasi gagal" in dialog.label_status.text()
+
+    def test_ketik_verifikasi_hapus(self, qtbot, hapus_produk_dialog):
+        """
+        Simulasi pengguna mengetik kata 'HAPUS' pada field verifikasi
+        menggunakan qtbot.keyClicks().
+        """
+        dialog, _ = hapus_produk_dialog
+        dialog.show()
+        qtbot.keyClicks(dialog.input_verifikasi, "HAPUS")
+        assert dialog.input_verifikasi.text() == "HAPUS"
+
+    def test_tombol_batal_memanggil_reject(self, qtbot, hapus_produk_dialog):
+        """
+        Memastikan klik tombol Batal mengirimkan sinyal rejected.
+        """
+        dialog, _ = hapus_produk_dialog
+        dialog.show()
+        with qtbot.waitSignal(dialog.rejected, timeout=2000):
+            qtbot.mouseClick(dialog.button_batal, Qt.MouseButton.LeftButton)
+
+    def test_hapus_berhasil_menutup_dialog(self, qtbot, hapus_produk_dialog):
+        """
+        Simulasi alur hapus produk secara penuh:
+        1. Cari produk (DB mengembalikan data valid)
+        2. Ketik 'HAPUS' pada verifikasi
+        3. Klik tombol Hapus
+        4. DB.delete_produk_bersih mengembalikan sukses
+        5. Dialog harus menutup (accepted)
+        """
+        dialog, mock_db = hapus_produk_dialog
+        mock_db.get_produk_for_delete.return_value = {
+            "sku": "ABC-001", "nama_barang": "Pensil 2B",
+            "stok": 50, "harga_jual": 3000, "harga_beli": 2000,
+        }
+        mock_db.delete_produk_bersih.return_value = {
+            "deleted": True,
+            "deleted_produk_paket": 0,
+        }
+        dialog.show()
+        dialog.input_sku.setText("ABC-001")
+        dialog.button_cari.click()
+        dialog.input_verifikasi.setText("HAPUS")
+
+        with qtbot.waitSignal(dialog.accepted, timeout=2000):
+            qtbot.mouseClick(dialog.button_hapus, Qt.MouseButton.LeftButton)
+
+
+# ===========================================================================
+# SECTION 6: TEST — DiscountPopup
+# ===========================================================================
+
+class TestDiscountPopup:
+    """Kumpulan tes untuk DiscountPopup (src/ui/discount.py)."""
+
+    def test_dialog_terbuat_dengan_field_input(self, discount_popup):
+        """
+        Memastikan DiscountPopup terbuat dengan field percent_input,
+        nominal_input, dan tombol-tombol yang dibutuhkan.
+        """
+        dialog, _ = discount_popup
+        assert hasattr(dialog, "percent_input")
+        assert hasattr(dialog, "nominal_input")
+        assert hasattr(dialog, "apply_button")
+        assert hasattr(dialog, "reset_button")
+        assert hasattr(dialog, "cancel_button")
+
+    def test_ketik_persen_diskon(self, qtbot, discount_popup):
+        """
+        Simulasi pengguna mengetik nilai persentase diskon (misalnya '10')
+        pada field percent_input.
+        """
+        dialog, _ = discount_popup
+        dialog.show()
+        dialog.percent_input.clear()
+        qtbot.keyClicks(dialog.percent_input, "10")
+        assert "10" in dialog.percent_input.text()
+
+    def test_isi_persen_menonaktifkan_nominal(self, qtbot, discount_popup):
+        """
+        Memastikan mengisi field percent_input menonaktifkan (disable)
+        field nominal_input untuk mencegah konflik diskon ganda.
+        """
+        dialog, _ = discount_popup
+        dialog.show()
+        dialog.percent_input.clear()
+        dialog.nominal_input.clear()
+        dialog.percent_input.setText("15")
+        # Picu event textChanged secara manual
+        dialog.percent_input.textChanged.emit("15")
+        assert not dialog.nominal_input.isEnabled(), \
+            "nominal_input harus disabled saat percent_input terisi"
+
+    def test_apply_discount_memanggil_callback(self, qtbot, discount_popup):
+        """
+        Memastikan klik tombol Terapkan memanggil apply_callback
+        dengan payload yang sesuai (mode 'percent').
+        """
+        dialog, apply_cb = discount_popup
+        dialog.show()
+        dialog.percent_input.setText("20")
+        dialog.nominal_input.clear()
+        qtbot.mouseClick(dialog.apply_button, Qt.MouseButton.LeftButton)
+        apply_cb.assert_called_once()
+        args = apply_cb.call_args[0][0]
+        assert args["mode"] == "percent"
+        assert args["percent"] == 20
+
+    def test_reset_discount_mengosongkan_semua_field(self, qtbot, discount_popup):
+        """
+        Memastikan klik tombol Reset mengosongkan kedua field input
+        dan memanggil callback dengan mode None.
+        """
+        dialog, apply_cb = discount_popup
+        dialog.show()
+        dialog.percent_input.setText("10")
+        qtbot.mouseClick(dialog.reset_button, Qt.MouseButton.LeftButton)
+        assert dialog.percent_input.text() == ""
+        assert dialog.nominal_input.text() == ""
+
+    def test_preview_label_berubah_saat_ketik_persen(self, qtbot, discount_popup):
+        """
+        Memastikan preview_label diperbarui saat pengguna mengetik
+        nilai persentase pada field percent_input.
+        """
+        dialog, _ = discount_popup
+        dialog.show()
+        dialog.percent_input.setText("25")
+        dialog.percent_input.textChanged.emit("25")
+        assert "25" in dialog.preview_label.text() or "%" in dialog.preview_label.text()
+
+
+# ===========================================================================
+# SECTION 7: TEST — TambahPelangganDialog
+# ===========================================================================
+
+class TestTambahPelangganDialog:
+    """Kumpulan tes untuk TambahPelangganDialog (src/ui/tambah_pelanggan.py)."""
+
+    def test_dialog_terbuat_dengan_field_utama(self, tambah_pelanggan_dialog):
+        """
+        Memastikan TambahPelangganDialog berhasil dibuat dan memiliki
+        field input utama: input_nama, input_nohp, input_alamat.
+        """
+        dialog = tambah_pelanggan_dialog
+        assert hasattr(dialog, "input_nama")
+        assert hasattr(dialog, "input_nohp")
+        assert hasattr(dialog, "input_alamat")
+
+    def test_ketik_nama_pelanggan(self, qtbot, tambah_pelanggan_dialog):
+        """
+        Simulasi pengguna mengetik nama pelanggan pada field input_nama
+        menggunakan qtbot.keyClicks().
+        """
+        dialog = tambah_pelanggan_dialog
+        dialog.show()
+        dialog.input_nama.data.clear()
+        qtbot.keyClicks(dialog.input_nama.data, "Rina Wati")
+        assert dialog.input_nama.data.text() == "Rina Wati"
+
+    def test_validasi_nama_kosong_menampilkan_peringatan(self, qtbot, tambah_pelanggan_dialog):
+        """
+        Memastikan label_peringatan muncul ketika tombol Tambahkan diklik
+        tanpa mengisi nama pelanggan (nama adalah field wajib).
+        """
+        dialog = tambah_pelanggan_dialog
+        dialog.show()
+        dialog.input_nama.data.clear()
+        qtbot.mouseClick(dialog.btn_tambahkan, Qt.MouseButton.LeftButton)
+        assert dialog.label_peringatan.text() != ""
+
+    def test_validasi_berhasil_jika_nama_terisi(self, qtbot, tambah_pelanggan_dialog):
+        """
+        Memastikan dialog diterima (accepted) ketika nama pelanggan diisi.
+        Sinyal accepted harus diemit.
+        """
+        dialog = tambah_pelanggan_dialog
+        dialog.show()
+        dialog.input_nama.data.setText("Budi")
+        with qtbot.waitSignal(dialog.accepted, timeout=2000):
+            qtbot.mouseClick(dialog.btn_tambahkan, Qt.MouseButton.LeftButton)
+
+    def test_get_data_mengembalikan_dict_lengkap(self, tambah_pelanggan_dialog):
+        """
+        Memastikan get_data() mengembalikan dict dengan key: nama, nomer_hp, alamat.
+        """
+        dialog = tambah_pelanggan_dialog
+        dialog.input_nama.data.setText("Dewi")
+        dialog.input_nohp.data.setText("081234567890")
+        dialog.input_alamat.data.setText("Jl. Mawar No.1")
+        data = dialog.get_data()
+        assert data["nama"] == "Dewi"
+        assert data["nomer_hp"] == "081234567890"
+        assert data["alamat"] == "Jl. Mawar No.1"
+
+    def test_tombol_batal_memanggil_reject(self, qtbot, tambah_pelanggan_dialog):
+        """
+        Memastikan klik tombol Batal mengirimkan sinyal rejected dari dialog.
+        """
+        dialog = tambah_pelanggan_dialog
+        dialog.show()
+        with qtbot.waitSignal(dialog.rejected, timeout=2000):
+            qtbot.mouseClick(dialog.btn_batal, Qt.MouseButton.LeftButton)
+
+
+# ===========================================================================
+# SECTION 8: TEST — WelcomeWindow & ErrorWindow
+# ===========================================================================
+
+class TestWelcomeWindow:
+    """Kumpulan tes untuk WelcomeWindow (src/ui/welcome.py)."""
+
+    def test_widget_terbuat_tanpa_error(self, welcome_window):
+        """
+        Memastikan WelcomeWindow berhasil diinstansiasi tanpa exception.
+        Widget ini hanya menampilkan gambar selamat datang.
+        """
+        assert welcome_window is not None
+
+    def test_widget_dapat_ditampilkan(self, qtbot, welcome_window):
+        """
+        Memastikan WelcomeWindow dapat ditampilkan (show()) tanpa error.
+        """
+        welcome_window.show()
+        assert welcome_window.isVisible()
+
+
+class TestErrorWindow:
+    """Kumpulan tes untuk ErrorWindow (src/ui/error.py)."""
+
+    def test_widget_terbuat_tanpa_error(self, error_window):
+        """
+        Memastikan ErrorWindow berhasil diinstansiasi tanpa exception.
+        Widget ini menampilkan halaman error 404.
+        """
+        assert error_window is not None
+
+    def test_widget_dapat_ditampilkan(self, qtbot, error_window):
+        """
+        Memastikan ErrorWindow dapat ditampilkan (show()) tanpa error.
+        """
+        error_window.show()
+        assert error_window.isVisible()
+
+
+# ===========================================================================
+# SECTION 9: TEST — DialogTitleBar
+# ===========================================================================
+
+class TestDialogTitleBar:
+    """Kumpulan tes untuk DialogTitleBar (src/ui/dialog_title_bar.py)."""
+
+    def test_title_bar_terbuat_dengan_judul(self, dialog_title_bar):
+        """
+        Memastikan DialogTitleBar berhasil dibuat dan memiliki
+        tombol close (tombol_x).
+        """
+        assert dialog_title_bar is not None
+        assert hasattr(dialog_title_bar, "tombol_x")
+
+    def test_tinggi_title_bar_adalah_40(self, dialog_title_bar):
+        """
+        Memastikan tinggi DialogTitleBar sesuai desain yaitu 40px.
+        """
+        assert dialog_title_bar.height() == 40
+
+    def test_tombol_x_ada_dan_bisa_diklik(self, qtbot, dialog_title_bar):
+        """
+        Memastikan tombol 'X' pada title bar dapat diklik tanpa error.
+        (Tidak ada parent dialog sehingga close_dialog tidak melakukan apa-apa)
+        """
+        dialog_title_bar.show()
+        qtbot.mouseClick(dialog_title_bar.tombol_x, Qt.MouseButton.LeftButton)
+        # Tidak ada exception = sukses
+
+
+# ===========================================================================
+# SECTION 10: TEST — Komponen UI Dasar (BaseTableWidget, BaseDataPage)
+# ===========================================================================
+
+class TestBaseTableWidget:
+    """Kumpulan tes untuk BaseTableWidget (src/ui/ui_base.py)."""
+
+    @pytest.fixture
+    def concrete_table(self, qtbot):
+        """
+        Fixture untuk subclass konkret BaseTableWidget menggunakan
+        ProdukSatuanTable dari ManajemenProduk sebagai implementasi nyata.
+        """
+        from src.ui.manajemen_produk import ProdukSatuanTable
+        widget = ProdukSatuanTable()
+        qtbot.addWidget(widget)
+        return widget
+
+    def test_tabel_terbuat_dengan_kolom_yang_benar(self, concrete_table):
+        """
+        Memastikan QTableWidget memiliki jumlah kolom sesuai COLUMN_WIDTHS
+        yang didefinisikan di ProdukSatuanTable.
+        """
+        from src.ui.manajemen_produk import ProdukSatuanTable
+        expected_cols = len(ProdukSatuanTable.COLUMN_WIDTHS)
+        assert concrete_table.table.columnCount() == expected_cols
+
+    def test_set_data_mengisi_tabel(self, concrete_table):
+        """
+        Memastikan set_data() mengisi baris tabel dengan data yang diberikan.
+        """
+        sample_data = [
+            {"sku": "A001", "nama_barang": "Pensil", "stock": 10,
+             "harga_jual": 2000, "tgl_masuk": "2025-01-01"},
+        ]
+        concrete_table.set_data(sample_data)
+        # Pastikan baris pertama, kolom pertama (SKU) terisi
+        item = concrete_table.table.item(0, 0)
+        assert item is not None
+        assert item.text() == "A001"
+
+
+# ===========================================================================
+# SECTION 11: TEST — ActionButton (ui_base.py)
+# ===========================================================================
+
+class TestActionButton:
+    """Kumpulan tes untuk komponen ActionButton (src/ui/ui_base.py)."""
+
+    @pytest.fixture
+    def action_button(self, qtbot):
+        """Fixture untuk ActionButton dengan teks dan warna tertentu."""
+        from src.ui.ui_base import ActionButton
+        btn = ActionButton("Klik Saya", "#00ff00", width=150, height=40)
+        qtbot.addWidget(btn)
+        return btn
+
+    def test_button_terbuat_dengan_teks_benar(self, action_button):
+        """
+        Memastikan ActionButton dibuat dengan teks yang sesuai.
+        """
+        assert action_button.text() == "Klik Saya"
+
+    def test_button_ukuran_sesuai(self, action_button):
+        """
+        Memastikan ActionButton memiliki ukuran width=150, height=40.
+        """
+        assert action_button.width() == 150
+        assert action_button.height() == 40
+
+    def test_klik_mengemit_sinyal_clicked(self, qtbot, action_button):
+        """
+        Memastikan klik pada ActionButton mengemit sinyal clicked.
+        Menggunakan qtbot.waitSignal() untuk menangkap sinyal.
+        """
+        with qtbot.waitSignal(action_button.clicked, timeout=1000):
+            qtbot.mouseClick(action_button, Qt.MouseButton.LeftButton)
+
+
+# ===========================================================================
+# SECTION 12: TEST INTEGRASI — Dashboard (init + navigasi sidebar)
+# ===========================================================================
+
+class TestDashboard:
+    """
+    Integration test untuk Dashboard (src/ui/dashboard.py).
+    Menguji inisialisasi dan interaksi sidebar navigasi.
+    """
+
+    def test_dashboard_terbuat_dengan_sidebar(self, dashboard):
+        """
+        Memastikan Dashboard berhasil dibuat dengan atribut sidebar kiri,
+        sidebar kanan, dan main_stack.
+        """
+        widget, _ = dashboard
+        assert hasattr(widget, "sidebar_left")
+        assert hasattr(widget, "sidebar_right")
+        assert hasattr(widget, "main_stack")
+
+    def test_sidebar_kanan_tersembunyi_saat_awal(self, dashboard):
+        """
+        Memastikan sidebar kanan disembunyikan saat Dashboard pertama
+        kali dibuat (hanya sidebar kiri yang terlihat).
+        """
+        widget, _ = dashboard
+        widget.show()
+        assert not widget.sidebar_right.isVisible(), \
+            "Sidebar kanan harus tersembunyi pada awal"
+        assert widget.sidebar_left.isVisible(), \
+            "Sidebar kiri harus terlihat pada awal"
+
+    def test_klik_menu_menampilkan_sidebar_kanan(self, qtbot, dashboard):
+        """
+        Memastikan klik button_menu_left menyembunyikan sidebar kiri
+        dan menampilkan sidebar kanan (efek toggle sidebar).
+        """
+        widget, _ = dashboard
+        widget.show()
+        qtbot.mouseClick(widget.button_menu_left, Qt.MouseButton.LeftButton)
+        assert widget.sidebar_right.isVisible()
+        assert not widget.sidebar_left.isVisible()
+
+    def test_klik_menu_kanan_mengembalikan_sidebar_kiri(self, qtbot, dashboard):
+        """
+        Memastikan klik button_menu_right mengembalikan tampilan ke
+        sidebar kiri (toggle balik).
+        """
+        widget, _ = dashboard
+        widget.show()
+        # Buka sidebar kanan dahulu
+        qtbot.mouseClick(widget.button_menu_left, Qt.MouseButton.LeftButton)
+        # Lalu klik menu kanan untuk toggle kembali
+        qtbot.mouseClick(widget.button_menu_right, Qt.MouseButton.LeftButton)
+        assert widget.sidebar_left.isVisible()
+        assert not widget.sidebar_right.isVisible()
+
+    def test_role_super_user_memperlihatkan_semua_menu(self, dashboard):
+        """
+        Memastikan semua tombol menu tersedia untuk role 'Super_user'
+        (tidak ada yang disembunyikan karena pembatasan role).
+        """
+        widget, _ = dashboard
+        widget.show()
+        # Dengan role Super_user, tombol kas dan user harus terlihat
+        assert widget.button_kas_left.isVisible()
+        assert widget.button_user_left.isVisible()
+
+    def test_welcome_widget_aktif_saat_awal(self, dashboard):
+        """
+        Memastikan main_stack menampilkan WelcomeWindow sebagai widget
+        aktif pertama saat Dashboard baru dibuka.
+        """
+        widget, _ = dashboard
+        current = widget.main_stack.currentWidget()
+        assert current is widget.welcome_widget, \
+            "WelcomeWindow harus menjadi widget aktif pertama"
+
+
+# ===========================================================================
+# SECTION 13: TEST — DiscountPopup dengan state awal terisi
+# ===========================================================================
+
+class TestDiscountPopupDenganStateAwal:
+    """Test DiscountPopup ketika diinisialisasi dengan state diskon yang sudah ada."""
+
+    def test_popup_menampilkan_nilai_persen_yang_ada(self, qtbot):
+        """
+        Memastikan DiscountPopup mengisi percent_input dengan nilai dari
+        discount_state saat dialog dibuka (mode='percent', percent=15).
+        """
+        from src.ui.discount import DiscountPopup
+        state = {"mode": "percent", "percent": 15, "nominal_input": 0}
+        dialog = DiscountPopup(parent=None, discount_state=state, apply_callback=MagicMock())
+        qtbot.addWidget(dialog)
+        assert dialog.percent_input.text() == "15"
+
+    def test_popup_menampilkan_nilai_nominal_yang_ada(self, qtbot):
+        """
+        Memastikan DiscountPopup mengisi nominal_input dengan nilai dari
+        discount_state saat dialog dibuka (mode='nominal', nominal=25000).
+        """
+        from src.ui.discount import DiscountPopup
+        state = {"mode": "nominal", "percent": 0, "nominal_input": 25000}
+        dialog = DiscountPopup(parent=None, discount_state=state, apply_callback=MagicMock())
+        qtbot.addWidget(dialog)
+        # Format nominal menggunakan titik sebagai separator ribuan
+        assert "25" in dialog.nominal_input.text()
+
+
+# ===========================================================================
+# SECTION 14: TEST — WidgetKecil (komponen input reusable di barang_baru.py)
+# ===========================================================================
+
+class TestWidgetKecil:
+    """Test untuk class WidgetKecil yang digunakan sebagai form input."""
+
+    @pytest.fixture
+    def widget_kecil(self, qtbot):
+        """Fixture untuk WidgetKecil."""
+        from src.ui.barang_baru import WidgetKecil
+        widget = WidgetKecil("", "Label Test", "Placeholder Test")
+        qtbot.addWidget(widget)
+        return widget
+
+    def test_widget_terinstansiasi(self, widget_kecil):
+        """
+        Memastikan WidgetKecil berhasil dibuat dan memiliki atribut data (QLineEdit).
+        """
+        assert hasattr(widget_kecil, "data")
+        assert isinstance(widget_kecil.data, QLineEdit)
+
+    def test_get_data_mengembalikan_teks_yang_diisi(self, qtbot, widget_kecil):
+        """
+        Memastikan get_data() mengembalikan teks yang diketik user,
+        dengan strip whitespace di kedua ujung.
+        """
+        widget_kecil.data.setText("  Pensil 2B  ")
+        result = widget_kecil.get_data()
+        assert result == "Pensil 2B"
+
+    def test_get_data_mengembalikan_string_kosong_jika_belum_diisi(self, widget_kecil):
+        """
+        Memastikan get_data() mengembalikan string kosong jika input belum diisi.
+        """
+        widget_kecil.data.clear()
+        result = widget_kecil.get_data()
+        assert result == ""
+
+    def test_placeholder_text_sesuai(self, widget_kecil):
+        """
+        Memastikan placeholder text pada QLineEdit sesuai dengan yang
+        diberikan saat konstruksi WidgetKecil.
+        """
+        assert widget_kecil.data.placeholderText() == "Placeholder Test"
