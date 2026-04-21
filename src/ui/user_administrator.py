@@ -31,6 +31,7 @@ from config import asset_path, asset_uri
 from src.ui.ui_base import BaseTableWidget, BaseDataPage
 from src.utils.message import CustomMessageBox
 from src.ui.register import RegisterDialog
+from src.ui.delete_user_conf import DeleteUserConfirmDialog
 
 class UserFormDialog(QDialog):
     def __init__(self, parent=None, user_data=None):
@@ -69,43 +70,6 @@ class UserFormDialog(QDialog):
         
     def get_data(self):
         return {"id": self.id_user, "nama": self.nama_input.text().strip(), "kunci": self.kunci_input.text().strip(), "role": self.role_input.currentText()}
-
-class DeleteUserConfirmDialog(QDialog):
-    def __init__(self, user_name: str, parent=None):
-        super().__init__(parent)
-        self.user_name = str(user_name or "").strip()
-        self.required_text = f"HAPUS User {self.user_name}"
-
-        self.setWindowTitle("Verifikasi Hapus User")
-        self.setStyleSheet("""
-            QDialog { background-color: #1a1a1a; color: #ffffff; font-family: "Segoe UI"; }
-            QLabel { color: #ffffff; font-size: 14px; }
-            QLineEdit {
-                background-color: #333333; color: #ffffff;
-                border: 1px solid #555555; padding: 5px; border-radius: 4px; font-size: 14px;
-            }
-            QPushButton { background-color: #0d47a1; color: #ffffff; padding: 6px 12px; border-radius: 4px; font-weight: bold; }
-            QPushButton:hover { background-color: #1565c0; }
-        """)
-
-        self.confirm_input = QLineEdit()
-        self.confirm_input.setPlaceholderText(self.required_text)
-
-        layout = QFormLayout(self)
-        layout.addRow("Ketik persis:", self.confirm_input)
-
-        self.buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
-        self.buttons.accepted.connect(self._validate_and_accept)
-        self.buttons.rejected.connect(self.reject)
-        layout.addWidget(self.buttons)
-
-    def _validate_and_accept(self):
-        if self.confirm_input.text().strip() != self.required_text:
-            CustomMessageBox.critical(self, "Gagal", f"Teks harus: {self.required_text}")
-            self.confirm_input.setFocus()
-            self.confirm_input.selectAll()
-            return
-        self.accept()
 
 _PASSWORD_CHAR = "●"
 _ACTION_ICON_SIZE = 20 
