@@ -8,3 +8,5 @@ PyJWT
 openpyxl
 reportlab
 packaging
+pytest
+pytest-qt

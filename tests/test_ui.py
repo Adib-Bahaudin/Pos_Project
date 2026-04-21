@@ -1453,6 +1453,7 @@ class TestSection15UserAdministrator:
 
     def test_filter_search_pagination_reset_refresh_shortcut_dan_edge(self, user_admin_widget):
         widget, db, _ = user_admin_widget
+        widget.USERS_PER_PAGE = 5
 
         with patch.object(widget, "table_data") as mock_table_data:
             widget._on_filter_changed()
