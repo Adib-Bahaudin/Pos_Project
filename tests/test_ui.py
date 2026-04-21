@@ -1226,17 +1226,16 @@ class TestSection15UserAdministrator:
         dialog = user_admin_module.UserFormDialog(user_data={"id": 2, "nama": "A", "role": "Admin"})
         qtbot.addWidget(dialog)
         dialog.nama_input.setText("  Ujang  ")
-        dialog.kunci_input.setText(" 1234567890 ")
+        dialog.kunci_input.setText(" 123456 ")
         dialog.role_input.setCurrentText("Super_user")
         data = dialog.get_data()
-        assert data == {"id": 2, "nama": "Ujang", "kunci": "1234567890", "role": "Super_user"}
+        assert data == {"id": 2, "nama": "Ujang", "kunci": "123456", "role": "Super_user"}
 
     def test_password_delegate_masking_normal_empty_dan_max12(self, user_admin_module):
         model = QStandardItemModel(1, 1)
         delegate = user_admin_module.PasswordDelegate()
         option = QStyleOptionViewItem()
         option.rect = QRect(0, 0, 100, 30)
-        option.widget = None
 
         class _FakeStyle:
             def drawPrimitive(self, *args, **kwargs):
@@ -1324,8 +1323,10 @@ class TestSection15UserAdministrator:
         qtbot.addWidget(table)
         delegate = table._action_delegate
 
-        spy_edit = QSignalSpy(table.edit_requested)
-        spy_delete = QSignalSpy(table.delete_requested)
+        edit_calls = []
+        delete_calls = []
+        table.edit_requested.connect(edit_calls.append)
+        table.delete_requested.connect(delete_calls.append)
 
         idx = table.table.model().index(0, user_admin_module.COL_AKSI)
         with patch.object(table.table, "indexAt", return_value=idx), \
@@ -1352,8 +1353,8 @@ class TestSection15UserAdministrator:
             )
             delegate.eventFilter(table.table.viewport(), release_delete)
 
-        assert len(spy_edit) == 1
-        assert len(spy_delete) == 1
+        assert len(edit_calls) == 1
+        assert len(delete_calls) == 1
         assert delegate._resolve_user_table() is table
 
     def test_user_table_inisialisasi_delegate_set_data_dan_row_height(self, qtbot, user_admin_module):
@@ -1501,11 +1502,12 @@ class TestSection15UserAdministrator:
         with patch.object(widget, "table_data") as mock_table_data:
             widget.search_input.setText("abc")
             widget.filter_role.setCurrentIndex(1)
+            mock_table_data.reset_mock()
             widget.refresh_data()
             assert widget.page_input.text() == "1"
             assert widget.search_input.text() == ""
             assert widget.filter_role.currentIndex() == 0
-            mock_table_data.assert_called_once()
+            assert mock_table_data.call_count == 2
 
         with patch.object(widget, "handle_shortcut") as mock_shortcut:
             mock_shortcut()
@@ -1517,3 +1519,263 @@ class TestSection15UserAdministrator:
         widget.table_data()
         assert widget.pages == 1
         widget.table_user._all_rows = []
+
+    def test_is_object_valid_returns_false_on_runtime_error(self, user_admin_module):
+        """
+        Lines 168-169: _is_object_valid harus mengembalikan False
+        ketika isValid() melempar RuntimeError (objek Qt sudah di-destroy).
+        """
+        with patch("src.ui.user_administrator.isValid", side_effect=RuntimeError("C++ object destroyed")):
+            result = user_admin_module.ActionDelegate._is_object_valid(MagicMock())
+        assert result is False
+
+    def test_get_table_and_viewport_returns_none_when_viewport_raises(self, qtbot, user_admin_module):
+        """
+        Lines 177-178: _get_table_and_viewport harus mengembalikan (None, None)
+        apabila table.viewport() melempar RuntimeError.
+        """
+        table = QTableWidget(1, 5)
+        qtbot.addWidget(table)
+        delegate = user_admin_module.ActionDelegate(table, parent=table)
+
+        with patch("src.ui.user_administrator.isValid", return_value=True), \
+             patch.object(table, "viewport", side_effect=RuntimeError("viewport gone")):
+            result = delegate._get_table_and_viewport()
+
+        assert result == (None, None)
+
+    def test_get_table_and_viewport_returns_none_when_viewport_invalid(self, qtbot, user_admin_module):
+        """
+        Line 181: _get_table_and_viewport harus mengembalikan (None, None)
+        apabila viewport ada tetapi dianggap tidak valid oleh _is_object_valid.
+        """
+        table = QTableWidget(1, 5)
+        qtbot.addWidget(table)
+        delegate = user_admin_module.ActionDelegate(table, parent=table)
+
+        with patch.object(
+            user_admin_module.ActionDelegate,
+            "_is_object_valid",
+            staticmethod(lambda obj: obj is table),
+        ):
+            result = delegate._get_table_and_viewport()
+
+        assert result == (None, None)
+
+    def test_action_delegate_paint_no_hover(self, qtbot, user_admin_module):
+        """
+        Lines 200-218: ActionDelegate.paint() dieksekusi tanpa hover aktif
+        (kedua ikon seharusnya di-render dengan opacity 0.55).
+        Memastikan painter.save/restore terpanggil dan ikon di-paint.
+        """
+        table = user_admin_module.UserTable()
+        qtbot.addWidget(table)
+        table.set_data([{"id": 1, "nama": "Tes", "role": "Admin", "password": "pw", "aksi": ""}])
+
+        delegate = table._action_delegate
+        idx = table.table.model().index(0, user_admin_module.COL_AKSI)
+
+        option = QStyleOptionViewItem()
+        option.rect = QRect(0, 0, 120, 45)
+
+        painter = MagicMock()
+        delegate._icon_edit = MagicMock()
+        delegate._icon_delete = MagicMock()
+        with patch("src.ui.user_administrator.QApplication.style") as mock_app_style, \
+             patch.object(delegate, "initStyleOption"):
+            mock_app_style.return_value.drawPrimitive = MagicMock()
+            delegate.paint(painter, option, idx)
+
+        painter.save.assert_called_once()
+        painter.restore.assert_called_once()
+        opacity_calls = [c.args[0] for c in painter.setOpacity.call_args_list]
+        assert opacity_calls == [0.55, 0.55]
+
+    def test_action_delegate_paint_with_hover_edit(self, qtbot, user_admin_module):
+        """
+        Lines 200-218: Saat hover_row == baris yang di-render dan hover_zone == 'edit',
+        ikon edit harus opacity 1.0 dan ikon delete 0.55.
+        """
+        table = user_admin_module.UserTable()
+        qtbot.addWidget(table)
+        table.set_data([{"id": 1, "nama": "Tes", "role": "Admin", "password": "pw", "aksi": ""}])
+
+        delegate = table._action_delegate
+        delegate._hover_row = 0
+        delegate._hover_zone = "edit"
+
+        idx = table.table.model().index(0, user_admin_module.COL_AKSI)
+        option = QStyleOptionViewItem()
+        option.rect = QRect(0, 0, 120, 45)
+
+        painter = MagicMock()
+        delegate._icon_edit = MagicMock()
+        delegate._icon_delete = MagicMock()
+        with patch("src.ui.user_administrator.QApplication.style") as mock_app_style, \
+             patch.object(delegate, "initStyleOption"):
+            mock_app_style.return_value.drawPrimitive = MagicMock()
+            delegate.paint(painter, option, idx)
+
+        opacity_calls = [c.args[0] for c in painter.setOpacity.call_args_list]
+        assert opacity_calls[0] == 1.0
+        assert opacity_calls[1] == 0.55
+
+    def test_action_delegate_paint_with_hover_delete(self, qtbot, user_admin_module):
+        """
+        Lines 200-218: Saat hover_zone == 'delete', ikon delete 1.0 dan edit 0.55.
+        """
+        table = user_admin_module.UserTable()
+        qtbot.addWidget(table)
+        table.set_data([{"id": 1, "nama": "Tes", "role": "Admin", "password": "pw", "aksi": ""}])
+
+        delegate = table._action_delegate
+        delegate._hover_row = 0
+        delegate._hover_zone = "delete"
+
+        idx = table.table.model().index(0, user_admin_module.COL_AKSI)
+        option = QStyleOptionViewItem()
+        option.rect = QRect(0, 0, 120, 45)
+
+        painter = MagicMock()
+        delegate._icon_edit = MagicMock()
+        delegate._icon_delete = MagicMock()
+        with patch("src.ui.user_administrator.QApplication.style") as mock_app_style, \
+             patch.object(delegate, "initStyleOption"):
+            mock_app_style.return_value.drawPrimitive = MagicMock()
+            delegate.paint(painter, option, idx)
+
+        opacity_calls = [c.args[0] for c in painter.setOpacity.call_args_list]
+        assert opacity_calls[0] == 0.55
+        assert opacity_calls[1] == 1.0
+
+    def test_event_filter_delegates_to_super_when_obj_not_viewport(self, qtbot, user_admin_module):
+        """
+        Line 226: Saat eventFilter dipanggil dengan obj yang bukan viewport,
+        method harus memanggil super().eventFilter() (dan tidak crash).
+        """
+        table = QTableWidget(1, 5)
+        qtbot.addWidget(table)
+        delegate = user_admin_module.ActionDelegate(table, parent=table)
+
+        other = QTableWidget(1, 1)
+        qtbot.addWidget(other)
+
+        event = QEvent(QEvent.Type.MouseMove)
+        result = delegate.eventFilter(other, event)
+        assert result is False
+
+    def test_event_filter_mousemove_outside_aksi_column_resets_hover(self, qtbot, user_admin_module):
+        """
+        Lines 260-264: Saat MouseMove di kolom selain COL_AKSI dan hover_row != -1,
+        hover_row dan hover_zone harus di-reset ke -1 / ''.
+        """
+        table = QTableWidget(1, 5)
+        qtbot.addWidget(table)
+        delegate = user_admin_module.ActionDelegate(table, parent=table)
+        delegate._hover_row = 0
+        delegate._hover_zone = "edit"
+
+        non_aksi_idx = table.model().index(0, user_admin_module.COL_NAMA)
+
+        with patch.object(table, "indexAt", return_value=non_aksi_idx):
+            move_ev = QMouseEvent(
+                QEvent.Type.MouseMove,
+                QPointF(10, 10), QPointF(10, 10), QPointF(10, 10),
+                user_admin_module.Qt.MouseButton.NoButton,
+                user_admin_module.Qt.MouseButton.NoButton,
+                user_admin_module.Qt.KeyboardModifier.NoModifier,
+            )
+            delegate.eventFilter(table.viewport(), move_ev)
+
+        assert delegate._hover_row == -1
+        assert delegate._hover_zone == ""
+
+    def test_event_filter_mousemove_outside_aksi_column_no_reset_when_hover_already_clear(
+        self, qtbot, user_admin_module
+    ):
+        """
+        Lines 260-264 (guard if self._hover_row != -1): Saat hover sudah -1,
+        block reset tidak boleh dipanggil (tidak ada update viewport yang tidak perlu).
+        """
+        table = QTableWidget(1, 5)
+        qtbot.addWidget(table)
+        delegate = user_admin_module.ActionDelegate(table, parent=table)
+        delegate._hover_row = -1 
+
+        non_aksi_idx = table.model().index(0, user_admin_module.COL_NAMA)
+        with patch.object(table, "indexAt", return_value=non_aksi_idx), \
+             patch.object(table.viewport(), "update") as mock_update:
+            move_ev = QMouseEvent(
+                QEvent.Type.MouseMove,
+                QPointF(10, 10), QPointF(10, 10), QPointF(10, 10),
+                user_admin_module.Qt.MouseButton.NoButton,
+                user_admin_module.Qt.MouseButton.NoButton,
+                user_admin_module.Qt.KeyboardModifier.NoModifier,
+            )
+            delegate.eventFilter(table.viewport(), move_ev)
+
+        mock_update.assert_not_called()
+
+    def test_resolve_user_table_uses_table_when_parent_invalid(self, qtbot, user_admin_module):
+        """
+        Line 306: Jika parent() tidak valid (None atau rejected oleh _is_object_valid),
+        _resolve_user_table harus fallback mencari sinyal dari self._table.
+        """
+        user_table_widget = user_admin_module.UserTable()
+        qtbot.addWidget(user_table_widget)
+
+        table = QTableWidget(1, 5)
+        qtbot.addWidget(table)
+        delegate = user_admin_module.ActionDelegate(table, parent=table)
+        delegate._table = user_table_widget
+
+        with patch.object(delegate, "parent", return_value=None):
+            result = delegate._resolve_user_table()
+
+        assert result is user_table_widget
+
+    def test_resolve_user_table_uses_table_when_parent_is_invalid_qt_object(
+        self, qtbot, user_admin_module
+    ):
+        """
+        Line 306 (cabang else): Ketika _is_object_valid(self._table) juga False,
+        widget di-set None dan loop tidak berjalan → return None (line 311).
+        """
+        table = QTableWidget(1, 5)
+        qtbot.addWidget(table)
+        delegate = user_admin_module.ActionDelegate(table, parent=table)
+
+        plain = QTableWidget(1, 1)
+        qtbot.addWidget(plain)
+        delegate._table = plain
+
+        with patch.object(delegate, "parent", return_value=None), \
+             patch.object(
+                 user_admin_module.ActionDelegate,
+                 "_is_object_valid",
+                 staticmethod(lambda obj: False),
+             ):
+            result = delegate._resolve_user_table()
+
+        assert result is None
+
+    def test_resolve_user_table_returns_none_when_chain_has_no_signals(
+        self, qtbot, user_admin_module
+    ):
+        """
+        Line 311: _resolve_user_table mengembalikan None apabila seluruh rantai
+        parent sudah habis tanpa menemukan widget yang memiliki edit_requested
+        dan delete_requested.
+        """
+        table = QTableWidget(1, 5)
+        qtbot.addWidget(table)
+        delegate = user_admin_module.ActionDelegate(table, parent=table)
+
+        plain = QTableWidget(1, 1)
+        qtbot.addWidget(plain)
+        delegate._table = plain
+
+        with patch.object(delegate, "parent", return_value=None):
+            result = delegate._resolve_user_table()
+
+        assert result is None

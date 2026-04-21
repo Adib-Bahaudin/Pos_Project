@@ -41,51 +41,34 @@ class UserFormDialog(QDialog):
             QLabel { color: #ffffff; font-size: 14px; }
             QLineEdit, QComboBox { 
                 background-color: #333333; color: #ffffff; 
-                border: 1px solid #555555; padding: 5px; border-radius: 4px;
-                font-size: 14px;
+                border: 1px solid #555555; padding: 5px; border-radius: 4px; font-size: 14px;
             }
-            QPushButton { 
-                background-color: #0d47a1; color: #ffffff; 
-                padding: 6px 12px; border-radius: 4px; font-weight: bold;
-            }
+            QPushButton { background-color: #0d47a1; color: #ffffff; padding: 6px 12px; border-radius: 4px; font-weight: bold; }
             QPushButton:hover { background-color: #1565c0; }
         """)
         
-        self._layout = QFormLayout(self)
-        
-        self.nama_input = QLineEdit()
-        self.kunci_input = QLineEdit()
-        self.kunci_input.setPlaceholderText("Harus 10 digit angka" if not user_data else "Kosongkan jika tidak diubah")
+        self.nama_input, self.kunci_input, self.role_input = QLineEdit(), QLineEdit(), QComboBox()
+        self.kunci_input.setPlaceholderText("Kosongkan jika tidak diubah" if user_data else "Harus 10 digit angka")
         self.kunci_input.setMaxLength(10)
-        
-        self.role_input = QComboBox()
         self.role_input.addItems(["Admin", "Super_user"])
         
+        self.id_user = user_data.get('id') if user_data else None
         if user_data:
-            self.id_user = user_data.get('id')
             self.nama_input.setText(user_data.get('nama', ''))
-            role = user_data.get('role', 'Admin')
-            idx = self.role_input.findText(role)
-            if idx >= 0: self.role_input.setCurrentIndex(idx)
-        else:
-            self.id_user = None
+            if (idx := self.role_input.findText(user_data.get('role', 'Admin'))) >= 0: self.role_input.setCurrentIndex(idx)
             
-        self._layout.addRow("Nama User:", self.nama_input)
-        self._layout.addRow("Kunci Akses:", self.kunci_input)
-        self._layout.addRow("Role:", self.role_input)
+        layout = QFormLayout(self)
+        layout.addRow("Nama User:", self.nama_input)
+        layout.addRow("Kunci Akses:", self.kunci_input)
+        layout.addRow("Role:", self.role_input)
         
         self.buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         self.buttons.accepted.connect(self.accept)
         self.buttons.rejected.connect(self.reject)
-        self._layout.addWidget(self.buttons)
+        layout.addWidget(self.buttons)
         
     def get_data(self):
-        return {
-            "id": self.id_user,
-            "nama": self.nama_input.text().strip(),
-            "kunci": self.kunci_input.text().strip(),
-            "role": self.role_input.currentText()
-        }
+        return {"id": self.id_user, "nama": self.nama_input.text().strip(), "kunci": self.kunci_input.text().strip(), "role": self.role_input.currentText()}
 
 _PASSWORD_CHAR = "●"
 _ACTION_ICON_SIZE = 20 
@@ -114,21 +97,12 @@ class PasswordDelegate(QStyledItemDelegate):
         style.drawPrimitive(QStyle.PrimitiveElement.PE_PanelItemViewItem, option, painter, option.widget)
 
         raw_text = index.data(Qt.ItemDataRole.DisplayRole)
-        if raw_text:
-            masked = _PASSWORD_CHAR * min(len(str(raw_text)), 12)
-        else:
-            masked = ""
+        masked = _PASSWORD_CHAR * min(len(str(raw_text)), 12) if raw_text else ""
 
         painter.save()
         painter.setFont(self._mask_font)
         painter.setPen(QPen(QColor("#ffffff")))
-
-        text_rect = option.rect.adjusted(12, 0, -8, 0)
-        painter.drawText(
-            text_rect,
-            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
-            masked,
-        )
+        painter.drawText(option.rect.adjusted(12, 0, -8, 0), Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, masked)
         painter.restore()
 
 
@@ -157,157 +131,97 @@ class ActionDelegate(QStyledItemDelegate):
         table_widget.destroyed.connect(self._on_table_destroyed)
 
     def _on_table_destroyed(self, *_):
-        self._table = None
-        self._hover_row = -1
-        self._hover_zone = ""
+        self._table, self._hover_row, self._hover_zone = None, -1, ""
 
     @staticmethod
     def _is_object_valid(obj: QObject | None) -> bool:
-        try:
-            return obj is not None and isValid(obj)
-        except RuntimeError:
-            return False
+        try: return obj is not None and isValid(obj)
+        except RuntimeError: return False
 
     def _get_table_and_viewport(self) -> tuple[QTableWidget | None, QWidget | None]:
-        table = self._table
-        if table is None or not self._is_object_valid(table):
-            return None, None
-        try:
-            viewport = table.viewport()
-        except RuntimeError:
-            return None, None
-
-        if not self._is_object_valid(viewport):
-            return None, None
-        return table, viewport
+        if self._table is None or not self._is_object_valid(self._table): return None, None
+        try: vp = self._table.viewport()
+        except RuntimeError: return None, None
+        return (self._table, vp) if self._is_object_valid(vp) else (None, None)
 
     def _icon_rects(self, cell_rect: QRect):
-        """Kembalikan tuple (edit_rect, delete_rect) relatif terhadap cell."""
-        y_center = cell_rect.center().y() - _ACTION_ICON_SIZE // 2
-        total_width = _ACTION_ICON_SIZE * 2 + _ACTION_BUTTON_GAP
-        x_start = cell_rect.center().x() - total_width // 2
-
-        edit_rect = QRect(x_start, y_center, _ACTION_ICON_SIZE, _ACTION_ICON_SIZE)
-        delete_rect = QRect(
-            x_start + _ACTION_ICON_SIZE + _ACTION_BUTTON_GAP,
-            y_center,
-            _ACTION_ICON_SIZE,
-            _ACTION_ICON_SIZE,
-        )
-        return edit_rect, delete_rect
+        y = cell_rect.center().y() - _ACTION_ICON_SIZE // 2
+        x = cell_rect.center().x() - (_ACTION_ICON_SIZE * 2 + _ACTION_BUTTON_GAP) // 2
+        return QRect(x, y, _ACTION_ICON_SIZE, _ACTION_ICON_SIZE), QRect(x + _ACTION_ICON_SIZE + _ACTION_BUTTON_GAP, y, _ACTION_ICON_SIZE, _ACTION_ICON_SIZE)
 
     def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex | QPersistentModelIndex):
         self.initStyleOption(option, index)
         style = option.widget.style() if option.widget else QApplication.style()
         style.drawPrimitive(QStyle.PrimitiveElement.PE_PanelItemViewItem, option, painter, option.widget)
 
-        edit_rect, delete_rect = self._icon_rects(option.rect)
-
+        e_rect, d_rect = self._icon_rects(option.rect)
         painter.save()
-
-        is_hover_row = (index.row() == self._hover_row)
-
-        edit_opacity = 1.0 if (is_hover_row and self._hover_zone == "edit") else 0.55
-        painter.setOpacity(edit_opacity)
-        self._icon_edit.paint(painter, edit_rect)
-
-        delete_opacity = 1.0 if (is_hover_row and self._hover_zone == "delete") else 0.55
-        painter.setOpacity(delete_opacity)
-        self._icon_delete.paint(painter, delete_rect)
-
+        is_hover = (index.row() == self._hover_row)
+        
+        painter.setOpacity(1.0 if is_hover and self._hover_zone == "edit" else 0.55)
+        self._icon_edit.paint(painter, e_rect)
+        
+        painter.setOpacity(1.0 if is_hover and self._hover_zone == "delete" else 0.55)
+        self._icon_delete.paint(painter, d_rect)
         painter.restore()
 
     def eventFilter(self, obj, event: QEvent):
-        table, viewport = self._get_table_and_viewport()
-        if table is None or viewport is None:
-            return False
+        table, vp = self._get_table_and_viewport()
+        if not table or not vp: return False
+        if obj is not vp: return super().eventFilter(obj, event)
 
-        if obj is not viewport:
-            return super().eventFilter(obj, event)
-
-        event_type = event.type()
-
-        if event_type == QEvent.Type.MouseMove:
-            mouse_event: QMouseEvent = event  # type: ignore[assignment]
-            pos = mouse_event.position().toPoint()
-            index = table.indexAt(pos)
-
-            if index.isValid() and index.column() == COL_AKSI:
-                cell_rect = table.visualRect(index)
-                edit_rect, delete_rect = self._icon_rects(cell_rect)
-
+        evt_type = event.type()
+        if evt_type == QEvent.Type.MouseMove:
+            mouse_evt: QMouseEvent = event  # type: ignore[assignment]
+            pos = mouse_evt.position().toPoint()
+            idx = table.indexAt(pos)
+            if idx.isValid() and idx.column() == COL_AKSI:
+                e_rect, d_rect = self._icon_rects(table.visualRect(idx))
                 old_row, old_zone = self._hover_row, self._hover_zone
+                
+                if e_rect.contains(pos): self._hover_row, self._hover_zone = idx.row(), "edit"
+                elif d_rect.contains(pos): self._hover_row, self._hover_zone = idx.row(), "delete"
+                else: self._hover_row, self._hover_zone = -1, ""
 
-                if edit_rect.contains(pos):
-                    self._hover_row = index.row()
-                    self._hover_zone = "edit"
-                    viewport.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-                    QToolTip.showText(viewport.mapToGlobal(pos), "Edit User")
-                elif delete_rect.contains(pos):
-                    self._hover_row = index.row()
-                    self._hover_zone = "delete"
-                    viewport.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-                    QToolTip.showText(viewport.mapToGlobal(pos), "Hapus User")
+                if self._hover_row != -1:
+                    vp.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+                    QToolTip.showText(vp.mapToGlobal(pos), "Edit User" if self._hover_zone == "edit" else "Hapus User")
                 else:
-                    self._hover_row = -1
-                    self._hover_zone = ""
-                    viewport.unsetCursor()
+                    vp.unsetCursor()
                     QToolTip.hideText()
 
-                if (old_row, old_zone) != (self._hover_row, self._hover_zone):
-                    viewport.update()
-            else:
-                if self._hover_row != -1:
-                    self._hover_row = -1
-                    self._hover_zone = ""
-                    viewport.unsetCursor()
-                    viewport.update()
+                if (old_row, old_zone) != (self._hover_row, self._hover_zone): vp.update()
+            elif self._hover_row != -1:
+                self._hover_row, self._hover_zone = -1, ""
+                vp.unsetCursor()
+                vp.update()
 
-        elif event_type == QEvent.Type.MouseButtonRelease:
-            mouse_event_rel: QMouseEvent = event  # type: ignore[assignment]
-            pos = mouse_event_rel.position().toPoint()
-            index = table.indexAt(pos)
+        elif evt_type == QEvent.Type.MouseButtonRelease:
+            mouse_evt_rel: QMouseEvent = event  # type: ignore[assignment]
+            pos = mouse_evt_rel.position().toPoint()
+            idx = table.indexAt(pos)
+            if idx.isValid() and idx.column() == COL_AKSI:
+                e_rect, d_rect = self._icon_rects(table.visualRect(idx))
+                if e_rect.contains(pos): self._on_edit_clicked(idx.row())
+                elif d_rect.contains(pos): self._on_delete_clicked(idx.row())
 
-            if index.isValid() and index.column() == COL_AKSI:
-                cell_rect = table.visualRect(index)
-                edit_rect, delete_rect = self._icon_rects(cell_rect)
-
-                if edit_rect.contains(pos):
-                    self._on_edit_clicked(index.row())
-                elif delete_rect.contains(pos):
-                    self._on_delete_clicked(index.row())
-
-        elif event_type == QEvent.Type.Leave:
-            if self._hover_row != -1:
-                self._hover_row = -1
-                self._hover_zone = ""
-                viewport.update()
+        elif evt_type == QEvent.Type.Leave and self._hover_row != -1:
+            self._hover_row, self._hover_zone = -1, ""
+            vp.update()
 
         return super().eventFilter(obj, event)
 
     def _on_edit_clicked(self, row: int):
-        user_table = self._resolve_user_table()
-        if user_table is not None:
-            edit_signal = getattr(user_table, "edit_requested", None)
-            if edit_signal is not None:
-                edit_signal.emit(row)
+        if (ut := self._resolve_user_table()) and hasattr(ut, "edit_requested"): getattr(ut, "edit_requested").emit(row)
 
     def _on_delete_clicked(self, row: int):
-        user_table = self._resolve_user_table()
-        if user_table is not None:
-            delete_signal = getattr(user_table, "delete_requested", None)
-            if delete_signal is not None:
-                delete_signal.emit(row)
+        if (ut := self._resolve_user_table()) and hasattr(ut, "delete_requested"): getattr(ut, "delete_requested").emit(row)
 
     def _resolve_user_table(self) -> QObject | None:
-        """Temukan owner widget yang memiliki signal edit/delete."""
-        widget: QObject | None = self.parent()
-        if not self._is_object_valid(widget):
-            widget = self._table if self._is_object_valid(self._table) else None
-        while widget is not None:
-            if hasattr(widget, 'edit_requested') and hasattr(widget, 'delete_requested'):
-                return widget
-            widget = widget.parent()
+        w = self.parent() if self._is_object_valid(self.parent()) else (self._table if self._is_object_valid(self._table) else None)
+        while w:
+            if hasattr(w, 'edit_requested') and hasattr(w, 'delete_requested'): return w
+            w = w.parent()
         return None
 
 
@@ -630,27 +544,18 @@ class UserAdministrator(BaseDataPage):
             self.page_input.setText(str(text_page))
 
     def custom_page(self):
-        page = int(self.page_input.text().strip() or "1")
-        if page >= self.pages:
-            self.page_input.setText(str(self.pages))
-            self.table_data((self.pages - 1) * 5)
-        elif page <= 0:
-            self.page_input.setText("1")
-            self.table_data()
-        else:
-            self.table_data((page - 1) * 5)
+        p = int(self.page_input.text().strip() or "1")
+        if p >= self.pages: self.page_input.setText(str(self.pages)); self.table_data((self.pages - 1) * 5)
+        elif p <= 0: self.page_input.setText("1"); self.table_data()
+        else: self.table_data((p - 1) * 5)
 
     def next_page(self):
-        page = int(self.page_input.text().strip() or "1")
-        if page < self.pages:
-            page += 1
-            self.table_data((page - 1) * 5)
+        p = int(self.page_input.text().strip() or "1")
+        if p < getattr(self, 'pages', 1): self.table_data(p * 5)
 
     def prev_page(self):
-        page = int(self.page_input.text().strip() or "1")
-        if page > 1:
-            page -= 1
-            self.table_data((page - 1) * 5)
+        p = int(self.page_input.text().strip() or "1")
+        if p > 1: self.table_data((p - 2) * 5)
 
     def on_reset_click(self):
         self.filter_role.setCurrentIndex(0)
