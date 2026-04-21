@@ -369,6 +369,11 @@ class Dashboard(QWidget):
         if self.user_role != "Super_user":
             self.button_kas_left.hide()
             self.button_kas_right.hide()
+            self.button_buku_left.hide()
+            self.button_buku_right.hide()
+            self.button_user_right.hide()
+            self.button_user_left.hide()
+
 
     def _handle_navigation(self):
         """Handler ketika tombol navigasi diklik"""
