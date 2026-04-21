@@ -1177,7 +1177,7 @@ class TestWidgetKecil:
         assert widget_kecil.data.placeholderText() == "Placeholder Test"
 
 # ===========================================================================
-# SECTION 15: TEST — UserAdministrator & related classes (BARU)
+# SECTION 15: TEST — UserAdministrator & related classes
 # ===========================================================================
 
 from PySide6.QtCore import QEvent, QPointF, QRect
