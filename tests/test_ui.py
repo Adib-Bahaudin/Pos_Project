@@ -419,261 +419,164 @@ class TestRegisterDialog:
 class TestTambahBarangBaru:
     """Kumpulan tes untuk komponen TambahBarangBaru (src/ui/barang_baru.py)."""
 
-    def test_dialog_terbuat_dengan_field_utama(self, tambah_barang_dialog):
-        """
-        Memastikan TambahBarangBaru berhasil dibuat dan memiliki
-        field-field input utama: nama, harga_jual, sku, combo_selector.
-        """
-        dialog, _ = tambah_barang_dialog
-        assert hasattr(dialog, "nama")
-        assert hasattr(dialog, "harga_jual")
-        assert hasattr(dialog, "sku")
-        assert hasattr(dialog, "combo_selector")
-
-    def test_combo_selector_berisi_satuan_dan_paket(self, tambah_barang_dialog):
-        """
-        Memastikan combo_selector berisi pilihan 'Satuan' dan 'Paket'
-        yang merupakan dua jenis produk dalam sistem.
-        """
-        dialog, _ = tambah_barang_dialog
-        items = [dialog.combo_selector.itemText(i)
-                 for i in range(dialog.combo_selector.count())]
-        assert "Satuan" in items
-        assert "Paket" in items
-
-    def test_switch_ke_paket_mengubah_stack(self, qtbot, tambah_barang_dialog):
-        """
-        Memastikan mengubah pilihan combo_selector ke 'Paket' (index 1)
-        juga mengubah stack widget ke index 1 (form untuk produk paket).
-        """
+    def test_inisialisasi_dan_ui_dasar(self, qtbot, tambah_barang_dialog):
+        """Memastikan UI utama diinisialisasi dengan benar dan field-field utama ada."""
         dialog, _ = tambah_barang_dialog
         dialog.show()
+        
+        # Cek keberadaan field
+        for attr in ["nama", "harga_jual", "sku", "combo_selector"]:
+            assert hasattr(dialog, attr)
+            
+        # Cek isi combo_selector
+        items = [dialog.combo_selector.itemText(i) for i in range(dialog.combo_selector.count())]
+        assert items == ["Satuan", "Paket"]
+        
+        # Cek ganti mode paket
         dialog.combo_selector.setCurrentIndex(1)
         assert dialog.stack.currentIndex() == 1
         assert dialog.stack0.currentIndex() == 1
-
-    def test_validasi_field_kosong_menampilkan_peringatan(self, qtbot, tambah_barang_dialog):
-        """
-        Memastikan label_peringatan terisi ketika tombol Tambahkan diklik
-        dengan semua field kosong (tidak ada data yang diinput).
-        """
-        dialog, _ = tambah_barang_dialog
-        dialog.show()
-        # Kosongkan semua field secara eksplisit
-        dialog.nama.data.clear()
-        dialog.harga_jual.data.clear()
-        dialog.sku.data.clear()
-        qtbot.mouseClick(dialog.btn_tambahkan, Qt.MouseButton.LeftButton)
-        # Peringatan harus muncul
-        assert dialog.label_peringatan.text() != ""
-
-    def test_get_data_satuan_mengembalikan_dict(self, tambah_barang_dialog):
-        """
-        Memastikan get_data() mengembalikan tuple (jenis, dict) yang benar
-        ketika mode 'Satuan' dipilih.
-        """
-        dialog, _ = tambah_barang_dialog
-        dialog.combo_selector.setCurrentIndex(0)
-        dialog.nama.data.setText("Bolpoin")
-        dialog.harga_jual.data.setText("5000")
-        dialog.harga_beli.data.setText("3000")
-        dialog.stok.data.setText("100")
-        dialog.sku.data.setText("BLP-001")
-
-        jenis, data = dialog.get_data()
-        assert jenis == "satuan"
-        assert data["nama_barang"] == "Bolpoin"
-        assert data["sku"] == "BLP-001"
-
-    def test_tombol_batal_memanggil_reject(self, qtbot, tambah_barang_dialog):
-        """
-        Memastikan klik tombol Batal mengirimkan sinyal rejected dari dialog.
-        """
-        dialog, _ = tambah_barang_dialog
-        dialog.show()
-        with qtbot.waitSignal(dialog.rejected, timeout=2000):
-            qtbot.mouseClick(dialog.btn_batal, Qt.MouseButton.LeftButton)
-
-    def test_ketik_nama_produk_pada_field(self, qtbot, tambah_barang_dialog):
-        """
-        Simulasi pengguna mengetik nama produk menggunakan qtbot.keyClicks()
-        pada field input nama produk baru.
-        """
-        dialog, _ = tambah_barang_dialog
-        dialog.show()
+        
+        # Cek interaksi UI lain
         dialog.nama.data.clear()
         qtbot.keyClicks(dialog.nama.data, "Mie Goreng")
         assert dialog.nama.data.text() == "Mie Goreng"
+        
+        # Cek tombol Batal
+        with qtbot.waitSignal(dialog.rejected, timeout=1000):
+            qtbot.mouseClick(dialog.btn_batal, Qt.MouseButton.LeftButton)
 
-    def test_get_data_paket_mengembalikan_dict(self, tambah_barang_dialog):
-        """Memastikan get_data() untuk produk tipe Paket mengembalikan format dict yang benar."""
+    @pytest.mark.parametrize("index,jenis_expected,data_expected", [
+        (0, "satuan", {"nama_barang": "Barang A", "harga_jual": "5000", "harga_beli": "3000", "stok": "100", "sku": "SKU-01"}),
+        (1, "paket", {"nama_paket": "Barang A", "harga_jual": "5000", "nama_barang": "Barang B", "per_satuan": "10", "sku": "SKU-01"})
+    ])
+    def test_get_data(self, tambah_barang_dialog, index, jenis_expected, data_expected):
+        """Memastikan get_data() mengembalikan format dict yang benar untuk kedua mode."""
         dialog, _ = tambah_barang_dialog
-        dialog.combo_selector.setCurrentIndex(1)  # Pilih mode Paket
-        dialog.nama.data.setText("Paket Hemat")
-        dialog.harga_jual.data.setText("15000")
-        dialog.nama_barang.data.setText("Pensil 2B")
-        dialog.convert.data.setText("5")
-        dialog.sku.data.setText("PKT-001")
-
+        dialog.combo_selector.setCurrentIndex(index)
+        
+        # Set common text
+        dialog.nama.data.setText("Barang A")
+        dialog.harga_jual.data.setText("5000")
+        dialog.sku.data.setText("SKU-01")
+        
+        if index == 0:
+            dialog.harga_beli.data.setText("3000")
+            dialog.stok.data.setText("100")
+        else:
+            dialog.nama_barang.data.setText("Barang B")
+            dialog.convert.data.setText("10")
+            
         jenis, data = dialog.get_data()
-        assert jenis == "paket"
-        assert data["nama_paket"] == "Paket Hemat"
-        assert data["nama_barang"] == "Pensil 2B"
-        assert data["per_satuan"] == "5"
+        assert jenis == jenis_expected
+        assert data == data_expected
 
-    def test_validasi_data_satuan_berhasil(self, qtbot, tambah_barang_dialog):
-        """Memastikan dialog diterima (accepted) jika validasi satuan di DB sukses."""
-        dialog, mock_db = tambah_barang_dialog
-        dialog.combo_selector.setCurrentIndex(0)
-        dialog.nama.data.setText("Buku")
-        dialog.harga_jual.data.setText("5000")
-        dialog.harga_beli.data.setText("3000")
-        dialog.stok.data.setText("10")
-        dialog.sku.data.setText("BK-01")
-
-        mock_db_instance = mock_db.return_value
-        mock_db_instance.verify_is_valid.return_value = {"is_valid": True}
-
-        with qtbot.waitSignal(dialog.accepted, timeout=1000):
-            qtbot.mouseClick(dialog.btn_tambahkan, Qt.MouseButton.LeftButton)
-
-    def test_validasi_data_satuan_gagal_duplikat(self, qtbot, tambah_barang_dialog):
-        """Memastikan label peringatan muncul jika validasi DB untuk satuan menemukan duplikat."""
-        dialog, mock_db = tambah_barang_dialog
-        dialog.combo_selector.setCurrentIndex(0)
-        dialog.nama.data.setText("Buku")
-        dialog.harga_jual.data.setText("5000")
-        dialog.harga_beli.data.setText("3000")
-        dialog.stok.data.setText("10")
-        dialog.sku.data.setText("BK-01")
-
-        mock_db_instance = mock_db.return_value
-        mock_db_instance.verify_is_valid.return_value = {
-            "is_valid": False, "nama_barang": True, "sku_barang": True
-        }
-
+    @pytest.mark.parametrize("index", [0, 1])
+    def test_validasi_field_kosong(self, qtbot, tambah_barang_dialog, index):
+        """Mencakup baris 358: Memastikan label_peringatan terisi ketika tombol Tambahkan diklik dengan field kosong pada mode Satuan dan Paket."""
+        dialog, _ = tambah_barang_dialog
+        dialog.show()
+        dialog.combo_selector.setCurrentIndex(index)
+        # Empty fields
+        dialog.nama.data.clear()
+        dialog.harga_jual.data.clear()
+        dialog.sku.data.clear()
+        
         qtbot.mouseClick(dialog.btn_tambahkan, Qt.MouseButton.LeftButton)
-        assert "Nama Barang dan SKU sudah ada" in dialog.label_peringatan.text()
+        assert dialog.label_peringatan.text() == "Semua Kolom Wajib Diisi"
 
-    def test_validasi_data_paket_berhasil(self, qtbot, tambah_barang_dialog):
-        """Memastikan dialog diterima (accepted) jika validasi paket di DB sukses."""
+    @pytest.mark.parametrize("index, db_return, expected_accepted, expected_warning", [
+        (0, {"is_valid": True}, True, ""), # Satuan Berhasil
+        (1, {"is_valid": True}, True, ""), # Paket Berhasil
+        (0, {"is_valid": False, "nama_barang": True, "sku_barang": True}, False, "Nama Barang dan SKU sudah ada"),
+        (0, {"is_valid": False, "nama_barang": True, "sku_barang": False}, False, "Nama Barang sudah ada"),
+        (0, {"is_valid": False, "nama_barang": False, "sku_barang": True}, False, "SKU sudah ada"),
+        (1, {"is_valid": False, "nama_barang": True, "sku_barang": False, "nama_produk": False}, False, "Nama Barang sudah ada"),
+        (1, {"is_valid": False, "nama_barang": False, "sku_barang": True, "nama_produk": False}, False, "SKU sudah ada"),
+        (1, {"is_valid": False, "nama_barang": False, "sku_barang": False, "nama_produk": True}, False, "Nama Barang Tidak Ditemukan"),
+    ])
+    def test_validasi_data_ke_db(self, qtbot, tambah_barang_dialog, index, db_return, expected_accepted, expected_warning):
+        """Menguji kombinasi validasi data Satuan & Paket langsung dari mock database."""
         dialog, mock_db = tambah_barang_dialog
-        dialog.combo_selector.setCurrentIndex(1)
-        dialog.nama.data.setText("Paket Buku")
-        dialog.harga_jual.data.setText("50000")
-        dialog.nama_barang.data.setText("Buku")
-        dialog.convert.data.setText("10")
-        dialog.sku.data.setText("PKT-BK")
+        dialog.combo_selector.setCurrentIndex(index)
+        
+        dialog.nama.data.setText("ValidName")
+        dialog.harga_jual.data.setText("1000")
+        dialog.sku.data.setText("SKU-123")
+        if index == 0:
+            dialog.harga_beli.data.setText("500")
+            dialog.stok.data.setText("10")
+        else:
+            dialog.nama_barang.data.setText("SubItem")
+            dialog.convert.data.setText("2")
 
-        mock_db_instance = mock_db.return_value
-        mock_db_instance.verify_is_valid.return_value = {"is_valid": True}
-
-        with qtbot.waitSignal(dialog.accepted, timeout=1000):
+        mock_db.return_value.verify_is_valid.return_value = db_return
+        
+        if expected_accepted:
+            with qtbot.waitSignal(dialog.accepted, timeout=1000):
+                qtbot.mouseClick(dialog.btn_tambahkan, Qt.MouseButton.LeftButton)
+        else:
             qtbot.mouseClick(dialog.btn_tambahkan, Qt.MouseButton.LeftButton)
+            assert expected_warning in dialog.label_peringatan.text()
 
-    def test_validasi_data_paket_gagal_barang_tidak_ditemukan(self, qtbot, tambah_barang_dialog):
-        """Memastikan label peringatan muncul jika produk isi paket tidak ditemukan di DB."""
+    @pytest.mark.parametrize("file_return, file_content, db_return, expected_msg_type, expected_text", [
+        (("", ""), None, None, None, None), # Batal import
+        (("dummy.csv", "CSV"), "Error", None, "critical", "Format file salah"), # Exception builtins.open
+        (("empty.csv", "CSV"), "", None, "critical", "File kosong"), # Mencakup baris 410 (raise ValueError)
+        (("dummy.csv", "CSV"), "a,b\n1,2", {"error_format": "Kolom tidak sesuai"}, "critical", "Kolom tidak sesuai"),
+        (("dummy.csv", "CSV"), "a,b\n1,2", {"berhasil": 2, "gagal": 0, "errors": []}, "information", "Berhasil diimpor: 2"),
+        (("dummy.csv", "CSV"), "a,b\n1,2", {"berhasil": 1, "gagal": 1, "errors": ["Err1"]}, "warning", "Gagal diimpor: 1"),
+        (("dummy.csv", "CSV"), "a,b\n1,2", {"berhasil": 0, "gagal": 2, "errors": ["E1","E2"]}, "critical", "Gagal diimpor: 2"),
+        (("dummy.csv", "CSV"), "a,b\n1,2", {"berhasil": 1, "gagal": 7, "errors": ["e1","e2","e3","e4","e5","e6","e7"]}, "warning", "... dan 2 baris lainnya."), 
+    ])
+    @patch("PySide6.QtWidgets.QFileDialog.getOpenFileName")
+    @patch("src.ui.barang_baru.CustomMessageBox")
+    def test_import_csv(self, mock_msg, mock_filedialog, tambah_barang_dialog, file_return, file_content, db_return, expected_msg_type, expected_text):
+        """Kumpulan tes import CSV yang disederhanakan melalui parameterisasi."""
         dialog, mock_db = tambah_barang_dialog
-        dialog.combo_selector.setCurrentIndex(1)
-        dialog.nama.data.setText("Paket Kosong")
-        dialog.harga_jual.data.setText("100")
-        dialog.nama_barang.data.setText("BarangAneh")
-        dialog.convert.data.setText("2")
-        dialog.sku.data.setText("PKT-02")
-
-        mock_db_instance = mock_db.return_value
-        mock_db_instance.verify_is_valid.return_value = {
-            "is_valid": False, "nama_barang": False, "sku_barang": False, "nama_produk": True
-        }
-
-        qtbot.mouseClick(dialog.btn_tambahkan, Qt.MouseButton.LeftButton)
-        assert "Nama Barang Tidak Ditemukan" in dialog.label_peringatan.text()
-
-    @patch("PySide6.QtWidgets.QFileDialog.getOpenFileName")
-    @patch("src.ui.barang_baru.CustomMessageBox.critical")
-    def test_import_csv_batal_atau_kosong(self, mock_msg_critical, mock_filedialog, tambah_barang_dialog):
-        """Memastikan tidak terjadi crash saat dialog import CSV dibatalkan oleh user."""
-        dialog, _ = tambah_barang_dialog
-        mock_filedialog.return_value = ("", "")  # Simulasi batal pilih file
-        dialog.import_csv_dialog()
-        mock_msg_critical.assert_not_called()
-
-    @patch("PySide6.QtWidgets.QFileDialog.getOpenFileName")
-    @patch("src.ui.barang_baru.CustomMessageBox.critical")
-    def test_import_csv_format_error(self, mock_msg_critical, mock_filedialog, tambah_barang_dialog):
-        """Memastikan pesan error muncul ketika terjadi error saat membaca file CSV."""
-        dialog, _ = tambah_barang_dialog
-        mock_filedialog.return_value = ("dummy.csv", "CSV Files (*.csv)")
+        mock_filedialog.return_value = file_return
         
-        # Simulasi mock_open melempar exception
-        with patch("builtins.open", side_effect=Exception("I/O Error")):
-            dialog.import_csv_dialog()
+        if db_return:
+            mock_db.return_value.import_batch_csv.return_value = db_return
             
-        mock_msg_critical.assert_called_once()
-        assert "Format file salah" in mock_msg_critical.call_args[0][2]
-
-    @patch("PySide6.QtWidgets.QFileDialog.getOpenFileName")
-    @patch("src.ui.barang_baru.CustomMessageBox.information")
-    def test_import_csv_berhasil_sepenuhnya(self, mock_msg_info, mock_filedialog, tambah_barang_dialog):
-        """Memastikan pesan sukses muncul ketika semua data CSV berhasil diimpor."""
-        dialog, mock_db = tambah_barang_dialog
-        mock_filedialog.return_value = ("dummy.csv", "CSV Files (*.csv)")
-        
-        csv_content = "Nama,SKU\nBarang1,SKU1\n"
-        mock_db_instance = mock_db.return_value
-        mock_db_instance.import_batch_csv.return_value = {"berhasil": 2, "gagal": 0, "errors": []}
-
-        with patch("builtins.open", mock_open(read_data=csv_content)):
+        if file_content == "Error":
+            with patch("builtins.open", side_effect=Exception("I/O Error")):
+                dialog.import_csv_dialog()
+            assert mock_msg.critical.called
+            assert expected_text in mock_msg.critical.call_args[0][2]
+        elif file_content is not None:
+            with patch("builtins.open", mock_open(read_data=file_content)):
+                dialog.import_csv_dialog()
+            msg_mock = getattr(mock_msg, expected_msg_type)
+            assert msg_mock.called
+            assert expected_text in msg_mock.call_args[0][2]
+        else:
             dialog.import_csv_dialog()
-            
-        mock_msg_info.assert_called_once()
-        assert "Berhasil diimpor: 2" in mock_msg_info.call_args[0][2]
+            assert not mock_msg.critical.called
 
-    @patch("PySide6.QtWidgets.QFileDialog.getOpenFileName")
-    @patch("src.ui.barang_baru.CustomMessageBox.warning")
-    def test_import_csv_selesai_dengan_peringatan(self, mock_msg_warning, mock_filedialog, tambah_barang_dialog):
-        """Memastikan pesan peringatan muncul ketika ada sebagian data CSV yang gagal diimpor."""
-        dialog, mock_db = tambah_barang_dialog
-        mock_filedialog.return_value = ("dummy.csv", "CSV Files (*.csv)")
-        
-        csv_content = "Nama,SKU\nBarang1,SKU1\n"
-        mock_db_instance = mock_db.return_value
-        mock_db_instance.import_batch_csv.return_value = {
-            "berhasil": 1, "gagal": 1, "errors": ["Baris 2 gagal"]
-        }
-
-        with patch("builtins.open", mock_open(read_data=csv_content)):
-            dialog.import_csv_dialog()
-            
-        mock_msg_warning.assert_called_once()
-        assert "Gagal diimpor: 1" in mock_msg_warning.call_args[0][2]
-
-    @patch("os.path.exists")
-    @patch("src.ui.barang_baru.CustomMessageBox.critical")
-    def test_download_template_sumber_tidak_ada(self, mock_msg_critical, mock_exists, tambah_barang_dialog):
-        """Memastikan error muncul ketika file template sumber tidak ditemukan."""
-        dialog, _ = tambah_barang_dialog
-        mock_exists.return_value = False
-        dialog.download_template_csv()
-        
-        mock_msg_critical.assert_called_once()
-        assert "tidak ditemukan" in mock_msg_critical.call_args[0][2]
-
+    @pytest.mark.parametrize("exists, save_return, copy_side_effect, expected_msg_type, expected_text", [
+        (False, None, None, "critical", "tidak ditemukan"),
+        (True, ("path.csv", "CSV"), None, "information", "berhasil disimpan"), # Mencakup baris 410 copy2
+        (True, ("path.csv", "CSV"), Exception("Perm denied"), "critical", "Perm denied"),
+    ])
     @patch("os.path.exists")
     @patch("PySide6.QtWidgets.QFileDialog.getSaveFileName")
-    @patch("shutil.copy2")
-    @patch("src.ui.barang_baru.CustomMessageBox.information")
-    def test_download_template_berhasil(self, mock_msg_info, mock_copy, mock_filedialog, mock_exists, tambah_barang_dialog):
-        """Memastikan proses penyalinan (download) template berjalan dan memunculkan notifikasi sukses."""
+    @patch("shutil.copy2", autospec=True)
+    @patch("src.ui.barang_baru.CustomMessageBox")
+    def test_download_template_csv(self, mock_msg, mock_copy, mock_save, mock_exists, tambah_barang_dialog, exists, save_return, copy_side_effect, expected_msg_type, expected_text):
+        """Kumpulan tes untuk fungsi download template CSV."""
         dialog, _ = tambah_barang_dialog
-        mock_exists.return_value = True
-        mock_filedialog.return_value = ("C:/Downloads/Template.csv", "CSV Files (*.csv)")
-        
+        mock_exists.return_value = exists
+        if save_return:
+            mock_save.return_value = save_return
+        if copy_side_effect:
+            mock_copy.side_effect = copy_side_effect
+            
         dialog.download_template_csv()
-        mock_copy.assert_called_once()
-        mock_msg_info.assert_called_once()
-        assert "berhasil disimpan" in mock_msg_info.call_args[0][2]
-
+        
+        msg_mock = getattr(mock_msg, expected_msg_type)
+        assert msg_mock.called
+        assert expected_text in msg_mock.call_args[0][2]
 
 # ===========================================================================
 # SECTION 5: TEST — HapusProdukDialog
