@@ -11,6 +11,7 @@ Fixture `login_page` tersedia via tests/ui/conftest.py.
 import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLineEdit
+from unittest.mock import patch
 
 
 # ===========================================================================
@@ -109,3 +110,28 @@ class TestLoginPage:
         widget, _ = login_page
         widget.session_info("Sesi telah berakhir. Silakan login ulang.")
         assert "Sesi telah berakhir" in widget.error_info.text()
+
+    def test_open_register_dialog_success_updates_ui(self, login_page):
+        """
+        Cover src/ui/login.py baris 265-270:
+        - dialog.exec() == True
+        - error_info style jadi hijau
+        - error_info text jadi pesan sukses
+        - fokus kembali ke text_input
+        """
+        widget, _ = login_page
+        widget.show()
+
+        with patch("src.ui.register.RegisterDialog") as MockRegisterDialog:
+            dialog_instance = MockRegisterDialog.return_value
+            dialog_instance.exec.return_value = True
+
+            widget._open_register_dialog()
+            MockRegisterDialog.assert_called_once_with(widget)
+            dialog_instance.exec.assert_called_once()
+
+        normalized_style = widget.error_info.styleSheet().replace(" ", "").lower()
+        assert "color:#00ff7f;" in normalized_style
+
+        assert widget.error_info.text() == "✅ User Rekan Berhasil Diregistrasi"
+        assert widget.text_input.hasFocus()
