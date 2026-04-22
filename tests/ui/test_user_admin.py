@@ -281,7 +281,38 @@ class TestSection15UserAdministrator:
         widget, db, MockMsg = user_admin_widget
         widget.table_user._all_rows = [{"id": 10, "nama": "C", "role": "Admin", "password": "4444"}]
 
-        with patch.object(widget, "table_data") as mock_table_data:
+        with patch("src.ui.user_administrator.DeleteUserConfirmDialog") as MockVerifyDialog, \
+             patch.object(widget, "table_data") as mock_table_data:
+
+            widget.table_user._all_rows = [{"id": 99, "nama": "   ", "role": "Admin", "password": "x"}]
+            widget._on_hapus_user_by_row(0)
+
+            MockMsg.critical.assert_called_with(
+                widget, "Gagal", "Nama user tidak valid untuk proses hapus."
+            )
+            MockVerifyDialog.assert_not_called()
+            MockMsg.question.assert_not_called()
+            db.delete_user.assert_not_called()
+            mock_table_data.assert_not_called()
+
+            MockMsg.critical.reset_mock()
+            MockMsg.question.reset_mock()
+            db.delete_user.reset_mock()
+            mock_table_data.reset_mock()
+            MockVerifyDialog.reset_mock()
+
+            widget.table_user._all_rows = [{"id": 10, "nama": "C", "role": "Admin", "password": "4444"}]
+
+            MockVerifyDialog.return_value.exec.return_value = QDialog.DialogCode.Rejected
+            widget._on_hapus_user_by_row(0)
+            db.delete_user.assert_not_called()
+            MockMsg.question.assert_not_called()
+
+            db.delete_user.reset_mock()
+            MockMsg.question.reset_mock()
+            mock_table_data.reset_mock()
+
+            MockVerifyDialog.return_value.exec.return_value = QDialog.DialogCode.Accepted
             MockMsg.question.return_value = QMessageBox.StandardButton.No
             widget._on_hapus_user_by_row(0)
             db.delete_user.assert_not_called()
@@ -295,6 +326,8 @@ class TestSection15UserAdministrator:
             db.delete_user.reset_mock()
             mock_table_data.reset_mock()
             MockMsg.information.reset_mock()
+            MockMsg.critical.reset_mock()
+
             db.delete_user.side_effect = ValueError("hapus gagal")
             widget._on_hapus_user_by_row(0)
             MockMsg.critical.assert_called_once()
