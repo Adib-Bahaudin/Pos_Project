@@ -32,7 +32,7 @@ class PengeluaranTokoWindow(QWidget):
 
         title = QLabel("Pengeluaran Toko")
         title.setFont(QFont("Arial", 22, QFont.Weight.Bold))
-        title.setStyleSheet("color: #ffffff;")
+        title.setStyleSheet("color: #ffffff; background-color: transparent")
         root_layout.addWidget(title)
 
         summary_layout = QHBoxLayout()
@@ -88,7 +88,7 @@ class PengeluaranTokoWindow(QWidget):
         form_layout.addLayout(row_2)
 
         self.form_error_label = QLabel("")
-        self.form_error_label.setStyleSheet("color: #ff6b6b; font-size: 11px;")
+        self.form_error_label.setStyleSheet("color: #ff6b6b; font-size: 11px; border: None")
         form_layout.addWidget(self.form_error_label)
 
         root_layout.addWidget(form_frame)
@@ -310,9 +310,9 @@ class PengeluaranTokoWindow(QWidget):
     def _field_layout(label_text: str, widget: QWidget) -> QVBoxLayout:
         layout = QVBoxLayout()
         layout.setSpacing(0)
-        label = QLabel(label_text)
-        label.setMaximumHeight(20)
-        label.setStyleSheet("color: #d7d7d7; font-weight: bold;")
+        label = QLabel(f"  {label_text}")
+        label.setFixedHeight(25)
+        label.setStyleSheet("color: #d7d7d7; font-weight: bold; border: None")
         layout.addWidget(label)
         layout.addWidget(widget)
         return layout
@@ -329,10 +329,10 @@ class PengeluaranTokoWindow(QWidget):
         layout = QVBoxLayout(card)
         layout.setContentsMargins(10, 8, 10, 8)
         title_label = QLabel(title)
-        title_label.setStyleSheet("color: #d8d8d8; font-size: 12px;")
+        title_label.setStyleSheet("color: #d8d8d8; font-size: 12px; border: None")
         value_label = QLabel(value)
         value_label.setObjectName("summaryValue")
-        value_label.setStyleSheet("color: #ffffff; font-size: 20px; font-weight: bold;")
+        value_label.setStyleSheet("color: #ffffff; font-size: 20px; font-weight: bold; border: None")
         layout.addWidget(title_label)
         layout.addWidget(value_label)
         return card
