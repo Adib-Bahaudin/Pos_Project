@@ -37,6 +37,7 @@ class Dashboard(QWidget):
         self.sejarah_widget = None
         self.pelanggan_widget = None
         self.kas_widget = None
+        self.pengeluaran_widget = None
         self.user_widget = None
 
         self._setup_ui()
@@ -203,7 +204,7 @@ class Dashboard(QWidget):
         self.button_buku_right = self._create_nav_button_with_text(
             asset_path("buku putih.png"),
             asset_path("buku hijau.png"),
-            " Catatan Beban Toko"
+            " Catatan Pengeluaran"
         )
         layout.addWidget(self.button_buku_right)
 
@@ -424,7 +425,12 @@ class Dashboard(QWidget):
             self.main_stack.setCurrentWidget(self.kas_widget)
         elif self.button_buku_left.isChecked():
             self.button_buku_right.setMinimumWidth(self.BUTTON_EXPANDED_WIDTH)
-            self.main_stack.setCurrentWidget(self.error_widget)
+            if not self.pengeluaran_widget:
+                from src.ui.pengeluaran_toko import PengeluaranTokoWindow
+                self.pengeluaran_widget = PengeluaranTokoWindow()
+                if self.main_stack.indexOf(self.pengeluaran_widget) == -1:
+                    self.main_stack.addWidget(self.pengeluaran_widget)
+            self.main_stack.setCurrentWidget(self.pengeluaran_widget)
         elif self.button_user_left.isChecked():
             self.button_user_right.setMinimumWidth(self.BUTTON_EXPANDED_WIDTH)
             if not self.user_widget:
