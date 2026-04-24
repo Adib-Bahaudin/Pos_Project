@@ -8,6 +8,8 @@ from PySide6.QtWidgets import (
     QTableWidgetItem, QHeaderView, QMessageBox
 )
 
+from src.database.database import DatabaseManager
+
 
 class PengeluaranTokoWindow(QWidget):
     CATEGORIES = ["Belanja Stok Produk", "Belanja Operasinal", "Listrik", "Air", "Lainnya"]
@@ -17,9 +19,8 @@ class PengeluaranTokoWindow(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.expense_data: list[dict] = []
-        self.filtered_expense_data: list[dict] = []
-        self.editing_row_index: int | None = None
+        self.db = DatabaseManager()
+        self.editing_expense_id: int | None = None  # Store the database ID of the expense being edited
 
         self._build_ui()
         self._connect_signals()
@@ -204,7 +205,7 @@ class PengeluaranTokoWindow(QWidget):
         self.amount_input.clear()
         self.method_input.setCurrentIndex(0)
         self.note_input.clear()
-        self.editing_row_index = None
+        self.editing_expense_id = None
         self.save_button.setText("Simpan")
         self.form_error_label.setText("")
         self._validate_form()
@@ -212,79 +213,110 @@ class PengeluaranTokoWindow(QWidget):
     def _refresh_table(self):
         self.table.setRowCount(len(self.filtered_expense_data))
         for row, item in enumerate(self.filtered_expense_data):
-            source_index = item["source_index"]
-            self.table.setItem(row, 0, self._center_item(item["date"]))
-            self.table.setItem(row, 1, self._center_item(item["category"]))
-            self.table.setItem(row, 2, self._center_item(self._format_rupiah(item["amount"])))
-            self.table.setItem(row, 3, self._center_item(item["method"]))
-            self.table.setItem(row, 4, QTableWidgetItem(item["note"]))
-            self.table.setCellWidget(row, 5, self._create_action_widget(source_index))
+            # Store the expense ID in the first column's UserRole for later retrieval in edit/delete
+            date_item = self._center_item(item["tanggal"])
+            date_item.setData(Qt.ItemDataRole.UserRole, item["id"])
+            self.table.setItem(row, 0, date_item)
+            self.table.setItem(row, 1, self._center_item(item["kategori"]))
+            self.table.setItem(row, 2, self._center_item(self._format_rupiah(item["nominal"])))
+            self.table.setItem(row, 3, self._center_item(item["metode"]))
+            self.table.setItem(row, 4, QTableWidgetItem(item["catatan"]))
+            # Pass the expense ID to the action widget (so edit/delete know which expense to operate on)
+            self.table.setCellWidget(row, 5, self._create_action_widget(item["id"]))
 
     def _refresh_summary_cards(self):
-        today = QDate.currentDate()
-        total_today = 0
-        total_month = 0
-        total_transactions = len(self.filtered_expense_data)
+        # Build the same filters as in _apply_search_filter_sort to get statistics for the current view
+        keyword = self.search_input.text().strip()
+        selected_category = self.filter_category_input.currentText()
+        date_range_key = self.date_range_input.currentText()
 
-        for item in self.filtered_expense_data:
-            expense_date = QDate.fromString(item["date"], "yyyy-MM-dd")
-            if not expense_date.isValid():
-                continue
-            if expense_date == today:
-                total_today += item["amount"]
-            if expense_date.month() == today.month() and expense_date.year() == today.year():
-                total_month += item["amount"]
+        filters = {}
+        if keyword:
+            filters["search_keyword"] = keyword
+        if selected_category != "Semua":
+            filters["kategori"] = selected_category
+        if date_range_key != "Semua":
+            today = QDate.currentDate()
+            if date_range_key == "Satu Bulan":
+                date_from = today.addMonths(-1)
+                date_to = today
+            elif date_range_key == "Enam Bulan":
+                date_from = today.addMonths(-6)
+                date_to = today
+            elif date_range_key == "Satu Tahun":
+                date_from = today.addYears(-1)
+                date_to = today
+            elif date_range_key == "Dua Tahun":
+                date_from = today.addYears(-2)
+                date_to = today
+            else:  # Semua
+                date_from = None
+                date_to = None
+            if date_from:
+                filters["date_from"] = date_from.toString("yyyy-MM-dd")
+            if date_to:
+                filters["date_to"] = date_to.toString("yyyy-MM-dd")
+
+        # Get statistics from the database
+        stats = self.db.get_pengeluaran_statistics(filters)
+        total_today = stats["total_today"]
+        total_month = stats["total_month"]
+        total_transactions = stats["total_count"]
 
         self._set_card_value(self.card_total_hari_ini, self._format_rupiah(total_today))
         self._set_card_value(self.card_total_bulan_ini, self._format_rupiah(total_month))
         self._set_card_value(self.card_jumlah_transaksi, str(total_transactions))
 
     def _apply_search_filter_sort(self):
-        keyword = self.search_input.text().strip().lower()
+        keyword = self.search_input.text().strip()
         selected_category = self.filter_category_input.currentText()
         sort_key = self.sort_input.currentText()
         date_range_key = self.date_range_input.currentText()
 
-        processed_data = []
-        today = QDate.currentDate()
+        # Build filters for the database query
+        filters = {}
+        if keyword:
+            filters["search_keyword"] = keyword
+        if selected_category != "Semua":
+            filters["kategori"] = selected_category
+        if date_range_key != "Semua":
+            # We'll handle date range in the database method by adding date_from and date_to filters.
+            today = QDate.currentDate()
+            if date_range_key == "Satu Bulan":
+                date_from = today.addMonths(-1)
+                date_to = today
+            elif date_range_key == "Enam Bulan":
+                date_from = today.addMonths(-6)
+                date_to = today
+            elif date_range_key == "Satu Tahun":
+                date_from = today.addYears(-1)
+                date_to = today
+            elif date_range_key == "Dua Tahun":
+                date_from = today.addYears(-2)
+                date_to = today
+            else:  # Semua
+                date_from = None
+                date_to = None
+            if date_from:
+                filters["date_from"] = date_from.toString("yyyy-MM-dd")
+            if date_to:
+                filters["date_to"] = date_to.toString("yyyy-MM-dd")
 
-        for index, item in enumerate(self.expense_data):
-            if selected_category != "Semua" and item["category"] != selected_category:
-                continue
-            if keyword and keyword not in item["category"].lower() and keyword not in item["note"].lower():
-                continue
+        # Fetch data from the database
+        self.filtered_expense_data = self.db.get_pengeluaran(filters)
 
-            if date_range_key != "Semua":
-                item_date = QDate.fromString(item["date"], "yyyy-MM-dd")
-                if not item_date.isValid():
-                    continue
-
-                days_to_subtract = 0
-                if date_range_key == "Satu Bulan":
-                    days_to_subtract = 30
-                elif date_range_key == "Enam Bulan":
-                    days_to_subtract = 183
-                elif date_range_key == "Satu Tahun":
-                    days_to_subtract = 365
-                elif date_range_key == "Dua Tahun":
-                    days_to_subtract = 730
-
-                start_date = today.addDays(-days_to_subtract)
-                if item_date < start_date:
-                    continue
-
-            processed_data.append({**item, "source_index": index})
-
+        # Apply sorting (the database method returns data sorted by tanggal DESC, id DESC by default)
+        # We'll re-sort based on the UI sort option
         if sort_key == "Tanggal (Asc)":
-            processed_data.sort(key=lambda x: x["date"])
+            self.filtered_expense_data.sort(key=lambda x: x["tanggal"])
         elif sort_key == "Tanggal (Desc)":
-            processed_data.sort(key=lambda x: x["date"], reverse=True)
+            self.filtered_expense_data.sort(key=lambda x: x["tanggal"], reverse=True)
         elif sort_key == "Nominal (Asc)":
-            processed_data.sort(key=lambda x: x["amount"])
+            self.filtered_expense_data.sort(key=lambda x: x["nominal"])
         elif sort_key == "Nominal (Desc)":
-            processed_data.sort(key=lambda x: x["amount"], reverse=True)
+            self.filtered_expense_data.sort(key=lambda x: x["nominal"], reverse=True)
+        # Note: the default order from the database is tanggal DESC, id DESC, which matches "Tanggal (Desc)"
 
-        self.filtered_expense_data = processed_data
         self._refresh_table()
         self._refresh_summary_cards()
 
@@ -294,30 +326,52 @@ class PengeluaranTokoWindow(QWidget):
             return
 
         payload = self._collect_form_data()
-        if self.editing_row_index is not None and 0 <= self.editing_row_index < len(self.expense_data):
-            self.expense_data[self.editing_row_index] = payload
+        if self.editing_expense_id is not None:
+            # Update existing expense
+            result = self.db.update_pengeluaran(
+                self.editing_expense_id,
+                payload["date"],
+                payload["category"],
+                payload["amount"],
+                payload["method"],
+                payload["note"]
+            )
+            if not result["success"]:
+                QMessageBox.warning(self, "Error", result["message"])
+                return
         else:
-            self.expense_data.append(payload)
+            # Insert new expense
+            result = self.db.insert_pengeluaran(
+                payload["date"],
+                payload["category"],
+                payload["amount"],
+                payload["method"],
+                payload["note"]
+            )
+            if not result["success"]:
+                QMessageBox.warning(self, "Error", result["message"])
+                return
 
         self._apply_search_filter_sort()
         self._clear_form()
 
-    def _on_edit(self, row_index: int):
-        if row_index < 0 or row_index >= len(self.expense_data):
+    def _on_edit(self, expense_id: int):
+        # Fetch the expense from the database using the id filter
+        filters = {"id": expense_id}
+        expenses = self.db.get_pengeluaran(filters)
+        if not expenses:
             return
-        selected = self.expense_data[row_index]
-        self.editing_row_index = row_index
-        self.date_input.setDate(QDate.fromString(selected["date"], "yyyy-MM-dd"))
-        self.category_input.setCurrentText(selected["category"])
-        self.amount_input.setText(str(selected["amount"]))
-        self.method_input.setCurrentText(selected["method"])
-        self.note_input.setPlainText(selected["note"])
+        selected = expenses[0]
+        self.editing_expense_id = expense_id
+        self.date_input.setDate(QDate.fromString(selected["tanggal"], "yyyy-MM-dd"))
+        self.category_input.setCurrentText(selected["kategori"])
+        self.amount_input.setText(str(selected["nominal"]))
+        self.method_input.setCurrentText(selected["metode"])
+        self.note_input.setPlainText(selected["catatan"])
         self.save_button.setText("Simpan Perubahan")
         self._validate_form()
 
-    def _on_delete(self, row_index: int):
-        if row_index < 0 or row_index >= len(self.expense_data):
-            return
+    def _on_delete(self, expense_id: int):
         confirm = QMessageBox.question(
             self,
             "Konfirmasi Hapus",
@@ -328,11 +382,17 @@ class PengeluaranTokoWindow(QWidget):
         if confirm != QMessageBox.StandardButton.Yes:
             return
 
-        self.expense_data.pop(row_index)
-        if self.editing_row_index == row_index:
+        # Delete from the database
+        result = self.db.delete_pengeluaran(expense_id)
+        if not result["success"]:
+            QMessageBox.warning(self, "Error", result["message"])
+            return
+
+        # If we were editing this expense, clear the form
+        if self.editing_expense_id == expense_id:
             self._clear_form()
-        elif self.editing_row_index is not None and self.editing_row_index > row_index:
-            self.editing_row_index -= 1
+
+        # Refresh the table and summary cards
         self._apply_search_filter_sort()
 
     @staticmethod
@@ -366,7 +426,7 @@ class PengeluaranTokoWindow(QWidget):
         layout.addWidget(value_label)
         return card
 
-    def _create_action_widget(self, row_index: int) -> QWidget:
+    def _create_action_widget(self, expense_id: int) -> QWidget:
         widget = QWidget()
         layout = QHBoxLayout(widget)
         layout.setContentsMargins(2, 2, 2, 2)
@@ -375,8 +435,8 @@ class PengeluaranTokoWindow(QWidget):
         delete_button = QPushButton("Hapus")
         edit_button.setStyleSheet(self._button_style("#0078D7", "#0062ad", padding="4px 10px"))
         delete_button.setStyleSheet(self._button_style("#d9534f", "#b94441", padding="4px 10px"))
-        edit_button.clicked.connect(lambda _, idx=row_index: self._on_edit(idx))
-        delete_button.clicked.connect(lambda _, idx=row_index: self._on_delete(idx))
+        edit_button.clicked.connect(lambda _, eid=expense_id: self._on_edit(eid))
+        delete_button.clicked.connect(lambda _, eid=expense_id: self._on_delete(eid))
         layout.addWidget(edit_button)
         layout.addWidget(delete_button)
         return widget

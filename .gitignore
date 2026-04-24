@@ -218,3 +218,6 @@ security.py
 
 # C Compiler File
 main.dist/
+
+#claude file
+.claude/

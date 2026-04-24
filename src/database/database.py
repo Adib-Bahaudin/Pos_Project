@@ -1661,7 +1661,7 @@ class DatabaseManager:
     def delete_customer(self, id_customer):
         if id_customer == 1:
             return {"success": False, "message": "Pelanggan Umum tidak bisa dihapus."}
-            
+
         conn = sqlite3.connect(self.db_name)
         cursor = conn.cursor()
         try:
@@ -1679,3 +1679,153 @@ class DatabaseManager:
             return {"success": False, "message": msg}
         finally:
             conn.close()
+
+    # Pengeluaran CRUD methods
+    def insert_pengeluaran(self, tanggal, kategori, nominal, metode, catatan=""):
+        """Insert a new pengeluaran record."""
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                """
+                INSERT INTO pengeluaran (tanggal, kategori, nominal, metode, catatan)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (tanggal, kategori, nominal, metode, catatan),
+            )
+            conn.commit()
+            return {"success": True, "message": "Pengeluaran berhasil disimpan."}
+        except Exception as e:
+            conn.rollback()
+            msg = log_error(e, context="insert_pengeluaran", logger=self.logger)
+            return {"success": False, "message": msg}
+        finally:
+            conn.close()
+
+    def get_pengeluaran(self, filters: dict, limit: int = 100, offset: int = 0):
+        """Get pengeluaran records with filters."""
+        conn = sqlite3.connect(self.db_name)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        query = """
+            SELECT id, tanggal, kategori, nominal, metode, catatan
+            FROM pengeluaran
+            WHERE 1=1
+        """
+        filter_clauses, params = self._build_pengeluaran_filter_clauses(filters)
+        query += filter_clauses
+        query += " ORDER BY tanggal DESC, id DESC LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
+
+        cursor.execute(query, params)
+        result = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        return result
+
+    def update_pengeluaran(self, id, tanggal, kategori, nominal, metode, catatan):
+        """Update an existing pengeluaran record."""
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                """
+                UPDATE pengeluaran
+                SET tanggal = ?, kategori = ?, nominal = ?, metode = ?, catatan = ?
+                WHERE id = ?
+                """,
+                (tanggal, kategori, nominal, metode, catatan, id),
+            )
+            conn.commit()
+            if cursor.rowcount == 0:
+                return {"success": False, "message": "Pengeluaran tidak ditemukan."}
+            return {"success": True, "message": "Pengeluaran berhasil diupdate."}
+        except Exception as e:
+            conn.rollback()
+            msg = log_error(e, context="update_pengeluaran", logger=self.logger)
+            return {"success": False, "message": msg}
+        finally:
+            conn.close()
+
+    def delete_pengeluaran(self, id):
+        """Delete a pengeluaran record by ID."""
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+        try:
+            cursor.execute("DELETE FROM pengeluaran WHERE id = ?", (id,))
+            conn.commit()
+            if cursor.rowcount == 0:
+                return {"success": False, "message": "Pengeluaran tidak ditemukan."}
+            return {"success": True, "message": "Pengeluaran berhasil dihapus."}
+        except Exception as e:
+            conn.rollback()
+            msg = log_error(e, context="delete_pengeluaran", logger=self.logger)
+            return {"success": False, "message": msg}
+        finally:
+            conn.close()
+
+    def get_pengeluaran_statistics(self, filters: dict):
+        """Get statistics for pengeluaran (total today, total this month, count)."""
+        conn = sqlite3.connect(self.db_name)
+        cursor = conn.cursor()
+
+        query = """
+            SELECT
+                COUNT(id) as total_count,
+                SUM(CASE WHEN date(tanggal) = date('now', 'localtime') THEN nominal ELSE 0 END) as total_today,
+                SUM(CASE WHEN strftime('%Y-%m', tanggal) = strftime('%Y-%m', 'now', 'localtime') THEN nominal ELSE 0 END) as_total_month
+            FROM pengeluaran
+            WHERE 1=1
+        """
+        filter_clauses, params = self._build_pengeluaran_filter_clauses(filters)
+        query += filter_clauses
+
+        cursor.execute(query, params)
+        row = cursor.fetchone()
+        conn.close()
+
+        if row:
+            return {
+                "total_count": row[0] or 0,
+                "total_today": row[1] or 0,
+                "total_month": row[2] or 0,
+            }
+        return {"total_count": 0, "total_today": 0, "total_month": 0}
+
+    @staticmethod
+    def _build_pengeluaran_filter_clauses(filters: dict):
+        """Build SQL WHERE clause additions and bound parameters for pengeluaran filters.
+
+        Args:
+            filters: dict with optional keys: date_from, date_to, kategori, search_keyword, id.
+
+        Returns:
+            Tuple of (clauses, params) where clauses is a string of
+            SQL AND conditions to append to a WHERE clause and params is the
+            corresponding list of bound parameter values.
+        """
+        clauses = ""
+        params = []
+
+        if filters.get("date_from"):
+            clauses += " AND date(tanggal) >= date(?)"
+            params.append(filters["date_from"])
+
+        if filters.get("date_to"):
+            clauses += " AND date(tanggal) <= date(?)"
+            params.append(filters["date_to"])
+
+        if filters.get("kategori") not in ("", None, "Semua"):
+            clauses += " AND kategori = ?"
+            params.append(filters["kategori"])
+
+        if filters.get("id") is not None:
+            clauses += " AND id = ?"
+            params.append(filters["id"])
+
+        if filters.get("search_keyword"):
+            kw = f"%{filters['search_keyword']}%"
+            clauses += " AND (kategori LIKE ? OR catatan LIKE ?)"
+            params.extend([kw, kw])
+
+        return clauses, params

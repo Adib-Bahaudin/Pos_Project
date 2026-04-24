@@ -139,6 +139,17 @@ class InitDatabase:
             """)
 
             cursor.execute("""
+                CREATE TABLE pengeluaran (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    tanggal TEXT NOT NULL,
+                    kategori TEXT NOT NULL,
+                    nominal INTEGER NOT NULL,
+                    metode TEXT NOT NULL,
+                    catatan TEXT
+                )
+            """)
+
+            cursor.execute("""
                 CREATE TRIGGER handle_transaksi_detail_insert
                 AFTER INSERT ON transaksi_detail
                 BEGIN
