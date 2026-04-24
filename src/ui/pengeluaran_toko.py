@@ -10,9 +10,10 @@ from PySide6.QtWidgets import (
 
 
 class PengeluaranTokoWindow(QWidget):
-    CATEGORIES = ["Operasional", "Belanja Stok", "Transport", "Listrik/Air", "Lainnya"]
+    CATEGORIES = ["Belanja Stok Produk", "Belanja Operasinal", "Listrik", "Air", "Lainnya"]
     METHODS = ["Cash", "Transfer", "E-Wallet"]
     SORT_OPTIONS = ["Tanggal (Asc)", "Tanggal (Desc)", "Nominal (Asc)", "Nominal (Desc)"]
+    DATE_RANGE_OPTIONS = ["Satu Bulan", "Enam Bulan", "Satu Tahun", "Dua Tahun", "Semua"]
 
     def __init__(self):
         super().__init__()
@@ -100,6 +101,10 @@ class PengeluaranTokoWindow(QWidget):
         self.filter_category_input.addItems(["Semua", *self.CATEGORIES])
         self.sort_input = QComboBox()
         self.sort_input.addItems(self.SORT_OPTIONS)
+        self.date_range_input = QComboBox()
+        self.date_range_input.addItems(self.DATE_RANGE_OPTIONS)
+        self.date_range_input.setCurrentText("Satu Tahun")
+        filter_layout.addWidget(self.date_range_input, 1)
         filter_layout.addWidget(self.search_input, 3)
         filter_layout.addWidget(self.filter_category_input, 1)
         filter_layout.addWidget(self.sort_input, 1)
@@ -157,6 +162,7 @@ class PengeluaranTokoWindow(QWidget):
         self.search_input.textChanged.connect(self._apply_search_filter_sort)
         self.filter_category_input.currentIndexChanged.connect(self._apply_search_filter_sort)
         self.sort_input.currentIndexChanged.connect(self._apply_search_filter_sort)
+        self.date_range_input.currentIndexChanged.connect(self._apply_search_filter_sort)
         self.save_button.clicked.connect(self._on_save)
         self.reset_button.clicked.connect(self._clear_form)
 
@@ -218,9 +224,9 @@ class PengeluaranTokoWindow(QWidget):
         today = QDate.currentDate()
         total_today = 0
         total_month = 0
-        total_transactions = len(self.expense_data)
+        total_transactions = len(self.filtered_expense_data)
 
-        for item in self.expense_data:
+        for item in self.filtered_expense_data:
             expense_date = QDate.fromString(item["date"], "yyyy-MM-dd")
             if not expense_date.isValid():
                 continue
@@ -237,13 +243,36 @@ class PengeluaranTokoWindow(QWidget):
         keyword = self.search_input.text().strip().lower()
         selected_category = self.filter_category_input.currentText()
         sort_key = self.sort_input.currentText()
+        date_range_key = self.date_range_input.currentText()
 
         processed_data = []
+        today = QDate.currentDate()
+
         for index, item in enumerate(self.expense_data):
             if selected_category != "Semua" and item["category"] != selected_category:
                 continue
             if keyword and keyword not in item["category"].lower() and keyword not in item["note"].lower():
                 continue
+
+            if date_range_key != "Semua":
+                item_date = QDate.fromString(item["date"], "yyyy-MM-dd")
+                if not item_date.isValid():
+                    continue
+
+                days_to_subtract = 0
+                if date_range_key == "Satu Bulan":
+                    days_to_subtract = 30
+                elif date_range_key == "Enam Bulan":
+                    days_to_subtract = 183
+                elif date_range_key == "Satu Tahun":
+                    days_to_subtract = 365
+                elif date_range_key == "Dua Tahun":
+                    days_to_subtract = 730
+
+                start_date = today.addDays(-days_to_subtract)
+                if item_date < start_date:
+                    continue
+
             processed_data.append({**item, "source_index": index})
 
         if sort_key == "Tanggal (Asc)":
