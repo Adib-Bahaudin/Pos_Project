@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 
 from src.database.database import DatabaseManager
 from src.utils.fungsi import CustomCalendar
+from src.utils.message import CustomMessageBox
 
 
 class PengeluaranTokoWindow(QWidget):
@@ -445,7 +446,7 @@ class PengeluaranTokoWindow(QWidget):
 
     def _on_save(self):
         if not self._validate_form():
-            QMessageBox.warning(self, "Form Tidak Valid", "Mohon lengkapi field wajib dengan benar.")
+            CustomMessageBox.warning(self, "Form Tidak Valid", "Mohon lengkapi field wajib dengan benar.")
             return
 
         payload = self._collect_form_data()
@@ -459,7 +460,7 @@ class PengeluaranTokoWindow(QWidget):
                 payload["note"]
             )
             if not result["success"]:
-                QMessageBox.warning(self, "Error", result["message"])
+                CustomMessageBox.warning(self, "Error", result["message"])
                 return
         else:
             result = self.db.insert_pengeluaran(
@@ -470,7 +471,7 @@ class PengeluaranTokoWindow(QWidget):
                 payload["note"]
             )
             if not result["success"]:
-                QMessageBox.warning(self, "Error", result["message"])
+                CustomMessageBox.warning(self, "Error", result["message"])
                 return
 
         self._apply_search_filter_sort()
@@ -492,19 +493,17 @@ class PengeluaranTokoWindow(QWidget):
         self._validate_form()
 
     def _on_delete(self, expense_id: int):
-        confirm = QMessageBox.question(
+        confirm = CustomMessageBox.question(
             self,
             "Konfirmasi Hapus",
             "Yakin ingin menghapus data pengeluaran ini?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
         )
         if confirm != QMessageBox.StandardButton.Yes:
             return
 
         result = self.db.delete_pengeluaran(expense_id)
         if not result["success"]:
-            QMessageBox.warning(self, "Error", result["message"])
+            CustomMessageBox.warning(self, "Error", result["message"])
             return
 
         if self.editing_expense_id == expense_id:
