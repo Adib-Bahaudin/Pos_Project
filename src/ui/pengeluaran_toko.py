@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from typing import Optional
+from config import asset_uri
 from PySide6.QtCore import QDate, Qt
-from PySide6.QtGui import QFont, QIntValidator
+from PySide6.QtGui import QFont, QIntValidator, QColor, QTextCharFormat
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QDateEdit,
     QComboBox, QLineEdit, QTextEdit, QPushButton, QTableWidget,
@@ -10,6 +11,7 @@ from PySide6.QtWidgets import (
 )
 
 from src.database.database import DatabaseManager
+from src.utils.fungsi import CustomCalendar
 
 
 class PengeluaranTokoWindow(QWidget):
@@ -54,11 +56,120 @@ class PengeluaranTokoWindow(QWidget):
         form_layout.setContentsMargins(14, 14, 14, 14)
         form_layout.setSpacing(10)
 
+        # --- STYLESHEET KHUSUS DATE EDIT & CALENDAR POPUP ---
+        date_style = f"""
+            QDateEdit {{
+                background-color: #11181A;
+                color: #E0E0E0;
+                border: 1px solid #28373B;
+                border-radius: 6px;
+                padding: 8px;
+            }}
+            QDateEdit::drop-down {{
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 24px;
+                border-left: 1px solid #28373B;
+            }}
+            QDateEdit::down-arrow {{
+                image: url({asset_uri("icon_down.svg")});
+                width: 12px;
+                height: 12px;
+            }}
+            QCalendarWidget QWidget {{
+                background-color: #11181A;
+                color: #E0E0E0;
+            }}
+            QCalendarWidget QWidget#qt_calendar_navigationbar {{
+                background-color: #1A2C30;
+                border-bottom: 1px solid #28373B;
+                min-height: 30px;
+            }}
+            QCalendarWidget QToolButton {{
+                color: #E0E0E0;
+                background-color: transparent;
+                font-weight: bold;
+                padding: 4px;
+                margin: 2px;
+            }}
+            QCalendarWidget QToolButton:hover {{
+                background-color: #26363A;
+                border-radius: 4px;
+            }}
+            QCalendarWidget QToolButton::menu-indicator {{
+                image: none;
+            }}
+            QMenu {{
+                background-color: #1A2C30;
+                color: #E0E0E0;
+                border: 1px solid #28373B;
+            }}
+            QMenu::item {{
+                background-color: transparent;
+                color: #E0E0E0;
+                padding: 6px 20px;
+            }}
+            QMenu::item:selected {{
+                background-color: #0078D7;
+                color: white;
+            }}
+            QCalendarWidget QTableView {{
+                background-color: #11181A;
+                color: #E0E0E0;
+                selection-background-color: #0078D7;
+                selection-color: white;
+            }}
+            QCalendarWidget QSpinBox {{
+                background-color: #11181A;
+                color: #E0E0E0;
+                border: 1px solid #28373B;
+            }}
+        """
+
+        # --- STYLESHEET KHUSUS COMBOBOX ---
+        combo_style = f"""
+            QComboBox {{
+                background-color: #11181A;
+                color: #E0E0E0;
+                padding: 4px 8px;
+                border: 1px solid #28373B;
+                border-radius: 6px;
+                padding: 8px;
+            }}
+            QComboBox::drop-down {{
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 24px;
+                border-left: 1px solid #28373B;
+            }}
+            QComboBox::down-arrow {{
+                image: url({asset_uri("icon_down.svg")});
+                width: 12px;
+                height: 12px;
+            }}
+            QComboBox QAbstractItemView {{
+                background-color: #1A2C30;
+                color: #E0E0E0;
+                border: 1px solid #28373B;
+                selection-background-color: #0078D7;
+            }}
+        """
+
+        header_format = QTextCharFormat()
+        header_format.setBackground(QColor("#1A2C30"))
+        header_format.setForeground(QColor("#A9B7C6"))
+
         row_1 = QHBoxLayout()
         self.date_input = QDateEdit(QDate.currentDate())
         self.date_input.setCalendarPopup(True)
+        self.date_input.setStyleSheet(date_style)
+        cal_widget = CustomCalendar()
+        cal_widget.setHeaderTextFormat(header_format)
+        self.date_input.setCalendarWidget(cal_widget)
+
         self.category_input = QComboBox()
         self.category_input.addItems(self.CATEGORIES)
+        self.category_input.setStyleSheet(combo_style)
         row_1.addLayout(self._field_layout("📅 Tanggal *", self.date_input))
         row_1.addLayout(self._field_layout("🏷 Kategori *", self.category_input))
         self.amount_input = QLineEdit()
@@ -66,6 +177,7 @@ class PengeluaranTokoWindow(QWidget):
         self.amount_input.setValidator(QIntValidator(1, 1_000_000_000, self))
         self.method_input = QComboBox()
         self.method_input.addItems(self.METHODS)
+        self.method_input.setStyleSheet(combo_style)
         row_1.addLayout(self._field_layout("💰 Nominal *", self.amount_input))
         row_1.addLayout(self._field_layout("💳 Metode *", self.method_input))
         form_layout.addLayout(row_1)
@@ -101,11 +213,14 @@ class PengeluaranTokoWindow(QWidget):
         self.search_input.setPlaceholderText("Cari kategori/catatan...")
         self.filter_category_input = QComboBox()
         self.filter_category_input.addItems(["Semua", *self.CATEGORIES])
+        self.filter_category_input.setStyleSheet(combo_style)
         self.sort_input = QComboBox()
         self.sort_input.addItems(self.SORT_OPTIONS)
+        self.sort_input.setStyleSheet(combo_style)
         self.date_range_input = QComboBox()
         self.date_range_input.addItems(self.DATE_RANGE_OPTIONS)
         self.date_range_input.setCurrentText("Satu Tahun")
+        self.date_range_input.setStyleSheet(combo_style)
         filter_layout.addWidget(self.date_range_input, 1)
         filter_layout.addWidget(self.search_input, 3)
         filter_layout.addWidget(self.filter_category_input, 1)
@@ -118,12 +233,12 @@ class PengeluaranTokoWindow(QWidget):
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.verticalHeader().setVisible(False)
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.setColumnWidth(0, 100)
+        self.table.setColumnWidth(1, 100)
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.setColumnWidth(3, 100)
         self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.setColumnWidth(5, 200)
         self.table.setRowHeight(0, 50)
         self.table.setShowGrid(False)
         self.table.setStyleSheet("""
@@ -158,7 +273,7 @@ class PengeluaranTokoWindow(QWidget):
             QPushButton { background-color: #FF8C00; color: white; border: none; border-radius: 6px; padding: 0px 0px; font-weight: bold; font-size: 13px; }
             QPushButton:hover { background-color: #E67E22; }
             QPushButton:disabled { background-color: #666666; color: #b0b0b0; }
-            QLineEdit, QComboBox, QDateEdit, QTextEdit {
+            QLineEdit, QTextEdit {
                 background-color: #11181A;
                 color: #E0E0E0;
                 border: 1px solid #28373B;
@@ -166,25 +281,9 @@ class PengeluaranTokoWindow(QWidget):
                 padding: 8px;
                 selection-background-color: #26363A;
             }
-            QLineEdit:focus, QComboBox:focus, QDateEdit:focus, QTextEdit:focus {
+            QLineEdit:focus, QTextEdit:focus {
                 border: 1px solid #385A64;
                 background-color: #11181A;
-            }
-            QComboBox QAbstractItemView {
-                background-color: #11181A;
-                color: #E0E0E0;
-                selection-background-color: #26363A;
-                border: 1px solid #28373B;
-            }
-            QComboBox::drop-down {
-                subcontrol-origin: padding;
-                subcontrol-position: top right;
-                width: 20px;
-                border-left-width: 1px;
-                border-left-color: #28373B;
-                border-left-style: solid;
-                border-top-right-radius: 6px;
-                border-bottom-right-radius: 6px;
             }
         """)
 
