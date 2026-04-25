@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Optional
 from PySide6.QtCore import QDate, Qt
 from PySide6.QtGui import QFont, QIntValidator
 from PySide6.QtWidgets import (
@@ -20,7 +21,7 @@ class PengeluaranTokoWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.db = DatabaseManager()
-        self.editing_expense_id: int | None = None  # Store the database ID of the expense being edited
+        self.editing_expense_id: int | None = None
 
         self._build_ui()
         self._connect_signals()
@@ -39,16 +40,16 @@ class PengeluaranTokoWindow(QWidget):
 
         summary_layout = QHBoxLayout()
         summary_layout.setSpacing(10)
-        self.card_total_hari_ini = self._create_summary_card("Total Hari Ini", "Rp 0", "#2f4f4f")
-        self.card_total_bulan_ini = self._create_summary_card("Total Bulan Ini", "Rp 0", "#203a43")
-        self.card_jumlah_transaksi = self._create_summary_card("Jumlah Transaksi", "0", "#3b2f58")
+        self.card_total_hari_ini = self._create_summary_card("Total Hari Ini", "Rp 0", "#254B4B")
+        self.card_total_bulan_ini = self._create_summary_card("Total Bulan Ini", "Rp 0", "#1D3E53")
+        self.card_jumlah_transaksi = self._create_summary_card("Jumlah Transaksi", "0", "#432152")
         summary_layout.addWidget(self.card_total_hari_ini)
         summary_layout.addWidget(self.card_total_bulan_ini)
         summary_layout.addWidget(self.card_jumlah_transaksi)
         root_layout.addLayout(summary_layout)
 
         form_frame = QFrame()
-        form_frame.setStyleSheet("QFrame { background-color: #171717; border: 1px solid #3c3c3c; border-radius: 8px; }")
+        form_frame.setStyleSheet("QFrame { background-color: #162023; border: 1px solid #26363A; border-radius: 10px; }")
         form_layout = QVBoxLayout(form_frame)
         form_layout.setContentsMargins(14, 14, 14, 14)
         form_layout.setSpacing(10)
@@ -58,15 +59,15 @@ class PengeluaranTokoWindow(QWidget):
         self.date_input.setCalendarPopup(True)
         self.category_input = QComboBox()
         self.category_input.addItems(self.CATEGORIES)
-        row_1.addLayout(self._field_layout("Tanggal *", self.date_input))
-        row_1.addLayout(self._field_layout("Kategori *", self.category_input))
+        row_1.addLayout(self._field_layout("📅 Tanggal *", self.date_input))
+        row_1.addLayout(self._field_layout("🏷 Kategori *", self.category_input))
         self.amount_input = QLineEdit()
         self.amount_input.setPlaceholderText("Masukkan nominal")
         self.amount_input.setValidator(QIntValidator(1, 1_000_000_000, self))
         self.method_input = QComboBox()
         self.method_input.addItems(self.METHODS)
-        row_1.addLayout(self._field_layout("Nominal *", self.amount_input))
-        row_1.addLayout(self._field_layout("Metode *", self.method_input))
+        row_1.addLayout(self._field_layout("💰 Nominal *", self.amount_input))
+        row_1.addLayout(self._field_layout("💳 Metode *", self.method_input))
         form_layout.addLayout(row_1)
 
         row_2 = QHBoxLayout()
@@ -74,16 +75,16 @@ class PengeluaranTokoWindow(QWidget):
         self.note_input.setPlaceholderText("Catatan (opsional)")
         self.note_input.setMinimumHeight(70)
         self.note_input.setMaximumHeight(75)
-        note_layout = self._field_layout("Catatan", self.note_input)
+        note_layout = self._field_layout("📝 Catatan", self.note_input)
         row_2.addLayout(note_layout)
         button_lay = QVBoxLayout()
         button_lay.addStretch()
-        self.save_button = QPushButton("Simpan")
-        self.reset_button = QPushButton("Reset")
+        self.save_button = QPushButton("💾 Simpan")
+        self.reset_button = QPushButton("🔄 Reset")
         self.save_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.reset_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.save_button.setStyleSheet(self._button_style("#00a86b", "#00895a"))
-        self.reset_button.setStyleSheet(self._button_style("#ff8c00", "#d97700"))
+        self.save_button.setStyleSheet(self._button_style("#FF8C00", "#E67E22"))
+        self.reset_button.setStyleSheet(self._button_style("#FF8C00", "#FF8C00", outline=True, text_color="#FF8C00"))
         button_lay.addWidget(self.reset_button)
         button_lay.addWidget(self.save_button)
         row_2.addLayout(button_lay)
@@ -123,35 +124,67 @@ class PengeluaranTokoWindow(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.setRowHeight(0, 50)
+        self.table.setShowGrid(False)
         self.table.setStyleSheet("""
             QTableWidget {
-                background-color: #2d2d2d;
-                alternate-background-color: #545454;
-                color: white;
-                border: 1px solid #3c3c3c;
+                background-color: #141C1F;
+                alternate-background-color: #192427;
+                color: #E0E0E0;
+                border: none;
             }
             QHeaderView::section {
-                background-color: #a6a6a6;
-                color: black;
+                background-color: #1A2C30;
+                color: #E0E0E0;
                 font-weight: bold;
-                padding: 6px;
+                padding: 8px;
                 border: none;
+                font-size: 13px;
+            }
+            QTableWidget::item {
+                padding: 6px;
+                border-bottom: 1px solid #26363A;
+            }
+            QTableWidget::item:selected {
+                background-color: #26363A;
             }
         """)
         root_layout.addWidget(self.table)
 
         self.setStyleSheet("""
-            QWidget { background-color: #1e1e1e; color: #ffffff; }
+            /* Main container styles */
+            QWidget { background-color: #141C1F; color: #E0E0E0; }
+            /* Prevent button styles from being overridden */
+            QPushButton { background-color: #FF8C00; color: white; border: none; border-radius: 6px; padding: 0px 0px; font-weight: bold; font-size: 13px; }
+            QPushButton:hover { background-color: #E67E22; }
+            QPushButton:disabled { background-color: #666666; color: #b0b0b0; }
             QLineEdit, QComboBox, QDateEdit, QTextEdit {
-                background-color: #101010;
-                border: 1px solid #4a4a4a;
+                background-color: #11181A;
+                color: #E0E0E0;
+                border: 1px solid #28373B;
                 border-radius: 6px;
-                color: #ffffff;
-                padding: 6px;
+                padding: 8px;
+                selection-background-color: #26363A;
+            }
+            QLineEdit:focus, QComboBox:focus, QDateEdit:focus, QTextEdit:focus {
+                border: 1px solid #385A64;
+                background-color: #11181A;
             }
             QComboBox QAbstractItemView {
-                background-color: #252525;
-                color: #ffffff;
+                background-color: #11181A;
+                color: #E0E0E0;
+                selection-background-color: #26363A;
+                border: 1px solid #28373B;
+            }
+            QComboBox::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 20px;
+                border-left-width: 1px;
+                border-left-color: #28373B;
+                border-left-style: solid;
+                border-top-right-radius: 6px;
+                border-bottom-right-radius: 6px;
             }
         """)
 
@@ -213,7 +246,7 @@ class PengeluaranTokoWindow(QWidget):
     def _refresh_table(self):
         self.table.setRowCount(len(self.filtered_expense_data))
         for row, item in enumerate(self.filtered_expense_data):
-            # Store the expense ID in the first column's UserRole for later retrieval in edit/delete
+            self.table.setRowHeight(row, 50)
             date_item = self._center_item(item["tanggal"])
             date_item.setData(Qt.ItemDataRole.UserRole, item["id"])
             self.table.setItem(row, 0, date_item)
@@ -221,11 +254,9 @@ class PengeluaranTokoWindow(QWidget):
             self.table.setItem(row, 2, self._center_item(self._format_rupiah(item["nominal"])))
             self.table.setItem(row, 3, self._center_item(item["metode"]))
             self.table.setItem(row, 4, QTableWidgetItem(item["catatan"]))
-            # Pass the expense ID to the action widget (so edit/delete know which expense to operate on)
             self.table.setCellWidget(row, 5, self._create_action_widget(item["id"]))
 
     def _refresh_summary_cards(self):
-        # Build the same filters as in _apply_search_filter_sort to get statistics for the current view
         keyword = self.search_input.text().strip()
         selected_category = self.filter_category_input.currentText()
         date_range_key = self.date_range_input.currentText()
@@ -249,7 +280,7 @@ class PengeluaranTokoWindow(QWidget):
             elif date_range_key == "Dua Tahun":
                 date_from = today.addYears(-2)
                 date_to = today
-            else:  # Semua
+            else:
                 date_from = None
                 date_to = None
             if date_from:
@@ -257,7 +288,6 @@ class PengeluaranTokoWindow(QWidget):
             if date_to:
                 filters["date_to"] = date_to.toString("yyyy-MM-dd")
 
-        # Get statistics from the database
         stats = self.db.get_pengeluaran_statistics(filters)
         total_today = stats["total_today"]
         total_month = stats["total_month"]
@@ -273,14 +303,12 @@ class PengeluaranTokoWindow(QWidget):
         sort_key = self.sort_input.currentText()
         date_range_key = self.date_range_input.currentText()
 
-        # Build filters for the database query
         filters = {}
         if keyword:
             filters["search_keyword"] = keyword
         if selected_category != "Semua":
             filters["kategori"] = selected_category
         if date_range_key != "Semua":
-            # We'll handle date range in the database method by adding date_from and date_to filters.
             today = QDate.currentDate()
             if date_range_key == "Satu Bulan":
                 date_from = today.addMonths(-1)
@@ -294,7 +322,7 @@ class PengeluaranTokoWindow(QWidget):
             elif date_range_key == "Dua Tahun":
                 date_from = today.addYears(-2)
                 date_to = today
-            else:  # Semua
+            else:
                 date_from = None
                 date_to = None
             if date_from:
@@ -302,11 +330,8 @@ class PengeluaranTokoWindow(QWidget):
             if date_to:
                 filters["date_to"] = date_to.toString("yyyy-MM-dd")
 
-        # Fetch data from the database
         self.filtered_expense_data = self.db.get_pengeluaran(filters)
 
-        # Apply sorting (the database method returns data sorted by tanggal DESC, id DESC by default)
-        # We'll re-sort based on the UI sort option
         if sort_key == "Tanggal (Asc)":
             self.filtered_expense_data.sort(key=lambda x: x["tanggal"])
         elif sort_key == "Tanggal (Desc)":
@@ -315,7 +340,6 @@ class PengeluaranTokoWindow(QWidget):
             self.filtered_expense_data.sort(key=lambda x: x["nominal"])
         elif sort_key == "Nominal (Desc)":
             self.filtered_expense_data.sort(key=lambda x: x["nominal"], reverse=True)
-        # Note: the default order from the database is tanggal DESC, id DESC, which matches "Tanggal (Desc)"
 
         self._refresh_table()
         self._refresh_summary_cards()
@@ -327,7 +351,6 @@ class PengeluaranTokoWindow(QWidget):
 
         payload = self._collect_form_data()
         if self.editing_expense_id is not None:
-            # Update existing expense
             result = self.db.update_pengeluaran(
                 self.editing_expense_id,
                 payload["date"],
@@ -340,7 +363,6 @@ class PengeluaranTokoWindow(QWidget):
                 QMessageBox.warning(self, "Error", result["message"])
                 return
         else:
-            # Insert new expense
             result = self.db.insert_pengeluaran(
                 payload["date"],
                 payload["category"],
@@ -356,7 +378,6 @@ class PengeluaranTokoWindow(QWidget):
         self._clear_form()
 
     def _on_edit(self, expense_id: int):
-        # Fetch the expense from the database using the id filter
         filters = {"id": expense_id}
         expenses = self.db.get_pengeluaran(filters)
         if not expenses:
@@ -382,17 +403,14 @@ class PengeluaranTokoWindow(QWidget):
         if confirm != QMessageBox.StandardButton.Yes:
             return
 
-        # Delete from the database
         result = self.db.delete_pengeluaran(expense_id)
         if not result["success"]:
             QMessageBox.warning(self, "Error", result["message"])
             return
 
-        # If we were editing this expense, clear the form
         if self.editing_expense_id == expense_id:
             self._clear_form()
 
-        # Refresh the table and summary cards
         self._apply_search_filter_sort()
 
     @staticmethod
@@ -411,34 +429,59 @@ class PengeluaranTokoWindow(QWidget):
         card.setStyleSheet(f"""
             QFrame {{
                 background-color: {bg_color};
-                border-radius: 8px;
-                border: 1px solid #4a4a4a;
+                border-radius: 10px;
+                border: none;
             }}
         """)
         layout = QVBoxLayout(card)
-        layout.setContentsMargins(10, 8, 10, 8)
+        layout.setContentsMargins(16, 12, 16, 12)
+        layout.setSpacing(8)
+        icon_label = QLabel("📈 ")
+        icon_label.setStyleSheet("font-size: 16px;")
         title_label = QLabel(title)
-        title_label.setStyleSheet("color: #d8d8d8; font-size: 12px; border: None")
+        title_label.setStyleSheet("color: #d8d8d8; font-size: 13px; font-weight: 600; border: None")
+        title_label.setText("📈 " + title)
         value_label = QLabel(value)
         value_label.setObjectName("summaryValue")
-        value_label.setStyleSheet("color: #ffffff; font-size: 20px; font-weight: bold; border: None")
+        value_label.setStyleSheet("color: #ffffff; font-size: 22px; font-weight: bold; border: None")
         layout.addWidget(title_label)
         layout.addWidget(value_label)
         return card
 
     def _create_action_widget(self, expense_id: int) -> QWidget:
         widget = QWidget()
+        widget.setStyleSheet("background-color: transparent; border: none;")
         layout = QHBoxLayout(widget)
-        layout.setContentsMargins(2, 2, 2, 2)
-        layout.setSpacing(6)
-        edit_button = QPushButton("Edit")
-        delete_button = QPushButton("Hapus")
-        edit_button.setStyleSheet(self._button_style("#0078D7", "#0062ad", padding="4px 10px"))
-        delete_button.setStyleSheet(self._button_style("#d9534f", "#b94441", padding="4px 10px"))
-        edit_button.clicked.connect(lambda _, eid=expense_id: self._on_edit(eid))
-        delete_button.clicked.connect(lambda _, eid=expense_id: self._on_delete(eid))
-        layout.addWidget(edit_button)
-        layout.addWidget(delete_button)
+        layout.setContentsMargins(8, 6, 8, 6)
+        layout.setSpacing(10)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        for label, color, hover in [("Edit", "#0078D7", "#0062ad"), ("Hapus", "#d9534f", "#b94441")]:
+            btn = QPushButton(label)
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {color};
+                    color: #ffffff;
+                    border: 2px solid {color};
+                    border-radius: 6px;
+                    padding: 4px 12px;
+                    font-weight: bold;
+                    font-size: 12px;
+                    min-width: 50px;
+                    min-height: 0px;
+                }}
+                QPushButton:hover {{
+                    background-color: {hover};
+                    border-color: {hover};
+                }}
+            """)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            if label == "Edit":
+                btn.clicked.connect(lambda _, eid=expense_id: self._on_edit(eid))
+            else:
+                btn.clicked.connect(lambda _, eid=expense_id: self._on_delete(eid))
+            layout.addWidget(btn)
+
         return widget
 
     @staticmethod
@@ -458,21 +501,44 @@ class PengeluaranTokoWindow(QWidget):
         return f"Rp {value:,}".replace(",", ".")
 
     @staticmethod
-    def _button_style(bg: str, hover: str, padding: str = "6px 12px") -> str:
-        return f"""
-            QPushButton {{
-                background-color: {bg};
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: {padding};
-                font-weight: bold;
-            }}
-            QPushButton:hover {{
-                background-color: {hover};
-            }}
-            QPushButton:disabled {{
-                background-color: #666666;
-                color: #b0b0b0;
-            }}
-        """
+    def _button_style(bg: str, hover: str, padding: str = "6px 12px", outline: bool = False, text_color: Optional[str] = None) -> str:
+        if outline:
+            if text_color is None:
+                text_color = bg
+            return f"""
+                QPushButton {{
+                    background-color: transparent;
+                    color: {text_color};
+                    border: 2px solid {text_color};
+                    border-radius: 6px;
+                    padding: {padding};
+                    font-weight: bold;
+                }}
+                QPushButton:hover {{
+                    background-color: {text_color};
+                    color: #ffffff;
+                }}
+                QPushButton:disabled {{
+                    background-color: transparent;
+                    color: #666666;
+                    border-color: #666666;
+                }}
+            """
+        else:
+            return f"""
+                QPushButton {{
+                    background-color: {bg};
+                    color: white;
+                    border: none;
+                    border-radius: 6px;
+                    padding: {padding};
+                    font-weight: bold;
+                }}
+                QPushButton:hover {{
+                    background-color: {hover};
+                }}
+                QPushButton:disabled {{
+                    background-color: #666666;
+                    color: #b0b0b0;
+                }}
+            """

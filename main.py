@@ -294,7 +294,8 @@ if __name__ == "__main__":
         logger.info("Database belum ada. Melakukan inisialisasi awal...")
         InitDatabase()
 
-    if last_version != APP_VERSION:
+    #if last_version != APP_VERSION:
+    if APP_VERSION != APP_VERSION:     #Testing
         logger.info(f"Versi baru terdeteksi: {APP_VERSION} (sebelumnya: {last_version}). Menjalankan migrasi database...")
         migration_dir = os.path.join(PROJECT_ROOT, "src", "database", "migrations")
         migration_manager = MigrationManager(str(DATABASE_PATH), migration_dir)
