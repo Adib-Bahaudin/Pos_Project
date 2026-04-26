@@ -9,12 +9,12 @@ if not os.path.exists(app_data_dir):
     os.makedirs(app_data_dir)
 
 PROJECT_ROOT = Path(__file__).resolve().parent
-APP_DATA_DIR = Path(app_data_dir)
+APP_DATA_DIR = PROJECT_ROOT            #Testing
+# APP_DATA_DIR = Path(app_data_dir)    #production
 SRC_DIR = PROJECT_ROOT / "src"
 DATA_DIR = PROJECT_ROOT / "data"
 DATABASE_FILENAME = "db_BarokahCopy.db"
-DATABASE_PATH = PROJECT_ROOT / DATABASE_FILENAME      #Testing
-# DATABASE_PATH = APP_DATA_DIR / DATABASE_FILENAME    #production
+DATABASE_PATH = APP_DATA_DIR / DATABASE_FILENAME
 APP_VERSION = "1.2.3" 
 
 
