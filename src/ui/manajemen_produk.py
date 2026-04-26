@@ -13,6 +13,7 @@ from src.ui.barang_baru import TambahBarangBaru
 from src.database.database import DatabaseManager
 from src.ui.edit_produk import EditProduk
 from src.ui.hapus_produk import HapusProdukDialog
+from src.ui.tambah_stok import TambahStokDialog
 from src.utils.message import CustomMessageBox
 from src.ui.ui_base import BaseTableWidget, BaseDataPage
 
@@ -166,6 +167,7 @@ class ManajemenProduk(BaseDataPage):
         self.button_baru.clicked.connect(self._show_tambah_barang_dialog)
         self.button_edit.clicked.connect(self._show_edit_dialog)
         self.button_hapus.clicked.connect(self._show_hapus_dialog)
+        self.button_tambah.clicked.connect(self._show_tambah_stok_dialog)
 
     def on_reset_click(self):
         self.table_satuan.reset_width()
@@ -305,6 +307,13 @@ class ManajemenProduk(BaseDataPage):
         dialog = HapusProdukDialog(self)
         result = dialog.exec()
         if result == HapusProdukDialog.DialogCode.Accepted:
+            self.table_data()
+
+    def _show_tambah_stok_dialog(self):
+        """Menampilkan dialog tambah stok produk"""
+        dialog = TambahStokDialog(self)
+        result = dialog.exec()
+        if result == TambahStokDialog.DialogCode.Accepted:
             self.table_data()
 
     def table_data(self, offset=0):
