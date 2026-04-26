@@ -41,14 +41,15 @@ class TambahStokDialog(QDialog):
     NEUTRAL_HOVER = "#777777"
 
     COLUMN_HEADERS = [
-        "ID Produk", "SKU", "Nama Produk", "Deskripsi",
+        "NO.", "SKU", "Nama Produk",
         "Stok Saat Ini", "Tambah Unit", "Stok Akhir", "Aksi",
     ]
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        # Konfigurasi window dasar: frameless, modal, transparan
+        self.jumlah_baris = 0
+
         self.setWindowFlag(
             Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog
         )
@@ -56,17 +57,14 @@ class TambahStokDialog(QDialog):
         self.setModal(True)
         self.setFixedSize(self.WINDOW_WIDTH, self.WINDOW_HEIGHT)
 
-        # Posisikan di tengah layar
         screen = ScreenSize()
         x, y = screen.get_centered_position(
             self.WINDOW_WIDTH, self.WINDOW_HEIGHT
         )
         self.move(x, y)
 
-        # Bangun UI
         self._setup_ui()
 
-        # Isi tabel dengan data dummy awal
         self._load_dummy_data()
 
     # ══════════════════════════════════════════════════════════
@@ -75,7 +73,6 @@ class TambahStokDialog(QDialog):
 
     def _setup_ui(self):
         """Menyusun seluruh komponen UI dialog."""
-        # Root layout → root widget (untuk border & background)
         root_layout = QVBoxLayout()
         root_layout.setContentsMargins(0, 0, 0, 0)
 
@@ -83,14 +80,12 @@ class TambahStokDialog(QDialog):
         root_widget.setObjectName("TambahStokFrame")
 
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setContentsMargins(2, 2, 2, 2)
         main_layout.setSpacing(0)
 
-        # 1. Title bar kustom
         title_bar = DialogTitleBar("Tambah Stok Produk", self)
         main_layout.addWidget(title_bar)
 
-        # 2. Konten utama (search + tabel + footer)
         content_layout = QVBoxLayout()
         content_layout.setContentsMargins(20, 16, 20, 16)
         content_layout.setSpacing(14)
@@ -105,12 +100,10 @@ class TambahStokDialog(QDialog):
         root_layout.addWidget(root_widget)
         self.setLayout(root_layout)
 
-        # Stylesheet global dialog
         self.setStyleSheet(f"""
             QWidget#TambahStokFrame {{
                 background-color: {self.BG_COLOR};
                 border: 2px solid {self.ACCENT_COLOR};
-                border-radius: 4px;
             }}
         """)
 
@@ -123,13 +116,11 @@ class TambahStokDialog(QDialog):
         search_layout = QHBoxLayout()
         search_layout.setSpacing(10)
 
-        # Label
         label_cari = QLabel("Cari Produk:")
         label_cari.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
         label_cari.setStyleSheet(f"color: {self.TEXT_PRIMARY}; border: none;")
         search_layout.addWidget(label_cari)
 
-        # Input pencarian
         self.input_cari = QLineEdit()
         self.input_cari.setPlaceholderText("Ketik nama produk atau SKU...")
         self.input_cari.setFixedHeight(36)
@@ -151,7 +142,6 @@ class TambahStokDialog(QDialog):
         """)
         search_layout.addWidget(self.input_cari)
 
-        # Tombol Cari (dengan ikon kaca pembesar dari QStyle)
         self.btn_cari = QPushButton("  Cari")
         self.btn_cari.setFixedSize(90, 36)
         self.btn_cari.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -188,24 +178,18 @@ class TambahStokDialog(QDialog):
         self.table.setHorizontalHeaderLabels(self.COLUMN_HEADERS)
         self.table.setRowCount(0)
 
-        # Pengaturan header
         header = self.table.horizontalHeader()
         header.setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # Kolom "Deskripsi" (index 3) stretch mengisi sisa ruang
-        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
 
-        # Lebar kolom tetap untuk kolom lainnya
-        self.table.setColumnWidth(0, 70)   # ID Produk
-        self.table.setColumnWidth(1, 90)   # SKU
-        self.table.setColumnWidth(2, 140)  # Nama Produk
-        # kolom 3 = Deskripsi → Stretch
-        self.table.setColumnWidth(4, 85)   # Stok Saat Ini
-        self.table.setColumnWidth(5, 90)   # Tambah Unit
-        self.table.setColumnWidth(6, 85)   # Stok Akhir
-        self.table.setColumnWidth(7, 70)   # Aksi
+        self.table.setColumnWidth(0, 50)
+        self.table.setColumnWidth(1, 100)
+        self.table.setColumnWidth(3, 95)   
+        self.table.setColumnWidth(4, 100)   
+        self.table.setColumnWidth(5, 95)   
+        self.table.setColumnWidth(6, 70)   
 
-        # Properti tabel
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(
             QAbstractItemView.SelectionBehavior.SelectRows
@@ -217,12 +201,11 @@ class TambahStokDialog(QDialog):
         self.table.setAlternatingRowColors(False)
         self.table.setShowGrid(False)
 
-        # Stylesheet tabel
         self.table.setStyleSheet(f"""
             QTableWidget {{
                 background-color: {self.SURFACE_COLOR};
-                border: 2px solid {self.BORDER_COLOR};
-                border-radius: 6px;
+                border: 2px solid {self.TEXT_PRIMARY};
+                border-radius: 0px;
                 color: {self.TEXT_PRIMARY};
                 gridline-color: {self.BORDER_COLOR};
                 font-size: 12px;
@@ -257,7 +240,6 @@ class TambahStokDialog(QDialog):
         bottom_layout = QHBoxLayout()
         bottom_layout.setSpacing(10)
 
-        # Label ringkasan (kiri)
         self.label_ringkasan = QLabel(
             "Total Item Baru: 0 Produk.  Total Unit Ditambah: 0"
         )
@@ -267,7 +249,6 @@ class TambahStokDialog(QDialog):
         )
         bottom_layout.addWidget(self.label_ringkasan)
 
-        # Spacer → dorong tombol ke kanan
         bottom_layout.addSpacerItem(
             QSpacerItem(
                 40, 20,
@@ -276,7 +257,6 @@ class TambahStokDialog(QDialog):
             )
         )
 
-        # Tombol "Hapus Semua" (abu-abu)
         self.btn_hapus_semua = self._create_bottom_button(
             "Hapus Semua",
             self.NEUTRAL_COLOR,
@@ -286,7 +266,6 @@ class TambahStokDialog(QDialog):
         self.btn_hapus_semua.clicked.connect(self._on_hapus_semua)
         bottom_layout.addWidget(self.btn_hapus_semua)
 
-        # Tombol "Batal" (standar)
         self.btn_batal = self._create_bottom_button(
             "Batal",
             "#333333",
@@ -296,7 +275,6 @@ class TambahStokDialog(QDialog):
         self.btn_batal.clicked.connect(self.reject)
         bottom_layout.addWidget(self.btn_batal)
 
-        # Tombol "Simpan Stok" (CTA hijau)
         self.btn_simpan = self._create_bottom_button(
             "Simpan Stok",
             self.ACCENT_COLOR,
@@ -393,8 +371,10 @@ class TambahStokDialog(QDialog):
 
         stok_saat_ini = product.get("stok", 0)
 
+        self.jumlah_baris += 1
+
         # ── Kolom 0: ID Produk ──
-        item_id = QTableWidgetItem(str(product["id"]))
+        item_id = QTableWidgetItem(str(self.jumlah_baris))
         item_id.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         item_id.setForeground(QColor(self.TEXT_SECONDARY))
         self.table.setItem(row, 0, item_id)
@@ -411,18 +391,10 @@ class TambahStokDialog(QDialog):
         )
         self.table.setItem(row, 2, item_nama)
 
-        # ── Kolom 3: Deskripsi ──
-        item_desc = QTableWidgetItem(product.get("deskripsi", "-"))
-        item_desc.setTextAlignment(
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
-        )
-        item_desc.setForeground(QColor(self.TEXT_SECONDARY))
-        self.table.setItem(row, 3, item_desc)
-
         # ── Kolom 4: Stok Saat Ini ──
         item_stok = QTableWidgetItem(str(stok_saat_ini))
         item_stok.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.table.setItem(row, 4, item_stok)
+        self.table.setItem(row, 3, item_stok)
 
         # ── Kolom 5: Tambah Unit (INJEKSI QSpinBox) ──────────────
         # QSpinBox diinjeksikan langsung ke dalam sel tabel
@@ -461,13 +433,13 @@ class TambahStokDialog(QDialog):
         spin_box.valueChanged.connect(
             lambda val, r=row: self._on_spinbox_changed(r, val)
         )
-        self.table.setCellWidget(row, 5, spin_box)
+        self.table.setCellWidget(row, 4, spin_box)
 
         # ── Kolom 6: Stok Akhir ──
         item_stok_akhir = QTableWidgetItem(str(stok_saat_ini))
         item_stok_akhir.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         item_stok_akhir.setForeground(QColor(self.ACCENT_COLOR))
-        self.table.setItem(row, 6, item_stok_akhir)
+        self.table.setItem(row, 5, item_stok_akhir)
 
         # ── Kolom 7: Aksi (INJEKSI QPushButton "Hapus") ──────────
         # QPushButton bertuliskan "Hapus" diinjeksikan ke sel tabel
@@ -497,7 +469,7 @@ class TambahStokDialog(QDialog):
             }}
         """)
         btn_hapus.clicked.connect(lambda _, r=row: self._on_hapus_baris(r))
-        self.table.setCellWidget(row, 7, btn_hapus)
+        self.table.setCellWidget(row, 6, btn_hapus)
 
     # ══════════════════════════════════════════════════════════
     #  EVENT HANDLERS
@@ -509,14 +481,14 @@ class TambahStokDialog(QDialog):
         Memperbarui kolom "Stok Akhir" = Stok Saat Ini + Tambah Unit,
         lalu memperbarui label ringkasan.
         """
-        spin_box = self.table.cellWidget(row, 5)
+        spin_box = self.table.cellWidget(row, 4)
         if spin_box is None:
             return
 
         stok_awal = spin_box.property("stok_awal") or 0
         stok_akhir = stok_awal + value
 
-        item_akhir = self.table.item(row, 6)
+        item_akhir = self.table.item(row, 5)
         if item_akhir:
             item_akhir.setText(str(stok_akhir))
 
@@ -526,6 +498,7 @@ class TambahStokDialog(QDialog):
         """Menghapus baris tertentu dari tabel, lalu memperbarui ringkasan."""
         if 0 <= row < self.table.rowCount():
             self.table.removeRow(row)
+            self.jumlah_baris -= 1
 
             # Perbarui lambda binding pada baris-baris setelahnya
             # agar indeks baris tetap konsisten setelah penghapusan.
@@ -539,7 +512,7 @@ class TambahStokDialog(QDialog):
         """
         for row in range(self.table.rowCount()):
             # Rebind QSpinBox
-            spin_box = self.table.cellWidget(row, 5)
+            spin_box = self.table.cellWidget(row, 4)
             if spin_box and isinstance(spin_box, QSpinBox):
                 try:
                     spin_box.valueChanged.disconnect()
@@ -551,7 +524,7 @@ class TambahStokDialog(QDialog):
                 )
 
             # Rebind QPushButton "Hapus"
-            btn_hapus = self.table.cellWidget(row, 7)
+            btn_hapus = self.table.cellWidget(row, 6)
             if btn_hapus and isinstance(btn_hapus, QPushButton):
                 try:
                     btn_hapus.clicked.disconnect()
@@ -563,6 +536,7 @@ class TambahStokDialog(QDialog):
 
     def _on_hapus_semua(self):
         """Menghapus seluruh baris dari tabel."""
+        self.jumlah_baris = 0
         self.table.setRowCount(0)
         self._update_ringkasan()
 
@@ -612,7 +586,7 @@ class TambahStokDialog(QDialog):
         total_unit = 0
 
         for row in range(self.table.rowCount()):
-            spin_box = self.table.cellWidget(row, 5)
+            spin_box = self.table.cellWidget(row, 4)
             if spin_box and isinstance(spin_box, QSpinBox):
                 val = spin_box.value()
                 if val > 0:
