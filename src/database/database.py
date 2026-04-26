@@ -681,6 +681,7 @@ class DatabaseManager:
             """)
 
             result = cursor.fetchone()[0]
+            conn.close()
             return result
         else:
             cursor.execute("""
@@ -688,6 +689,7 @@ class DatabaseManager:
             """)
 
             result = cursor.fetchone()[0]
+            conn.close()
             return result
 
     def search_products(self, keyword: str, limit: int, filter_index: int = 0):
@@ -1115,7 +1117,7 @@ class DatabaseManager:
         item["keterangan"] = f"{nama_satuan} {jumlah} pcs" if nama_satuan and jumlah else "-"
         return item
 
-    def update_produk(self, jenis, sku_lama, data_baru):
+    def update_produk(self, jenis, sku_lama, data_baru, update_stok=False):
         """Update produk satuan/paket berdasarkan SKU lama dengan validasi unik."""
         conn = sqlite3.connect(self.db_name)
         cursor = conn.cursor()
@@ -1124,6 +1126,12 @@ class DatabaseManager:
             "updated": False,
             "error": "",
         }
+
+        if update_stok:
+            try:
+                pass
+            except Exception as e:
+                print(e)
 
         try:
             if jenis == "satuan":

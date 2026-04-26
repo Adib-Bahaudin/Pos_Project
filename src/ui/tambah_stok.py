@@ -9,15 +9,17 @@ Catatan: File ini hanya menangani frontend/UI.
          Operasi backend (database) belum diimplementasikan.
 """
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QStringListModel, QTimer
 from PySide6.QtGui import QFont, QColor, QIcon
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QWidget,
     QLabel, QLineEdit, QPushButton, QTableWidget,
     QTableWidgetItem, QHeaderView, QSpinBox,
     QSpacerItem, QSizePolicy, QAbstractItemView,
+    QCompleter,
 )
 
+from src.database.database import DatabaseManager
 from src.ui.dialog_title_bar import DialogTitleBar
 from src.utils.fungsi import ScreenSize
 from src.utils.message import CustomMessageBox
@@ -40,16 +42,18 @@ class TambahStokDialog(QDialog):
     DANGER_HOVER = "#ff6666"
     NEUTRAL_COLOR = "#555555"
     NEUTRAL_HOVER = "#777777"
+    SEARCH_LIMIT = 12
 
     COLUMN_HEADERS = [
         "NO.", "SKU", "Nama Produk",
         "Stok Saat Ini", "Tambah Unit", "Stok Akhir", "Aksi",
     ]
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, db_manager=None):
         super().__init__(parent)
 
         self.jumlah_baris = 0
+        self.search_lookup = {}
 
         self.setWindowFlag(
             Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog
@@ -65,6 +69,9 @@ class TambahStokDialog(QDialog):
         self.move(x, y)
 
         self._setup_ui()
+        self._setup_search_completer()
+        self.db_manager = db_manager or DatabaseManager()
+        self._pending_search_add_signature = None
 
     # ══════════════════════════════════════════════════════════
     #  SETUP UI UTAMA
@@ -139,6 +146,7 @@ class TambahStokDialog(QDialog):
                 border: 2px solid {self.ACCENT_HOVER};
             }}
         """)
+        self.input_cari.textChanged.connect(self._handle_search_text_changed)
         search_layout.addWidget(self.input_cari)
 
         self.btn_cari = QPushButton("  Cari")
@@ -375,7 +383,7 @@ class TambahStokDialog(QDialog):
         item_sku.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         self.table.setItem(row, 1, item_sku)
 
-        item_nama = QTableWidgetItem(product["nama"])
+        item_nama = QTableWidgetItem(product["nama_barang"])
         item_nama.setTextAlignment(
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
         )
@@ -592,3 +600,84 @@ class TambahStokDialog(QDialog):
             f"Total Item Baru: {total_item} Produk.  "
             f"Total Unit Ditambah: {total_unit}"
         )
+
+    def _handle_search_text_changed(self, text: str):
+        if text in self.search_lookup:
+            return
+
+        if not text:
+            self.search_model.setStringList([])
+            self.search_lookup.clear()
+
+            if (p := self.search_completer.popup()):
+                p.hide()
+            return
+
+        self._refresh_search_suggestions(text)
+
+    def _setup_search_completer(self):
+        self.search_model = QStringListModel(self)
+        self.search_completer = QCompleter(self.search_model, self)
+        self.search_completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.search_completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.search_completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        self.search_completer.activated.connect(self._handle_completer_activated)
+        self.input_cari.setCompleter(self.search_completer)
+
+    def _refresh_search_suggestions(self, keyword: str = ""):
+        keyword = keyword.strip()
+        self.search_suggestions = self.db_manager.search_products(
+            keyword=keyword,
+            limit=self.SEARCH_LIMIT,
+            filter_index=1
+        )
+        self.search_lookup = {
+            self._build_suggestion_text(item): item
+            for item in self.search_suggestions
+        }
+        self.search_model.setStringList(list(self.search_lookup.keys()))
+
+        if keyword and self.search_suggestions:
+            self.search_completer.complete()
+
+    def _handle_completer_activated(self, selected_text: str):
+        product = self.search_lookup.get(selected_text)
+        if not product:
+            return
+
+        self._add_product_to_cart_once_per_event_cycle(product)
+        QTimer.singleShot(0, self.input_cari.clear)
+
+    @staticmethod
+    def _build_suggestion_text(item: dict) -> str:
+        return f"{item['nama_barang']} • {item['sku']} • {str(item['tipe']).title()}"
+
+    def _add_product_to_cart_once_per_event_cycle(self, product: dict):
+        signature = self._get_product_signature(product)
+        if signature == self._pending_search_add_signature:
+            return
+
+        self._pending_search_add_signature = signature
+        QTimer.singleShot(0, self._clear_pending_search_add_signature)
+        self._add_product_row(product)
+
+    def _get_product_signature(self, product: dict):
+        """
+        Signature untuk mencegah double-add pada siklus event Qt yang sama
+        (mis. activated completer + returnPressed dipanggil berurutan).
+        """
+        product_id = product.get("id")
+        sku = product.get("sku")
+        tipe = product.get("tipe")
+
+        if product_id is None and sku is None and tipe is None:
+            return ("__object__", str(id(product)))
+
+        return (
+            str(product_id or ""),
+            str(sku or ""),
+            str(tipe or "").casefold(),
+        )
+
+    def _clear_pending_search_add_signature(self):
+        self._pending_search_add_signature = None
