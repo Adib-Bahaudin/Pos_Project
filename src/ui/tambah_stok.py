@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 
 from src.ui.dialog_title_bar import DialogTitleBar
 from src.utils.fungsi import ScreenSize
+from src.utils.message import CustomMessageBox
 
 
 class TambahStokDialog(QDialog):
@@ -64,8 +65,6 @@ class TambahStokDialog(QDialog):
         self.move(x, y)
 
         self._setup_ui()
-
-        self._load_dummy_data()
 
     # ══════════════════════════════════════════════════════════
     #  SETUP UI UTAMA
@@ -341,13 +340,6 @@ class TambahStokDialog(QDialog):
             },
         ]
 
-    def _load_dummy_data(self):
-        """Memuat data dummy ke dalam tabel."""
-        products = self._get_dummy_products()
-        for product in products:
-            self._add_product_row(product)
-        self._update_ringkasan()
-
     # ══════════════════════════════════════════════════════════
     #  INJEKSI WIDGET KE DALAM TABEL
     # ══════════════════════════════════════════════════════════
@@ -373,34 +365,25 @@ class TambahStokDialog(QDialog):
 
         self.jumlah_baris += 1
 
-        # ── Kolom 0: ID Produk ──
         item_id = QTableWidgetItem(str(self.jumlah_baris))
         item_id.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         item_id.setForeground(QColor(self.TEXT_SECONDARY))
         self.table.setItem(row, 0, item_id)
 
-        # ── Kolom 1: SKU ──
         item_sku = QTableWidgetItem(product["sku"])
         item_sku.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         self.table.setItem(row, 1, item_sku)
 
-        # ── Kolom 2: Nama Produk ──
         item_nama = QTableWidgetItem(product["nama"])
         item_nama.setTextAlignment(
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
         )
         self.table.setItem(row, 2, item_nama)
 
-        # ── Kolom 4: Stok Saat Ini ──
         item_stok = QTableWidgetItem(str(stok_saat_ini))
         item_stok.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         self.table.setItem(row, 3, item_stok)
 
-        # ── Kolom 5: Tambah Unit (INJEKSI QSpinBox) ──────────────
-        # QSpinBox diinjeksikan langsung ke dalam sel tabel
-        # menggunakan setCellWidget(). Sinyal valueChanged dihubungkan
-        # ke _on_spinbox_changed agar kolom "Stok Akhir" dan ringkasan
-        # selalu ter-update secara real-time.
         spin_box = QSpinBox()
         spin_box.setMinimum(0)
         spin_box.setMaximum(9999)
@@ -427,7 +410,6 @@ class TambahStokDialog(QDialog):
                 background-color: {self.ACCENT_COLOR};
             }}
         """)
-        # Simpan referensi stok awal pada spin_box agar bisa dihitung ulang
         spin_box.setProperty("stok_awal", stok_saat_ini)
         spin_box.setProperty("baris", row)
         spin_box.valueChanged.connect(
@@ -435,18 +417,11 @@ class TambahStokDialog(QDialog):
         )
         self.table.setCellWidget(row, 4, spin_box)
 
-        # ── Kolom 6: Stok Akhir ──
         item_stok_akhir = QTableWidgetItem(str(stok_saat_ini))
         item_stok_akhir.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         item_stok_akhir.setForeground(QColor(self.ACCENT_COLOR))
         self.table.setItem(row, 5, item_stok_akhir)
 
-        # ── Kolom 7: Aksi (INJEKSI QPushButton "Hapus") ──────────
-        # QPushButton bertuliskan "Hapus" diinjeksikan ke sel tabel
-        # menggunakan setCellWidget(). Ikon tempat sampah diambil
-        # dari QStyle standar (SP_TrashIcon / SP_DialogDiscardButton).
-        # Klik tombol ini akan memanggil _on_hapus_baris() untuk
-        # menghapus baris yang bersangkutan dari tabel.
         btn_hapus = QPushButton("Hapus")
         btn_hapus.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_hapus.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
@@ -500,8 +475,6 @@ class TambahStokDialog(QDialog):
             self.table.removeRow(row)
             self.jumlah_baris -= 1
 
-            # Perbarui lambda binding pada baris-baris setelahnya
-            # agar indeks baris tetap konsisten setelah penghapusan.
             self._rebind_row_signals()
             self._update_ringkasan()
 
@@ -511,7 +484,6 @@ class TambahStokDialog(QDialog):
         setelah sebuah baris dihapus, karena indeks baris bergeser.
         """
         for row in range(self.table.rowCount()):
-            # Rebind QSpinBox
             spin_box = self.table.cellWidget(row, 4)
             if spin_box and isinstance(spin_box, QSpinBox):
                 try:
@@ -523,7 +495,6 @@ class TambahStokDialog(QDialog):
                     lambda val, r=row: self._on_spinbox_changed(r, val)
                 )
 
-            # Rebind QPushButton "Hapus"
             btn_hapus = self.table.cellWidget(row, 6)
             if btn_hapus and isinstance(btn_hapus, QPushButton):
                 try:
@@ -534,6 +505,11 @@ class TambahStokDialog(QDialog):
                     lambda _, r=row: self._on_hapus_baris(r)
                 )
 
+            nomer = QTableWidgetItem(str(row + 1))
+            nomer.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            nomer.setForeground(QColor(self.TEXT_SECONDARY))    
+            self.table.setItem(row, 0, nomer)
+
     def _on_hapus_semua(self):
         """Menghapus seluruh baris dari tabel."""
         self.jumlah_baris = 0
@@ -542,12 +518,13 @@ class TambahStokDialog(QDialog):
 
     def _on_search(self):
         """
-        Handler tombol Cari (dummy).
+        Handler tombol Cari.
         Saat ini hanya memfilter data dummy berdasarkan teks input.
         Nantinya akan diganti dengan query ke database.
         """
         keyword = self.input_cari.text().strip().lower()
         all_products = self._get_dummy_products()
+        filtered = []
 
         if keyword:
             filtered = [
@@ -556,12 +533,11 @@ class TambahStokDialog(QDialog):
                 or keyword in p["sku"].lower()
             ]
         else:
-            filtered = all_products
+            CustomMessageBox.information(self, "Masukkan Nama Produk!", "Harap ketik nama produk sebelum mencari")
 
-        # Bersihkan tabel dan isi ulang dengan hasil filter
-        self.table.setRowCount(0)
-        for product in filtered:
-            self._add_product_row(product)
+        if filtered is not None:
+            for product in filtered:
+                self._add_product_row(product)
         self._update_ringkasan()
 
     def _on_simpan(self):
