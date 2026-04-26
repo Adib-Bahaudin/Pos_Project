@@ -186,8 +186,8 @@ class TambahStokDialog(QDialog):
         self.table.setColumnWidth(1, 100)
         self.table.setColumnWidth(3, 95)   
         self.table.setColumnWidth(4, 100)   
-        self.table.setColumnWidth(5, 95)   
-        self.table.setColumnWidth(6, 70)   
+        self.table.setColumnWidth(5, 95)
+        self.table.setColumnWidth(6, 70)
 
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(
@@ -360,6 +360,7 @@ class TambahStokDialog(QDialog):
         """
         row = self.table.rowCount()
         self.table.insertRow(row)
+        self.table.setRowHeight(row, 50)
 
         stok_saat_ini = product.get("stok", 0)
 
@@ -534,10 +535,28 @@ class TambahStokDialog(QDialog):
             ]
         else:
             CustomMessageBox.information(self, "Masukkan Nama Produk!", "Harap ketik nama produk sebelum mencari")
+            return
 
-        if filtered is not None:
-            for product in filtered:
+        for product in filtered:
+            is_exist = False
+            row_found = -1
+
+            for row in range(self.table.rowCount()):
+                item_sku = self.table.item(row, 1)
+                if item_sku and item_sku.text() == product['sku']:
+                    is_exist = True
+                    row_found = row
+                    break
+            if is_exist:
+                spin_box = self.table.cellWidget(row_found, 4)
+                if spin_box and isinstance(spin_box, QSpinBox):
+                    current_value = spin_box.value()
+                    spin_box.setValue(current_value + 1)
+            else:
                 self._add_product_row(product)
+
+        self.input_cari.clear()
+        self.input_cari.setFocus()
         self._update_ringkasan()
 
     def _on_simpan(self):
