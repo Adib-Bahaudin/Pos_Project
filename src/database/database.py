@@ -515,39 +515,50 @@ class DatabaseManager:
             """, (sku,))
             sku_barang = cursor.fetchone()
 
+            if sku_barang is None:
+                cursor.execute("""
+                    SELECT 1 FROM produk_paket WHERE sku = ?
+                """, (sku,))
+                sku_barang = cursor.fetchone()
+
             conn.close()
 
             is_valid = not (nama_barang or sku_barang)
             return {
                 "is_valid": is_valid,
-                "nama_barang": nama_barang,
-                "sku_barang": sku_barang
+                "nama_barang": bool(nama_barang),
+                "sku_barang": bool(sku_barang)
             }
         else:
             cursor.execute("""
                 SELECT 1 FROM produk_paket WHERE sku = ?
             """, (sku,))
-
             sku_barang = cursor.fetchone()
+
+            if sku_barang is None:
+                cursor.execute("""
+                    SELECT 1 FROM produk_satuan WHERE sku = ?
+                """, (sku,))
+                sku_barang = cursor.fetchone()
 
             cursor.execute("""
                 SELECT 1 FROM produk_paket WHERE nama_paket = ?
             """, (nama,))
-
             nama_barang = cursor.fetchone()
 
             cursor.execute("""
                 SELECT 1 FROM produk_satuan WHERE nama_barang = ?
             """, (nama_satuan,))
-
             nama_produk = cursor.fetchone()
+
+            conn.close()
 
             is_valid = nama_produk and (not (sku_barang or nama_barang))
             return {
                 "is_valid": is_valid,
-                "sku_barang": sku_barang,
-                "nama_barang": nama_barang,
-                "nama_produk": not nama_produk
+                "sku_barang": bool(sku_barang),
+                "nama_barang": bool(nama_barang),
+                "nama_produk": bool(not nama_produk)
             }
 
     def insert_barang_baru_satuan(self, sku, nama, harga_jual, harga_beli, stok, tanggal):
