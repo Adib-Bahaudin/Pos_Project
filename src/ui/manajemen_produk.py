@@ -317,12 +317,24 @@ class ManajemenProduk(BaseDataPage):
         dialog = TambahStokDialog(self)
         result = dialog.exec_()
         if result == TambahStokDialog.DialogCode.Accepted:
-            result = dialog.get_value()
+            result, info = dialog.get_value()
             self.logger.info(result)
             CustomMessageBox.information(self, "BERHASIL", 
                 "Sukses menambah produk: \n"
                 f"{result}."
             )
+
+            text_info = []
+            for i, j, k in zip(
+                info['nama'],
+                info['sku'],
+                info['jumlah']
+            ):
+                baris_teks = f"{j} • {i} jumlah {k}"
+                text_info.append(baris_teks)
+
+            texts = "\n".join(text_info)
+            print(texts) #Maintenance
             self.table_data()
 
     def table_data(self, offset=0):

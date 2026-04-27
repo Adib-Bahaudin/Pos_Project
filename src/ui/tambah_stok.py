@@ -75,6 +75,8 @@ class TambahStokDialog(QDialog):
         self.db_manager = db_manager or DatabaseManager()
         self._pending_search_add_signature = None
 
+        self.input_cari.setFocus()
+
     # ══════════════════════════════════════════════════════════
     #  SETUP UI UTAMA
     # ══════════════════════════════════════════════════════════
@@ -323,7 +325,7 @@ class TambahStokDialog(QDialog):
             }}
         """)
         return btn
-        
+
     # ══════════════════════════════════════════════════════════
     #  INJEKSI WIDGET KE DALAM TABEL
     # ══════════════════════════════════════════════════════════
@@ -525,10 +527,14 @@ class TambahStokDialog(QDialog):
                     "Tambahkan Produk dan Item Sebelum Melakukan Aksi"
                 )
                 return
+        
+        kunci = ["nama", "sku", "jumlah"]
+        self.tambah_barang = {k: [] for k in kunci}
 
         for row in range(self.table.rowCount()):
             spin_box = self.table.cellWidget(row, 4)
             sku = self.table.item(row, 1)
+            nama = self.table.item(row, 2)
             stok = self.table.item(row, 5)
 
             try:
@@ -542,6 +548,16 @@ class TambahStokDialog(QDialog):
                 val = spin_box.value()
                 if val > 0:
                     self.db_manager.update_produk("", sku, stok, True)
+                    try:
+                        if nama is not None:
+                            nama = nama.text()
+                            data = [nama, sku, val]
+
+                            for k, v in zip(kunci, data):
+                                self.tambah_barang[k].append(v)
+                                
+                    except Exception as e:
+                        log_error(e, "Gagal mengambil nilai",  self.logger)
                 else:
                     self.logger.warning(f"Update stok gagal untuk produk {sku}")
                     CustomMessageBox.warning(
@@ -555,7 +571,7 @@ class TambahStokDialog(QDialog):
         super().accept()
 
     def get_value(self):
-        return self.dataproduk
+        return self.dataproduk, self.tambah_barang
     # ══════════════════════════════════════════════════════════
     #  UPDATE RINGKASAN
     # ══════════════════════════════════════════════════════════
