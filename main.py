@@ -12,6 +12,7 @@ from src.utils.fungsi import ScreenSize
 from src.ui.login import LoginPage
 from src.database.database import DatabaseManager
 from config import asset_path
+from src.utils.logger import get_logger, log_error
 
 
 class TitleBar(QWidget):
@@ -143,8 +144,10 @@ class TitleBar(QWidget):
 
     def _on_close(self):
         """Handler untuk tombol close"""
+        logger = get_logger("ui.titlebar")
+        logger.info("Tombol close ditekan, menutup aplikasi...")
         if self.parent_window:
-            self.parent_window.close_session()
+            self.parent_window.close_and_make_session()
             self.parent_window.close()
 
     def mousePressEvent(self, event):
@@ -166,13 +169,14 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.dashboard_widget = None
+        self.logger = get_logger("ui.main")
         self.login = False
         self.data_login = {"id": None, "username": None, "role": None}
 
         self._setup_window()
         self._setup_ui()
         self._check_existing_session()
+        self.logger.info("MainWindow berhasil diinisialisasi.")
 
     def _setup_window(self):
         """Konfigurasi window utama"""
@@ -225,21 +229,22 @@ class MainWindow(QMainWindow):
 
     def _check_existing_session(self) -> None:
         """Mengecek apakah ada session login yang masih aktif"""
-        database_manager = DatabaseManager()
-        is_logged_in, session_data = database_manager.verify_session()
+        self.logger.info("Memeriksa session login yang sudah ada...")
+        try:
+            database_manager = DatabaseManager()
+            is_logged_in, session_data = database_manager.verify_session()
 
-        if is_logged_in and isinstance(session_data, dict):
-            self.on_login_success(session_data)
-        else:
-            if session_data == "token tidak sudah expaired":
-                pesan = LoginPage()
-                pesan.session_info(session_data)
-            elif session_data == "token tidak valid":
-                pesan = LoginPage()
-                pesan.session_info(session_data)
+            if is_logged_in and isinstance(session_data, dict):
+                self.logger.info(f"Session aktif ditemukan untuk user: {session_data.get('username', 'unknown')}")
+                self.on_login_success(session_data)
+            else:
+                self.logger.warning(f"Session tidak valid: {session_data}")
+        except Exception as e:
+            log_error(e, context="memeriksa session login")
 
     def on_login_success(self, data: dict) -> None:
         """Handler ketika login berhasil"""
+        self.logger.info(f"Login berhasil — user: {data.get('username')}, role: {data.get('role')}")
 
         self.login = True
         self.data_login = {
@@ -257,17 +262,23 @@ class MainWindow(QMainWindow):
         dashboard = Dashboard(data)
         self.stack.addWidget(dashboard)
         self.stack.setCurrentWidget(dashboard)
+        self.logger.info("Dashboard berhasil dimuat.")
 
-    def close_session(self) -> None:
-        """Menutup session login saat aplikasi ditutup"""
+    def close_and_make_session(self) -> None:
+        """Mencoba membuat session login saat aplikasi ditutup"""
         if self.login:
-            database_manager = DatabaseManager()
-            user_id = self.data_login['id']
-            username = self.data_login['username']
-            role = self.data_login['role']
-            database_manager.session_login(user_id, username, role)
+            self.logger.info(f"Membuat session untuk user: {self.data_login['username']}")
+            try:
+                database_manager = DatabaseManager()
+                user_id = self.data_login['id']
+                username = self.data_login['username']
+                role = self.data_login['role']
+                database_manager.session_login(user_id, username, role)
+                self.logger.info("Session berhasil dibuat.")
+            except Exception as e:
+                log_error(e, context="membuat session login")
         else:
-            pass
+            self.logger.info("Tidak ada session aktif untuk ditutup.")
 
 
 if __name__ == "__main__":
@@ -294,7 +305,7 @@ if __name__ == "__main__":
         logger.info("Database belum ada. Melakukan inisialisasi awal...")
         InitDatabase()
 
-    #if last_version != APP_VERSION:
+    #if last_version != APP_VERSION:   #production
     if APP_VERSION != APP_VERSION:     #Testing
         logger.info(f"Versi baru terdeteksi: {APP_VERSION} (sebelumnya: {last_version}). Menjalankan migrasi database...")
         migration_dir = os.path.join(PROJECT_ROOT, "src", "database", "migrations")
@@ -306,7 +317,7 @@ if __name__ == "__main__":
     else:
         logger.info(f"Versi aplikasi saat ini: {APP_VERSION}. Melewati migrasi database.")
 
-    app = QApplication([])
+    app = QApplication(sys.argv)
     app.setWindowIcon(QIcon(asset_path("Black White Geometric Letter B Modern Logo.svg")))
 
     install_global_exception_handler()

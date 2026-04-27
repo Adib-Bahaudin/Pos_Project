@@ -4,9 +4,10 @@ from PySide6.QtWidgets import (
     QWidget, QFrame, QHBoxLayout, QVBoxLayout, QLabel,
     QLineEdit, QPushButton
 )
-from config import asset_path
 
+from config import asset_path
 from src.database.database import DatabaseManager
+from src.utils.logger import get_logger, log_error
 
 
 class LoginPage(QWidget):
@@ -262,9 +263,12 @@ class LoginPage(QWidget):
 
     def _open_register_dialog(self):
         """Membuka dialog registrasi user baru"""
+        logger = get_logger("ui.login")
+        logger.info("Membuka dialog registrasi user baru.")
         from src.ui.register import RegisterDialog
         dialog = RegisterDialog(self)
         if dialog.exec():
+            logger.info("Registrasi user baru berhasil.")
             self.error_info.setStyleSheet("color: #00ff7f;")
             self.error_info.setText("✅ User Rekan Berhasil Diregistrasi")
             self.text_input.setFocus()
@@ -298,30 +302,46 @@ class LoginPage(QWidget):
 
     def _toggle_password_visibility(self):
         """Toggle visibility password antara tersembunyi dan terlihat"""
+        logger = get_logger("ui.login")
+        self.is_password_visible = not self.is_password_visible
+
         if self.is_password_visible:
-            self.text_input.setEchoMode(QLineEdit.EchoMode.Password)
-            self.toggle_visibility_button.setIcon(QIcon(asset_path("mata tutup.svg")))
-            self.is_password_visible = False
-        else:
             self.text_input.setEchoMode(QLineEdit.EchoMode.Normal)
             self.toggle_visibility_button.setIcon(QIcon(asset_path("mata.svg")))
-            self.is_password_visible = True
+        else:
+            self.text_input.setEchoMode(QLineEdit.EchoMode.Password)
+            self.toggle_visibility_button.setIcon(QIcon(asset_path("mata tutup.svg")))
+
+        logger.debug(f"Password visibility: {'visible' if self.is_password_visible else 'hidden'}")
 
     def _handle_login(self):
         """Handler untuk proses login"""
-        database_manager = DatabaseManager()
+        logger = get_logger("ui.login")
         key = self.text_input.text().strip()
 
-        if key.isdigit():
+        if not key:
+            self.error_info.setText("Masukkan Kunci Akses Terlebih Dahulu")
+            logger.warning("Percobaan login dengan input kosong.")
+            return
+
+        if not key.isdigit():
+            self.error_info.setText("Kunci Hanya Berupa Angka")
+            logger.warning("Percobaan login dengan input non-numerik.")
+            return
+
+        try:
+            logger.info("Memproses percobaan login...")
+            database_manager = DatabaseManager()
             is_success, result = database_manager.verify_login(key)
-            if is_success:
+
+            if is_success and isinstance(result, dict):
+                logger.info(f"Login berhasil untuk user: {result.get('username', 'unknown')}")
                 self.error_info.setText('')
                 if self.on_login_success:
                     self.on_login_success(result)
             else:
+                logger.warning(f"Login gagal: {result}")
                 self.error_info.setText(str(result))
-        else:
-            self.error_info.setText("Kunci Hanya Berupa Angka")
-
-    def session_info(self, session):
-        self.error_info.setText(session)
+        except Exception as e:
+            user_msg = log_error(e, context="proses login")
+            self.error_info.setText(user_msg)

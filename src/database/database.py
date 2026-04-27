@@ -466,7 +466,7 @@ class DatabaseManager:
         conn.close()
 
         if not result:
-            return False, "database.py : token tidak ada"
+            return False, "tidak ditemukan token di database"
 
         try:
             token = result[0]
