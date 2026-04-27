@@ -23,6 +23,7 @@ from src.database.database import DatabaseManager
 from src.ui.dialog_title_bar import DialogTitleBar
 from src.utils.fungsi import ScreenSize
 from src.utils.message import CustomMessageBox
+from src.utils.logger import get_logger, log_error
 
 
 class TambahStokDialog(QDialog):
@@ -51,7 +52,7 @@ class TambahStokDialog(QDialog):
 
     def __init__(self, parent=None, db_manager=None):
         super().__init__(parent)
-
+        self.logger=get_logger("TambahStok")
         self.jumlah_baris = 0
         self.search_lookup = {}
 
@@ -573,15 +574,30 @@ class TambahStokDialog(QDialog):
         data stok terbaru ke database.
         """
         for row in range(self.table.rowCount()):
+            spin_box = self.table.cellWidget(row, 4)
             sku = self.table.item(row, 1)
             stok = self.table.item(row, 5)
 
-            if sku is not None and stok is not None:
-                sku = sku.text()
-                stok = stok.text()
+            try:
+                if sku is not None and stok is not None:
+                    sku = sku.text()
+                    stok = stok.text()
+            except Exception as e:
+                log_error(e, f"{sku} atau {stok} tidak memiliki nilai", self.logger)
 
-            self.db_manager.update_produk("", sku, stok, True)
-            
+            if spin_box and isinstance(spin_box, QSpinBox):
+                val = spin_box.value()
+                if val > 0:
+                    self.db_manager.update_produk("", sku, stok, True)
+                else:
+                    self.logger.warning(f"Update stok gagal untuk produk {sku}")
+                    CustomMessageBox.warning(
+                        self, 
+                        "Gagal Update Stok!", 
+                        f"Tidak menambahkan stok pada produk dengan SKU: {sku}."
+                        "Dikarenakan anda menambahkan 0 item untuk produk tersebut."
+                    )
+
         self.accept()
 
     # ══════════════════════════════════════════════════════════
