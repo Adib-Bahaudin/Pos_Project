@@ -350,12 +350,10 @@ class SejarahTransaksiWindow(QWidget):
         self.date_to.setCalendarWidget(cal_to)
         
         self.cb_kasir = QComboBox()
-        # Terapkan stylesheet combo_style
         self.cb_kasir.setStyleSheet(combo_style)
         
         self.cb_metode = QComboBox()
         self.cb_metode.addItems(["Semua", "Tunai", "Transfer", "QRIS"])
-        # Terapkan stylesheet combo_style
         self.cb_metode.setStyleSheet(combo_style)
         
         self.search_box = QLineEdit()

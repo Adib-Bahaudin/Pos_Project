@@ -188,6 +188,28 @@ class PengeluaranTokoWindow(QWidget):
         self.note_input.setPlaceholderText("Catatan (opsional)")
         self.note_input.setMinimumHeight(70)
         self.note_input.setMaximumHeight(75)
+        self.note_input.setStyleSheet("""
+            QScrollBar:vertical {
+                border: none;
+                background: transparent;
+                width: 8px;
+                margin: 0px 0px 0px 0px;
+            }
+            QScrollBar::handle:vertical {
+                background: rgba(100, 100, 100, 150);
+                min-height: 20px;
+                border-radius: 4px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: rgba(150, 150, 150, 255);
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+                background: none;
+            }
+        """)
         note_layout = self._field_layout("📝 Catatan", self.note_input)
         row_2.addLayout(note_layout)
         button_lay = QVBoxLayout()
@@ -263,6 +285,27 @@ class PengeluaranTokoWindow(QWidget):
             }
             QTableWidget::item:selected {
                 background-color: #26363A;
+            }
+
+            QScrollBar:vertical {
+                border: none;
+                background: transparent;
+                width: 8px;
+                margin: 0px 0px 0px 0px;
+            }
+            QScrollBar::handle:vertical {
+                background: rgba(100, 100, 100, 150);
+                min-height: 20px;
+                border-radius: 4px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: rgba(150, 150, 150, 255);
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
+            }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+                background: none;
             }
         """)
         root_layout.addWidget(self.table)

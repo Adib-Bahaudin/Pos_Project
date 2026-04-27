@@ -15,7 +15,7 @@ from src.ui.edit_produk import EditProduk
 from src.ui.hapus_produk import HapusProdukDialog
 from src.ui.tambah_stok import TambahStokDialog
 from src.utils.message import CustomMessageBox
-from src.utils.logger import get_logger
+from src.utils.logger import get_logger, log_error
 from src.ui.ui_base import BaseTableWidget, BaseDataPage
 
 
@@ -32,6 +32,7 @@ class ManajemenProduk(BaseDataPage):
     def __init__(self):
         super().__init__()
 
+        self.db = DatabaseManager()
         self.logger = get_logger("ManajemenProduk")
 
         self._setup_ui()
@@ -334,7 +335,20 @@ class ManajemenProduk(BaseDataPage):
                 text_info.append(baris_teks)
 
             texts = "\n".join(text_info)
-            print(texts) #Maintenance
+            from src.services.services_produk import ServicesManajemenProduk
+            services = ServicesManajemenProduk()
+            payload = services.payloadtambahstok(info, texts)
+            if payload is not None:
+                result = self.db.insert_pengeluaran(
+                    payload["date"],
+                    payload["category"],
+                    payload["amount"],
+                    payload["method"],
+                    payload["note"]
+                )
+                if not result["success"]:
+                    CustomMessageBox.warning(self, "Error", result["message"])
+
             self.table_data()
 
     def table_data(self, offset=0):

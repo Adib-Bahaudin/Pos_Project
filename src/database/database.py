@@ -10,6 +10,7 @@ import jwt
 
 from config import DATABASE_PATH
 from src.database.init_database import InitDatabase
+from src.utils import logger
 from src.utils.logger import get_logger, log_error
 from src.utils.security import get_secret_key, get_algorithm
 
@@ -1718,7 +1719,6 @@ class DatabaseManager:
         finally:
             conn.close()
 
-    # Pengeluaran CRUD methods
     def insert_pengeluaran(self, tanggal, kategori, nominal, metode, catatan=""):
         """Insert a new pengeluaran record."""
         conn = sqlite3.connect(self.db_name)
@@ -1732,6 +1732,7 @@ class DatabaseManager:
                 (tanggal, kategori, nominal, metode, catatan),
             )
             conn.commit()
+            self.logger.info(f"Pengeluaran sebesar {nominal} berhasil disimpan.")
             return {"success": True, "message": "Pengeluaran berhasil disimpan."}
         except Exception as e:
             conn.rollback()
