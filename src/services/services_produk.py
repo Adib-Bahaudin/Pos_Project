@@ -26,7 +26,8 @@ class ServicesManajemenProduk():
             result = self.db.get_search_produk(0, i, 1, 0, True)
             _data = result[0]
             harga_beli = int(_data['harga_beli'])
-            total_harga = harga_beli * j
+            subtotal = harga_beli * j
+            total_harga = total_harga + subtotal
 
         return total_harga
         

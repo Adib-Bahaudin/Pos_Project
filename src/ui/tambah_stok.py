@@ -4,9 +4,6 @@ Tambah Stok Produk Dialog
 Dialog untuk menambahkan stok produk yang sudah ada di database.
 Menampilkan tabel produk dengan kolom QSpinBox untuk input jumlah
 unit yang akan ditambahkan, serta ringkasan total di bagian bawah.
-
-Catatan: File ini hanya menangani frontend/UI.
-         Operasi backend (database) belum diimplementasikan.
 """
 
 from PySide6.QtCore import Qt, QStringListModel, QTimer
@@ -24,6 +21,7 @@ from src.ui.dialog_title_bar import DialogTitleBar
 from src.utils.fungsi import ScreenSize
 from src.utils.message import CustomMessageBox
 from src.utils.logger import get_logger, log_error
+from config import asset_path
 
 
 class TambahStokDialog(QDialog):
@@ -157,11 +155,7 @@ class TambahStokDialog(QDialog):
         self.btn_cari.setFixedSize(90, 36)
         self.btn_cari.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_cari.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
-        self.btn_cari.setIcon(
-            self.style().standardIcon(
-                self.style().StandardPixmap.SP_FileDialogContentsView
-            )
-        )
+        self.btn_cari.setIcon(QIcon(asset_path("search.svg")))
         self.btn_cari.setStyleSheet(f"""
             QPushButton {{
                 background-color: {self.ACCENT_COLOR};
@@ -199,7 +193,7 @@ class TambahStokDialog(QDialog):
         self.table.setColumnWidth(3, 95)   
         self.table.setColumnWidth(4, 100)   
         self.table.setColumnWidth(5, 95)
-        self.table.setColumnWidth(6, 70)
+        self.table.setColumnWidth(6, 100)
 
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(
@@ -409,14 +403,10 @@ class TambahStokDialog(QDialog):
         item_stok_akhir.setForeground(QColor(self.ACCENT_COLOR))
         self.table.setItem(row, 5, item_stok_akhir)
 
-        btn_hapus = QPushButton("Hapus")
+        btn_hapus = QPushButton("  Hapus")
         btn_hapus.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_hapus.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
-        btn_hapus.setIcon(
-            self.style().standardIcon(
-                self.style().StandardPixmap.SP_DialogDiscardButton
-            )
-        )
+        btn_hapus.setIcon(QIcon(asset_path("tong_sampah_putih.svg")))
         btn_hapus.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;

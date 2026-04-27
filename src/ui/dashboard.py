@@ -433,14 +433,15 @@ class Dashboard(QWidget):
             self.main_stack.setCurrentWidget(self.pengeluaran_widget)
         elif self.button_user_left.isChecked():
             self.button_user_right.setMinimumWidth(self.BUTTON_EXPANDED_WIDTH)
-            if not self.user_widget:
-                from src.ui.user_administrator import UserAdministrator
-                self.user_widget = UserAdministrator()
-                if self.main_stack.indexOf(self.user_widget) == -1:
-                    self.main_stack.addWidget(self.user_widget)
-            else:
-                self.user_widget.refresh_data()
-            self.main_stack.setCurrentWidget(self.user_widget)
+            self.main_stack.setCurrentWidget(self.error_widget)  #in maintenance
+            #if not self.user_widget:
+            #    from src.ui.user_administrator import UserAdministrator
+            #    self.user_widget = UserAdministrator()
+            #    if self.main_stack.indexOf(self.user_widget) == -1:
+            #        self.main_stack.addWidget(self.user_widget)
+            #else:
+            #    self.user_widget.refresh_data()
+            #self.main_stack.setCurrentWidget(self.user_widget)
 
     def _reset_all_button_widths(self):
         """Reset semua lebar tombol sidebar kanan ke ukuran default"""
