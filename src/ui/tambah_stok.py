@@ -569,10 +569,19 @@ class TambahStokDialog(QDialog):
 
     def _on_simpan(self):
         """
-        Handler tombol Simpan Stok (dummy).
-        Saat ini hanya menutup dialog dengan status Accepted.
-        Nantinya akan menyimpan data stok ke database.
+        Handler tombol Simpan akan menyimpan 
+        data stok terbaru ke database.
         """
+        for row in range(self.table.rowCount()):
+            sku = self.table.item(row, 1)
+            stok = self.table.item(row, 5)
+
+            if sku is not None and stok is not None:
+                sku = sku.text()
+                stok = stok.text()
+
+            self.db_manager.update_produk("", sku, stok, True)
+            
         self.accept()
 
     # ══════════════════════════════════════════════════════════

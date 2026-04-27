@@ -1129,9 +1129,28 @@ class DatabaseManager:
 
         if update_stok:
             try:
-                pass
+                cursor.execute("SELECT id FROM produk_satuan WHERE sku = ?", (sku_lama,))
+                row = cursor.fetchone()
+
+                if row is not None:
+                    id_satuan = row[0]
+                    cursor.execute("UPDATE produk_satuan SET stok = ? WHERE id = ?",
+                    (data_baru, id_satuan ))
+                else:
+                    result['error'] = "produk tidak ditemukan"
+                    return result
+
+                conn.commit()
+                result['updated']=True
+                self.logger.info(f"sukses update stok untuk produk {sku_lama}")
+                return result
+
             except Exception as e:
-                print(e)
+                result["error"] = f"{e}"
+                log_error(e, f"Gagal menyimpan stok terbaru untuk produk {sku_lama}", self.logger)
+                return result
+            finally:
+                conn.close()
 
         try:
             if jenis == "satuan":
