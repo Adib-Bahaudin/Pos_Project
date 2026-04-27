@@ -55,6 +55,7 @@ class TambahStokDialog(QDialog):
         self.logger=get_logger("TambahStok")
         self.jumlah_baris = 0
         self.search_lookup = {}
+        self.dataproduk = None
 
         self.setWindowFlag(
             Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog
@@ -289,7 +290,7 @@ class TambahStokDialog(QDialog):
             self.ACCENT_HOVER,
             text_color="#000000",
         )
-        self.btn_simpan.clicked.connect(self._on_simpan)
+        self.btn_simpan.clicked.connect(self.accept)
         bottom_layout.addWidget(self.btn_simpan)
 
         parent_layout.addLayout(bottom_layout)
@@ -322,33 +323,7 @@ class TambahStokDialog(QDialog):
             }}
         """)
         return btn
-
-    # ══════════════════════════════════════════════════════════
-    #  DATA DUMMY (REPRESENTASI BACKEND)
-    # ══════════════════════════════════════════════════════════
-
-    def _get_dummy_products(self) -> list[dict]:
-        """
-        Mengembalikan data dummy produk.
-        Nantinya fungsi ini akan diganti dengan query ke database.
-        """
-        return [
-            {
-                "id": 1,
-                "sku": "SKU-001",
-                "nama": "Pulpen Pilot G2",
-                "deskripsi": "Pulpen gel 0.5mm warna hitam",
-                "stok": 24,
-            },
-            {
-                "id": 2,
-                "sku": "SKU-002",
-                "nama": "Buku Tulis A5",
-                "deskripsi": "Buku tulis 80 halaman bergaris",
-                "stok": 50,
-            },
-        ]
-
+        
     # ══════════════════════════════════════════════════════════
     #  INJEKSI WIDGET KE DALAM TABEL
     # ══════════════════════════════════════════════════════════
@@ -529,50 +504,28 @@ class TambahStokDialog(QDialog):
     def _on_search(self):
         """
         Handler tombol Cari.
-        Saat ini hanya memfilter data dummy berdasarkan teks input.
-        Nantinya akan diganti dengan query ke database.
         """
-        keyword = self.input_cari.text().strip().lower()
-        all_products = self._get_dummy_products()
-        filtered = []
-
-        if keyword:
-            filtered = [
-                p for p in all_products
-                if keyword in p["nama"].lower()
-                or keyword in p["sku"].lower()
-            ]
-        else:
-            CustomMessageBox.information(self, "Masukkan Nama Produk!", "Harap ketik nama produk sebelum mencari")
-            return
-
-        for product in filtered:
-            is_exist = False
-            row_found = -1
-
-            for row in range(self.table.rowCount()):
-                item_sku = self.table.item(row, 1)
-                if item_sku and item_sku.text() == product['sku']:
-                    is_exist = True
-                    row_found = row
-                    break
-            if is_exist:
-                spin_box = self.table.cellWidget(row_found, 4)
-                if spin_box and isinstance(spin_box, QSpinBox):
-                    current_value = spin_box.value()
-                    spin_box.setValue(current_value + 1)
-            else:
-                self._add_product_row(product)
-
         self.input_cari.clear()
         self.input_cari.setFocus()
         self._update_ringkasan()
 
-    def _on_simpan(self):
+    def accept(self):
         """
         Handler tombol Simpan akan menyimpan 
         data stok terbaru ke database.
         """
+        import re
+        text = self.label_ringkasan.text()
+        match = re.search(r"Total Item Baru:\s*(\d+)", text)
+
+        if match:
+            nilai_item = int(match.group(1))
+            if nilai_item <= 0:
+                CustomMessageBox.warning(self, "Barang Kosong!", 
+                    "Tambahkan Produk dan Item Sebelum Melakukan Aksi"
+                )
+                return
+
         for row in range(self.table.rowCount()):
             spin_box = self.table.cellWidget(row, 4)
             sku = self.table.item(row, 1)
@@ -594,12 +547,15 @@ class TambahStokDialog(QDialog):
                     CustomMessageBox.warning(
                         self, 
                         "Gagal Update Stok!", 
-                        f"Tidak menambahkan stok pada produk dengan SKU: {sku}."
+                        f"Tidak menambahkan stok pada produk dengan SKU: {sku}. \n"
                         "Dikarenakan anda menambahkan 0 item untuk produk tersebut."
                     )
 
-        self.accept()
+        self.dataproduk = self.label_ringkasan.text()
+        super().accept()
 
+    def get_value(self):
+        return self.dataproduk
     # ══════════════════════════════════════════════════════════
     #  UPDATE RINGKASAN
     # ══════════════════════════════════════════════════════════
@@ -625,6 +581,10 @@ class TambahStokDialog(QDialog):
             f"Total Item Baru: {total_item} Produk.  "
             f"Total Unit Ditambah: {total_unit}"
         )
+
+    # ══════════════════════════════════════════════════════════
+    #  HANDEL AUTO SUGGESTION
+    # ══════════════════════════════════════════════════════════
 
     def _handle_search_text_changed(self, text: str):
         if text in self.search_lookup:
@@ -675,7 +635,7 @@ class TambahStokDialog(QDialog):
 
     @staticmethod
     def _build_suggestion_text(item: dict) -> str:
-        return f"{item['nama_barang']} • {item['sku']} • {str(item['tipe']).title()}"
+        return f"• {item['sku']} • {item['nama_barang']}"
 
     def _add_product_to_cart_once_per_event_cycle(self, product: dict):
         signature = self._get_product_signature(product)

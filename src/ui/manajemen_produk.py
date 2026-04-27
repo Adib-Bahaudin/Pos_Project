@@ -15,6 +15,7 @@ from src.ui.edit_produk import EditProduk
 from src.ui.hapus_produk import HapusProdukDialog
 from src.ui.tambah_stok import TambahStokDialog
 from src.utils.message import CustomMessageBox
+from src.utils.logger import get_logger
 from src.ui.ui_base import BaseTableWidget, BaseDataPage
 
 
@@ -30,6 +31,8 @@ class ManajemenProduk(BaseDataPage):
 
     def __init__(self):
         super().__init__()
+
+        self.logger = get_logger("ManajemenProduk")
 
         self._setup_ui()
         self._setup_connections()
@@ -312,8 +315,14 @@ class ManajemenProduk(BaseDataPage):
     def _show_tambah_stok_dialog(self):
         """Menampilkan dialog tambah stok produk"""
         dialog = TambahStokDialog(self)
-        result = dialog.exec()
+        result = dialog.exec_()
         if result == TambahStokDialog.DialogCode.Accepted:
+            result = dialog.get_value()
+            self.logger.info(result)
+            CustomMessageBox.information(self, "BERHASIL", 
+                "Sukses menambah produk: \n"
+                f"{result}."
+            )
             self.table_data()
 
     def table_data(self, offset=0):
