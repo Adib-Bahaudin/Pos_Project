@@ -728,9 +728,34 @@ class TambahStokDialog(QDialog):
             )
             return
 
+        nama_produk = product.get("nama_barang", "")
+        if self._is_product_in_table(nama_produk):
+            self.logger.info(
+                f"Produk '{nama_produk}' (SKU={product.get('sku')}) "
+                f"sudah ada di tabel, tidak ditambahkan ulang"
+            )
+            return
+
         self._pending_search_add_signature = signature
         QTimer.singleShot(0, self._clear_pending_search_add_signature)
         self._add_product_row(product)
+
+    def _is_product_in_table(self, nama_produk: str) -> bool:
+        """
+        Mengecek apakah produk dengan nama tertentu sudah ada di tabel
+        berdasarkan kolom 2 (Nama Produk).
+
+        Args:
+            nama_produk: Nama produk yang akan dicek.
+
+        Returns:
+            True jika produk sudah ada di tabel, False jika belum.
+        """
+        for row in range(self.table.rowCount()):
+            item = self.table.item(row, 2)
+            if item and item.text() == nama_produk:
+                return True
+        return False
 
     def _get_product_signature(self, product: dict):
         """
