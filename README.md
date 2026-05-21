@@ -44,6 +44,9 @@ python -m pip install -r requirements.txt
 # 5️⃣ Jalankan aplikasi
 python main.py
 ````
+> 📢 **Pengumuman**
+> 
+> Jika Anda ingin menggunakan versi `.exe` dari proyek ini, silakan unduh dari halaman **[Release](https://github.com/Adib-Bahaudin/Pos_Project/releases)** terlebih dahulu. Setelah itu, hubungi author untuk memperoleh **kunci akses master**.
 
 ---
 
