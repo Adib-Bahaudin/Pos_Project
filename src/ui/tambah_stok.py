@@ -50,7 +50,8 @@ class TambahStokDialog(QDialog):
 
     def __init__(self, parent=None, db_manager=None):
         super().__init__(parent)
-        self.logger=get_logger("TambahStok")
+        self.logger = get_logger("TambahStok")
+        self.logger.info("Inisialisasi dialog TambahStok")
         self.jumlah_baris = 0
         self.search_lookup = {}
         self.dataproduk = None
@@ -67,6 +68,7 @@ class TambahStokDialog(QDialog):
             self.WINDOW_WIDTH, self.WINDOW_HEIGHT
         )
         self.move(x, y)
+        self.logger.debug(f"Posisi dialog: x={x}, y={y}, ukuran={self.WINDOW_WIDTH}x{self.WINDOW_HEIGHT}")
 
         self._setup_ui()
         self._setup_search_completer()
@@ -74,6 +76,7 @@ class TambahStokDialog(QDialog):
         self._pending_search_add_signature = None
 
         self.input_cari.setFocus()
+        self.logger.info("Dialog TambahStok berhasil diinisialisasi")
 
     # ══════════════════════════════════════════════════════════
     #  SETUP UI UTAMA
@@ -346,6 +349,12 @@ class TambahStokDialog(QDialog):
         stok_saat_ini = product.get("stok", 0)
         harga_beli = product.get("harga_beli", 0) or 0
 
+        self.logger.info(
+            f"Menambahkan produk ke tabel baris {row}: "
+            f"SKU={product.get('sku')}, Nama={product.get('nama_barang')}, "
+            f"Stok={stok_saat_ini}, HargaBeli={harga_beli}"
+        )
+
         self.jumlah_baris += 1
 
         item_id = QTableWidgetItem(str(self.jumlah_baris))
@@ -442,10 +451,18 @@ class TambahStokDialog(QDialog):
         """
         spin_box = self.table.cellWidget(row, 5)
         if spin_box is None:
+            self.logger.warning(f"SpinBox tidak ditemukan pada baris {row}")
             return
 
         harga_unit = spin_box.property("harga_unit") or 0
         subtotal = value * harga_unit
+
+        sku_item = self.table.item(row, 1)
+        sku_text = sku_item.text() if sku_item else "?"
+        self.logger.debug(
+            f"SpinBox berubah baris {row} (SKU={sku_text}): "
+            f"qty={value}, harga_unit={harga_unit}, subtotal={subtotal}"
+        )
 
         item_subtotal = self.table.item(row, 6)
         if item_subtotal:
@@ -456,18 +473,27 @@ class TambahStokDialog(QDialog):
     def _on_hapus_baris(self, row: int):
         """Menghapus baris tertentu dari tabel, lalu memperbarui ringkasan."""
         if 0 <= row < self.table.rowCount():
+            sku_item = self.table.item(row, 1)
+            sku_text = sku_item.text() if sku_item else "?"
+            self.logger.info(f"Menghapus baris {row} (SKU={sku_text}) dari tabel, sisa baris: {self.table.rowCount() - 1}")
+
             self.table.removeRow(row)
             self.jumlah_baris -= 1
 
             self._rebind_row_signals()
             self._update_ringkasan()
+        else:
+            self.logger.warning(f"Gagal hapus baris {row}: indeks di luar jangkauan (total baris: {self.table.rowCount()})")
 
     def _rebind_row_signals(self):
         """
         Memperbarui koneksi sinyal QSpinBox dan QPushButton
         setelah sebuah baris dihapus, karena indeks baris bergeser.
         """
-        for row in range(self.table.rowCount()):
+        total = self.table.rowCount()
+        self.logger.debug(f"Rebind sinyal untuk {total} baris setelah penghapusan")
+
+        for row in range(total):
             spin_box = self.table.cellWidget(row, 5)
             if spin_box and isinstance(spin_box, QSpinBox):
                 try:
@@ -496,6 +522,8 @@ class TambahStokDialog(QDialog):
 
     def _on_hapus_semua(self):
         """Menghapus seluruh baris dari tabel."""
+        jumlah_dihapus = self.table.rowCount()
+        self.logger.info(f"Menghapus semua baris dari tabel ({jumlah_dihapus} baris)")
         self.jumlah_baris = 0
         self.table.setRowCount(0)
         self._update_ringkasan()
@@ -513,6 +541,8 @@ class TambahStokDialog(QDialog):
         Handler tombol Simpan akan menyimpan 
         data stok terbaru ke database.
         """
+        self.logger.info(f"Tombol Simpan ditekan, memproses {self.table.rowCount()} baris")
+
         import re
         text = self.label_ringkasan.text()
         match = re.search(r"Total Item:\s*(\d+)", text)
@@ -520,6 +550,7 @@ class TambahStokDialog(QDialog):
         if match:
             nilai_item = int(match.group(1))
             if nilai_item <= 0:
+                self.logger.warning("Simpan dibatalkan: tidak ada item dengan qty > 0")
                 CustomMessageBox.warning(self, "Barang Kosong!", 
                     "Tambahkan Produk dan Item Sebelum Melakukan Aksi"
                 )
@@ -527,6 +558,8 @@ class TambahStokDialog(QDialog):
         
         kunci = ["nama", "sku", "jumlah"]
         self.tambah_barang = {k: [] for k in kunci}
+        berhasil_count = 0
+        gagal_count = 0
 
         for row in range(self.table.rowCount()):
             spin_box = self.table.cellWidget(row, 5)
@@ -540,12 +573,17 @@ class TambahStokDialog(QDialog):
                     stok_val = spin_box.value() if spin_box else 0
                     stok_awal = int(stok_saat_ini.text()) if stok_saat_ini else 0
                     stok = str(stok_awal + stok_val)
+                    self.logger.debug(
+                        f"Baris {row}: SKU={sku}, stok_awal={stok_awal}, "
+                        f"tambah={stok_val}, stok_akhir={stok}"
+                    )
             except Exception as e:
-                log_error(e, f"{sku} atau {stok_saat_ini} tidak memiliki nilai", self.logger)
+                log_error(e, f"Baris {row}: gagal membaca nilai SKU/stok", self.logger)
 
             if spin_box and isinstance(spin_box, QSpinBox):
                 val = spin_box.value()
                 if val > 0:
+                    self.logger.info(f"Update stok ke DB: SKU={sku}, stok_baru={stok}")
                     self.db_manager.update_produk("", sku, stok, True)
                     try:
                         if nama is not None:
@@ -554,11 +592,14 @@ class TambahStokDialog(QDialog):
 
                             for k, v in zip(kunci, data):
                                 self.tambah_barang[k].append(v)
-                                
+
+                            berhasil_count += 1
                     except Exception as e:
-                        log_error(e, "Gagal mengambil nilai",  self.logger)
+                        gagal_count += 1
+                        log_error(e, f"Gagal mengambil data nama produk baris {row}", self.logger)
                 else:
-                    self.logger.warning(f"Update stok gagal untuk produk {sku}")
+                    gagal_count += 1
+                    self.logger.warning(f"Produk SKU={sku} dilewati: qty=0")
                     CustomMessageBox.warning(
                         self, 
                         "Gagal Update Stok!", 
@@ -566,6 +607,10 @@ class TambahStokDialog(QDialog):
                         "Dikarenakan anda menambahkan 0 item untuk produk tersebut."
                     )
 
+        self.logger.info(
+            f"Proses simpan selesai: {berhasil_count} produk berhasil, "
+            f"{gagal_count} produk dilewati/gagal"
+        )
         self.dataproduk = self.label_ringkasan.text()
         super().accept()
 
@@ -598,6 +643,11 @@ class TambahStokDialog(QDialog):
                 harga_unit = spin_box.property("harga_unit") or 0
                 total_harga += val * harga_unit
 
+        self.logger.debug(
+            f"Ringkasan diperbarui: total_item={total_item}, "
+            f"total_harga={total_harga}, total_baris={self.table.rowCount()}"
+        )
+
         self.label_ringkasan.setText(
             f"Total Item: {total_item} Produk, "
             f"Total Harga: {self._format_rupiah(total_harga)} Rupiah"
@@ -612,6 +662,7 @@ class TambahStokDialog(QDialog):
             return
 
         if not text:
+            self.logger.debug("Input pencarian dikosongkan, mereset suggestion")
             self.search_model.setStringList([])
             self.search_lookup.clear()
 
@@ -632,11 +683,16 @@ class TambahStokDialog(QDialog):
 
     def _refresh_search_suggestions(self, keyword: str = ""):
         keyword = keyword.strip()
+        self.logger.debug(f"Mencari produk dengan keyword: '{keyword}', limit={self.SEARCH_LIMIT}")
+
         self.search_suggestions = self.db_manager.search_products(
             keyword=keyword,
             limit=self.SEARCH_LIMIT,
             filter_index=1
         )
+
+        self.logger.debug(f"Hasil pencarian: {len(self.search_suggestions)} produk ditemukan")
+
         self.search_lookup = {
             self._build_suggestion_text(item): item
             for item in self.search_suggestions
@@ -649,8 +705,13 @@ class TambahStokDialog(QDialog):
     def _handle_completer_activated(self, selected_text: str):
         product = self.search_lookup.get(selected_text)
         if not product:
+            self.logger.warning(f"Produk tidak ditemukan di lookup untuk: '{selected_text}'")
             return
 
+        self.logger.info(
+            f"Produk dipilih dari suggestion: SKU={product.get('sku')}, "
+            f"Nama={product.get('nama_barang')}"
+        )
         self._add_product_to_cart_once_per_event_cycle(product)
         QTimer.singleShot(0, self.input_cari.clear)
 
@@ -661,6 +722,10 @@ class TambahStokDialog(QDialog):
     def _add_product_to_cart_once_per_event_cycle(self, product: dict):
         signature = self._get_product_signature(product)
         if signature == self._pending_search_add_signature:
+            self.logger.debug(
+                f"Double-add dicegah untuk produk SKU={product.get('sku')} "
+                f"(signature sudah pending)"
+            )
             return
 
         self._pending_search_add_signature = signature
