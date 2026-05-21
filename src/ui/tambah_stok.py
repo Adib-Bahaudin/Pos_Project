@@ -45,7 +45,7 @@ class TambahStokDialog(QDialog):
 
     COLUMN_HEADERS = [
         "NO.", "SKU", "Nama Produk",
-        "Stok Saat Ini", "Tambah Unit", "Stok Akhir", "Aksi",
+        "Stok Saat Ini", "Harga Unit", "Tambah Unit", "Subtotal", "Aksi",
     ]
 
     def __init__(self, parent=None, db_manager=None):
@@ -188,12 +188,13 @@ class TambahStokDialog(QDialog):
 
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
 
-        self.table.setColumnWidth(0, 50)
-        self.table.setColumnWidth(1, 100)
-        self.table.setColumnWidth(3, 95)   
-        self.table.setColumnWidth(4, 100)   
-        self.table.setColumnWidth(5, 95)
-        self.table.setColumnWidth(6, 100)
+        self.table.setColumnWidth(0, 45)
+        self.table.setColumnWidth(1, 90)
+        self.table.setColumnWidth(3, 80)
+        self.table.setColumnWidth(4, 90)
+        self.table.setColumnWidth(5, 85)
+        self.table.setColumnWidth(6, 90)
+        self.table.setColumnWidth(7, 80)
 
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(
@@ -246,7 +247,7 @@ class TambahStokDialog(QDialog):
         bottom_layout.setSpacing(10)
 
         self.label_ringkasan = QLabel(
-            "Total Item Baru: 0 Produk.  Total Unit Ditambah: 0"
+            "Total Item: 0 Produk, Total Harga: 0 Rupiah"
         )
         self.label_ringkasan.setFont(QFont("Segoe UI", 10))
         self.label_ringkasan.setStyleSheet(
@@ -343,6 +344,7 @@ class TambahStokDialog(QDialog):
         self.table.setRowHeight(row, 50)
 
         stok_saat_ini = product.get("stok", 0)
+        harga_beli = product.get("harga_beli", 0) or 0
 
         self.jumlah_baris += 1
 
@@ -364,6 +366,10 @@ class TambahStokDialog(QDialog):
         item_stok = QTableWidgetItem(str(stok_saat_ini))
         item_stok.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         self.table.setItem(row, 3, item_stok)
+
+        item_harga_unit = QTableWidgetItem(f"{int(harga_beli):,}".replace(",", "."))
+        item_harga_unit.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.table.setItem(row, 4, item_harga_unit)
 
         spin_box = QSpinBox()
         spin_box.setMinimum(0)
@@ -392,16 +398,17 @@ class TambahStokDialog(QDialog):
             }}
         """)
         spin_box.setProperty("stok_awal", stok_saat_ini)
+        spin_box.setProperty("harga_unit", int(harga_beli))
         spin_box.setProperty("baris", row)
         spin_box.valueChanged.connect(
             lambda val, r=row: self._on_spinbox_changed(r, val)
         )
-        self.table.setCellWidget(row, 4, spin_box)
+        self.table.setCellWidget(row, 5, spin_box)
 
-        item_stok_akhir = QTableWidgetItem(str(stok_saat_ini))
-        item_stok_akhir.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        item_stok_akhir.setForeground(QColor(self.ACCENT_COLOR))
-        self.table.setItem(row, 5, item_stok_akhir)
+        item_subtotal = QTableWidgetItem("0")
+        item_subtotal.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+        item_subtotal.setForeground(QColor(self.ACCENT_COLOR))
+        self.table.setItem(row, 6, item_subtotal)
 
         btn_hapus = QPushButton("  Hapus")
         btn_hapus.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -421,7 +428,7 @@ class TambahStokDialog(QDialog):
             }}
         """)
         btn_hapus.clicked.connect(lambda _, r=row: self._on_hapus_baris(r))
-        self.table.setCellWidget(row, 6, btn_hapus)
+        self.table.setCellWidget(row, 7, btn_hapus)
 
     # ══════════════════════════════════════════════════════════
     #  EVENT HANDLERS
@@ -430,19 +437,19 @@ class TambahStokDialog(QDialog):
     def _on_spinbox_changed(self, row: int, value: int):
         """
         Dipanggil setiap kali QSpinBox pada baris tertentu berubah.
-        Memperbarui kolom "Stok Akhir" = Stok Saat Ini + Tambah Unit,
+        Memperbarui kolom "Subtotal" = Tambah Unit × Harga Unit,
         lalu memperbarui label ringkasan.
         """
-        spin_box = self.table.cellWidget(row, 4)
+        spin_box = self.table.cellWidget(row, 5)
         if spin_box is None:
             return
 
-        stok_awal = spin_box.property("stok_awal") or 0
-        stok_akhir = stok_awal + value
+        harga_unit = spin_box.property("harga_unit") or 0
+        subtotal = value * harga_unit
 
-        item_akhir = self.table.item(row, 5)
-        if item_akhir:
-            item_akhir.setText(str(stok_akhir))
+        item_subtotal = self.table.item(row, 6)
+        if item_subtotal:
+            item_subtotal.setText(f"{subtotal:,}".replace(",", "."))
 
         self._update_ringkasan()
 
@@ -461,7 +468,7 @@ class TambahStokDialog(QDialog):
         setelah sebuah baris dihapus, karena indeks baris bergeser.
         """
         for row in range(self.table.rowCount()):
-            spin_box = self.table.cellWidget(row, 4)
+            spin_box = self.table.cellWidget(row, 5)
             if spin_box and isinstance(spin_box, QSpinBox):
                 try:
                     spin_box.valueChanged.disconnect()
@@ -472,7 +479,7 @@ class TambahStokDialog(QDialog):
                     lambda val, r=row: self._on_spinbox_changed(r, val)
                 )
 
-            btn_hapus = self.table.cellWidget(row, 6)
+            btn_hapus = self.table.cellWidget(row, 7)
             if btn_hapus and isinstance(btn_hapus, QPushButton):
                 try:
                     btn_hapus.clicked.disconnect()
@@ -508,7 +515,7 @@ class TambahStokDialog(QDialog):
         """
         import re
         text = self.label_ringkasan.text()
-        match = re.search(r"Total Item Baru:\s*(\d+)", text)
+        match = re.search(r"Total Item:\s*(\d+)", text)
 
         if match:
             nilai_item = int(match.group(1))
@@ -522,17 +529,19 @@ class TambahStokDialog(QDialog):
         self.tambah_barang = {k: [] for k in kunci}
 
         for row in range(self.table.rowCount()):
-            spin_box = self.table.cellWidget(row, 4)
+            spin_box = self.table.cellWidget(row, 5)
             sku = self.table.item(row, 1)
             nama = self.table.item(row, 2)
-            stok = self.table.item(row, 5)
+            stok_saat_ini = self.table.item(row, 3)
 
             try:
-                if sku is not None and stok is not None:
+                if sku is not None and stok_saat_ini is not None:
                     sku = sku.text()
-                    stok = stok.text()
+                    stok_val = spin_box.value() if spin_box else 0
+                    stok_awal = int(stok_saat_ini.text()) if stok_saat_ini else 0
+                    stok = str(stok_awal + stok_val)
             except Exception as e:
-                log_error(e, f"{sku} atau {stok} tidak memiliki nilai", self.logger)
+                log_error(e, f"{sku} atau {stok_saat_ini} tidak memiliki nilai", self.logger)
 
             if spin_box and isinstance(spin_box, QSpinBox):
                 val = spin_box.value()
@@ -566,26 +575,32 @@ class TambahStokDialog(QDialog):
     #  UPDATE RINGKASAN
     # ══════════════════════════════════════════════════════════
 
+    @staticmethod
+    def _format_rupiah(value: int) -> str:
+        """Format angka dengan pemisah ribuan menggunakan titik."""
+        return f"{value:,}".replace(",", ".")
+
     def _update_ringkasan(self):
         """
         Menghitung ulang ringkasan:
-        - Total Item Baru = jumlah baris dengan Tambah Unit > 0
-        - Total Unit Ditambah = sum semua nilai Tambah Unit
+        - Total Item = jumlah baris dengan Tambah Unit > 0
+        - Total Harga = sum semua subtotal (Tambah Unit × Harga Unit)
         """
         total_item = 0
-        total_unit = 0
+        total_harga = 0
 
         for row in range(self.table.rowCount()):
-            spin_box = self.table.cellWidget(row, 4)
+            spin_box = self.table.cellWidget(row, 5)
             if spin_box and isinstance(spin_box, QSpinBox):
                 val = spin_box.value()
                 if val > 0:
                     total_item += 1
-                total_unit += val
+                harga_unit = spin_box.property("harga_unit") or 0
+                total_harga += val * harga_unit
 
         self.label_ringkasan.setText(
-            f"Total Item Baru: {total_item} Produk.  "
-            f"Total Unit Ditambah: {total_unit}"
+            f"Total Item: {total_item} Produk, "
+            f"Total Harga: {self._format_rupiah(total_harga)} Rupiah"
         )
 
     # ══════════════════════════════════════════════════════════

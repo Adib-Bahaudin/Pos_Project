@@ -708,14 +708,16 @@ class DatabaseManager:
             query_parts.append(
                 """
                 SELECT
-                    id,
-                    sku,
-                    nama_barang,
-                    harga_jual,
-                    stok,
-                    'satuan' AS tipe
-                FROM produk_satuan
-                WHERE sku LIKE ? OR nama_barang LIKE ?
+                    ps.id,
+                    ps.sku,
+                    ps.nama_barang,
+                    ps.harga_jual,
+                    ps.stok,
+                    'satuan' AS tipe,
+                    hb.harga AS harga_beli
+                FROM produk_satuan ps
+                LEFT JOIN harga_beli hb ON ps.id = hb.id_satuan
+                WHERE ps.sku LIKE ? OR ps.nama_barang LIKE ?
                 """
             )
             params.extend([filter_keyword, filter_keyword])
@@ -729,7 +731,8 @@ class DatabaseManager:
                     nama_paket AS nama_barang,
                     harga_jual,
                     NULL AS stok,
-                    'paket' AS tipe
+                    'paket' AS tipe,
+                    NULL AS harga_beli
                 FROM produk_paket
                 WHERE sku LIKE ? OR nama_paket LIKE ?
                 """
