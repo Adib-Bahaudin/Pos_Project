@@ -11,6 +11,7 @@ from config import asset_path, asset_uri
 
 from src.database.database import DatabaseManager
 from src.ui.discount import DiscountPopup
+from src.ui.tip_popup import TipPopup
 from src.ui.nota_printer import NotaPrinter
 from src.ui.printer_selection import PrinterSelectionDialog
 from src.utils.fungsi import MacroSpinBox
@@ -30,11 +31,13 @@ class PenjualanWindow(QWidget):
         self.discount_mode = None
         self.is_rounding_active = False
         self.pembulatan_nominal = 0
+        self.tip_nominal = 0
         self.cart_items = []
         self.search_suggestions = []
         self.search_lookup = {}
         self._pending_search_add_signature = None
         self.discount_popup = None
+        self.tip_popup = None
 
         self.setup_ui()
         self._setup_search_completer()
@@ -290,6 +293,7 @@ class PenjualanWindow(QWidget):
         self.summary_subtotal = self._create_summary_row(layout, "Subtotal", "Rp 0")
         self.summary_discount = self._create_summary_row(layout, "Diskon", "Rp 0")
         self.summary_rounding = self._create_summary_row(layout, "Pembulatan", "Rp 0")
+        self.summary_tip = self._create_summary_row(layout, "Tip / Bonus", "Rp 0")
 
         divider = QFrame()
         divider.setFrameShape(QFrame.Shape.HLine)
@@ -440,19 +444,20 @@ class PenjualanWindow(QWidget):
             }
         """)
 
-        self.button_cancel = QPushButton("Cancel")
-        self.button_cancel.setObjectName("ghostDangerButton")
-        self.button_cancel.setStyleSheet("""
-            QPushButton#ghostDangerButton:hover {
-                background-color: #243342;
+        self.button_tip = QPushButton("Tip / Bonus")
+        self.button_tip.setObjectName("tipButton")
+        self.button_tip.setStyleSheet("""
+            QPushButton#tipButton {
+                background-color: #1a3a4a;
+                color: #80cbc4;
+                border: 1px solid #26606a;
             }
-            QPushButton#ghostDangerButton {
-                background-color: #241316;
-                color: #ff8f98;
-                border: 1px solid #59242a;
+            QPushButton#tipButton:hover {
+                background-color: #00897b;
+                color: #e0f2f1;
             }
         """)
-        self.button_cancel.clicked.connect(self._clear_cart)
+        self.button_tip.clicked.connect(self._show_tip_popup)
 
         self.button_pay = QPushButton("Bayar")
         self.button_pay.setObjectName("successButton")
@@ -471,7 +476,7 @@ class PenjualanWindow(QWidget):
         button_grid.setVerticalSpacing(10)
         button_grid.addWidget(self.button_discount, 0, 0)
         button_grid.addWidget(self.button_rounding, 0, 1)
-        button_grid.addWidget(self.button_cancel, 1, 0)
+        button_grid.addWidget(self.button_tip, 1, 0)
         button_grid.addWidget(self.button_pay, 1, 1)
 
         layout.addLayout(button_grid)
@@ -915,6 +920,7 @@ class PenjualanWindow(QWidget):
         self.summary_subtotal.setText(self._format_currency(subtotal))
         self.summary_discount.setText(self._format_discount_summary())
         self.summary_rounding.setText(self._format_currency(self.pembulatan_nominal))
+        self.summary_tip.setText(self._format_currency(self.tip_nominal))
         self.summary_total.setText(self._format_currency(total))
 
         total_item = sum(item["qty"] for item in self.cart_items)
@@ -977,8 +983,10 @@ class PenjualanWindow(QWidget):
         self.diskon_persen = 0
         self.is_rounding_active = False
         self.pembulatan_nominal = 0
+        self.tip_nominal = 0
         self.summary_discount.setText(self._format_discount_summary())
         self.summary_rounding.setText(self._format_currency(0))
+        self.summary_tip.setText(self._format_currency(0))
         self._update_cart_summary()
         self.payment_input.clear()
         self.customer_input.clear()
@@ -1035,6 +1043,37 @@ class PenjualanWindow(QWidget):
         else:
             self.search_hint_label.setText("Diskon transaksi dihapus.")
 
+    def _show_tip_popup(self):
+        if not self.cart_items:
+            self.search_hint_label.setText("Tambahkan produk ke keranjang sebelum memberi tip.")
+            return
+
+        if self.tip_popup is not None:
+            self.tip_popup.close()
+
+        total = self._calculate_final_total()
+        bayar = self._parse_currency_input(self.payment_input.text())
+        kembali = bayar - total
+
+        self.tip_popup = TipPopup(self, self.tip_nominal, kembali, self._apply_tip_value)
+        popup_size = self.tip_popup.sizeHint()
+        origin = self.mapToGlobal(self.rect().topLeft())
+        target_x = max(0, (self.width() - popup_size.width()) // 2)
+        target_y = max(0, (self.height() - popup_size.height()) // 2)
+        self.tip_popup.move(origin.x() + target_x, origin.y() + target_y)
+        self.tip_popup.show()
+
+    def _apply_tip_value(self, nominal: int):
+        self.tip_nominal = max(0, nominal)
+        self._update_cart_summary()
+
+        if self.tip_nominal > 0:
+            self.search_hint_label.setText(
+                f"Tip {self._format_currency(self.tip_nominal)} ditambahkan ke transaksi."
+            )
+        else:
+            self.search_hint_label.setText("Tip transaksi dihapus.")
+
     def _get_cart_subtotal(self) -> int:
         return sum(item["harga_jual"] * item["qty"] for item in self.cart_items)
 
@@ -1055,7 +1094,7 @@ class PenjualanWindow(QWidget):
     def _calculate_final_total(self, subtotal: int | None = None) -> int:
         subtotal = self._get_cart_subtotal() if subtotal is None else max(0, int(subtotal))
         discount_amount = self._calculate_discount_amount(subtotal)
-        return max(0, subtotal - discount_amount + self.pembulatan_nominal)
+        return max(0, subtotal - discount_amount + self.pembulatan_nominal + self.tip_nominal)
 
     def _format_discount_summary(self) -> str:
         if self.discount_mode == "percent" and self.diskon_persen > 0 and self.diskon_nominal > 0:
@@ -1081,6 +1120,7 @@ class PenjualanWindow(QWidget):
             "discount_nominal": discount_nominal,
             "discount_percent": self.diskon_persen if self.discount_mode == "percent" else 0,
             "rounding": self.pembulatan_nominal,
+            "tip_amount": self.tip_nominal,
             "total": total,
             "payment_method": payment_method,
             "amount_paid": amount_paid,
