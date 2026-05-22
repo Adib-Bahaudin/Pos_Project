@@ -288,7 +288,7 @@ class PenjualanWindow(QWidget):
         card = self._build_card()
         layout = QVBoxLayout(card)
         layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(5)
+        layout.setSpacing(2)
 
         self.summary_subtotal = self._create_summary_row(layout, "Subtotal", "Rp 0")
         self.summary_discount = self._create_summary_row(layout, "Diskon", "Rp 0")
@@ -316,7 +316,7 @@ class PenjualanWindow(QWidget):
         card = self._build_card()
         layout = QVBoxLayout(card)
         layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(5)
+        layout.setSpacing(3)
 
         form_layout = QGridLayout()
         form_layout.setHorizontalSpacing(10)
