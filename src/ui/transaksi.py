@@ -15,6 +15,9 @@ from src.ui.tip_popup import TipPopup
 from src.ui.nota_printer import NotaPrinter
 from src.ui.printer_selection import PrinterSelectionDialog
 from src.utils.fungsi import MacroSpinBox
+from src.utils.logger import get_logger, log_error
+
+logger = get_logger("ui.transaksi")
 
 
 class PenjualanWindow(QWidget):
@@ -39,6 +42,10 @@ class PenjualanWindow(QWidget):
         self.discount_popup = None
         self.tip_popup = None
 
+        username = self.user_data.get("username", "N/A")
+        role = self.user_data.get("role", "N/A")
+        logger.info(f"Inisialisasi PenjualanWindow — user='{username}', role='{role}'")
+
         self.setup_ui()
         self._setup_search_completer()
         self._setup_customer_completer()
@@ -47,6 +54,7 @@ class PenjualanWindow(QWidget):
         self._refresh_customer_suggestions()
         self._update_cart_summary()
         self._rebuild_tab_order()
+        logger.debug("PenjualanWindow siap digunakan")
 
     def setup_ui(self):
         root_layout = QHBoxLayout(self)
@@ -559,24 +567,31 @@ class PenjualanWindow(QWidget):
     def _handle_completer_activated(self, selected_text: str):
         product = self.search_lookup.get(selected_text)
         if not product:
+            logger.warning(f"Completer activated tapi produk tidak ditemukan di lookup: '{selected_text}'")
             return
 
+        logger.debug(f"Completer activated: '{selected_text}' → produk_id={product.get('id')}")
         self._add_product_to_cart_once_per_event_cycle(product)
         self.search_hint_label.setText(f"Produk {product['nama_barang']} ditambahkan ke keranjang.")
         QTimer.singleShot(0, self.search_input.clear)
 
     def _refresh_search_suggestions(self, keyword: str = ""):
         keyword = keyword.strip()
+        filter_idx = self.product_filter.currentIndex()
         self.search_suggestions = self.db_manager.search_products(
             keyword=keyword,
             limit=self.SEARCH_LIMIT,
-            filter_index=self.product_filter.currentIndex(),
+            filter_index=filter_idx,
         )
         self.search_lookup = {
             self._build_suggestion_text(item): item
             for item in self.search_suggestions
         }
         self.search_model.setStringList(list(self.search_lookup.keys()))
+        logger.debug(
+            f"Refresh search suggestions: keyword='{keyword}', filter={filter_idx}, "
+            f"ditemukan={len(self.search_suggestions)} produk"
+        )
 
         if keyword and self.search_suggestions:
             self.search_completer.complete()
@@ -646,15 +661,21 @@ class PenjualanWindow(QWidget):
             keyword = self.search_input.text().strip().lower()
             if not keyword:
                 self.search_hint_label.setText("Masukkan SKU atau nama produk terlebih dahulu")
+                logger.debug("Tambah produk dibatalkan: input pencarian kosong")
                 return
             product = self._find_exact_product(keyword)
         
         if not product:
             self.search_hint_label.setText("Produk tidak ditemukan untuk kata kunci tersebut.")
+            logger.info(f"Produk tidak ditemukan dari pencarian: '{self.search_input.text().strip()}'")
             return
 
         if product["tipe"] == "satuan" and int(product.get("stok") or 0) <= 0:
             self.search_hint_label.setText(f"Stok produk {product['nama_barang']} sedang habis.")
+            logger.info(
+                f"Tambah produk ditolak — stok habis: "
+                f"sku='{product['sku']}', nama='{product['nama_barang']}'"
+            )
             return
 
         self._add_product_to_cart_once_per_event_cycle(product)
@@ -702,6 +723,10 @@ class PenjualanWindow(QWidget):
                 self.search_hint_label.setText(
                     f"Qty maksimum untuk {item['nama_barang']} adalah {max_qty}."
                 )
+                logger.info(
+                    f"Qty melebihi batas: sku='{item['sku']}', "
+                    f"max_qty={max_qty}, requested={next_qty}"
+                )
                 return
 
             item["qty"] = next_qty
@@ -712,6 +737,10 @@ class PenjualanWindow(QWidget):
                 qty_widget.blockSignals(False)
             self._refresh_row(existing_index)
             self._update_cart_summary()
+            logger.info(
+                f"Qty produk di-update: sku='{item['sku']}', "
+                f"nama='{item['nama_barang']}', qty={next_qty}"
+            )
             return
 
         max_qty = int(product.get("stok") or self.MAX_QTY)
@@ -727,6 +756,11 @@ class PenjualanWindow(QWidget):
         self.cart_items.append(cart_item)
         self._append_cart_row(cart_item)
         self._update_cart_summary()
+        logger.info(
+            f"Produk baru ditambahkan ke keranjang: sku='{cart_item['sku']}', "
+            f"nama='{cart_item['nama_barang']}', tipe='{cart_item['tipe']}', "
+            f"harga={cart_item['harga_jual']}, max_qty={cart_item['max_qty']}"
+        )
 
     def _get_cart_index(self, sku: str, tipe: str):
         tipe_title = str(tipe).title()
@@ -785,6 +819,7 @@ class PenjualanWindow(QWidget):
 
     def _update_cart_qty(self, row: int, value: int):
         if row >= len(self.cart_items):
+            logger.warning(f"_update_cart_qty: row={row} di luar jangkauan (total={len(self.cart_items)})")
             return
 
         item = self.cart_items[row]
@@ -794,12 +829,19 @@ class PenjualanWindow(QWidget):
         self._refresh_row(row)
         self._update_cart_summary()
         self.search_hint_label.setText(f"Qty {item['nama_barang']} diperbarui menjadi {qty}.")
+        logger.debug(f"Qty diperbarui via spinbox: sku='{item['sku']}', qty_baru={qty}")
 
     def _remove_cart_item(self, row: int):
         if row >= len(self.cart_items):
+            logger.warning(f"_remove_cart_item: row={row} di luar jangkauan (total={len(self.cart_items)})")
             return
 
-        nama_barang = self.cart_items[row]["nama_barang"]
+        removed_item = self.cart_items[row]
+        nama_barang = removed_item["nama_barang"]
+        logger.info(
+            f"Produk dihapus dari keranjang: sku='{removed_item['sku']}', "
+            f"nama='{nama_barang}', qty={removed_item['qty']}"
+        )
         self.cart_items.pop(row)
         self.cart_table.removeRow(row)
         self._rebuild_cart_actions()
@@ -892,6 +934,7 @@ class PenjualanWindow(QWidget):
     def _apply_rounding(self):
         if not self.cart_items:
             self.search_hint_label.setText("Keranjang kosong, tidak dapat melakukan pembulatan.")
+            logger.debug("Pembulatan dibatalkan: keranjang kosong")
             return
 
         self.is_rounding_active = not getattr(self, "is_rounding_active", False)
@@ -902,8 +945,10 @@ class PenjualanWindow(QWidget):
             self.search_hint_label.setText(
                 f"Pembulatan aktif ({status}): {self._format_currency(abs(self.pembulatan_nominal))}"
             )
+            logger.info(f"Pembulatan diaktifkan: nominal={self.pembulatan_nominal} ({status})")
         else:
             self.search_hint_label.setText("Pembulatan dinonaktifkan.")
+            logger.info("Pembulatan dinonaktifkan")
 
     def _update_cart_summary(self):
         subtotal = self._get_cart_subtotal()
@@ -975,6 +1020,10 @@ class PenjualanWindow(QWidget):
         return card
 
     def _clear_cart(self):
+        jumlah_produk = len(self.cart_items)
+        total_item = sum(i["qty"] for i in self.cart_items)
+        logger.info(f"Keranjang dikosongkan: {jumlah_produk} produk, {total_item} item")
+
         self.cart_items.clear()
         self.cart_table.setRowCount(0)
         self.discount_mode = None
@@ -996,7 +1045,9 @@ class PenjualanWindow(QWidget):
     def _show_discount_popup(self):
         if not self.cart_items:
             self.search_hint_label.setText("Tambahkan produk ke keranjang sebelum memberi diskon.")
+            logger.debug("Popup diskon dibatalkan: keranjang kosong")
             return
+        logger.debug("Membuka popup diskon")
 
         if self.discount_popup is not None:
             self.discount_popup.close()
@@ -1023,14 +1074,17 @@ class PenjualanWindow(QWidget):
             self.discount_mode = "percent"
             self.diskon_persen = max(0, min(percent_value, 100))
             self.diskon_nominal_input = 0
+            logger.info(f"Diskon persen diterapkan: {self.diskon_persen}%")
         elif mode == "nominal":
             self.discount_mode = "nominal"
             self.diskon_persen = 0
             self.diskon_nominal_input = max(0, nominal_value)
+            logger.info(f"Diskon nominal diterapkan: Rp {self.diskon_nominal_input}")
         else:
             self.discount_mode = None
             self.diskon_persen = 0
             self.diskon_nominal_input = 0
+            logger.info("Diskon dihapus dari transaksi")
 
         self._update_cart_summary()
 
@@ -1046,7 +1100,9 @@ class PenjualanWindow(QWidget):
     def _show_tip_popup(self):
         if not self.cart_items:
             self.search_hint_label.setText("Tambahkan produk ke keranjang sebelum memberi tip.")
+            logger.debug("Popup tip dibatalkan: keranjang kosong")
             return
+        logger.debug("Membuka popup tip")
 
         if self.tip_popup is not None:
             self.tip_popup.close()
@@ -1071,8 +1127,10 @@ class PenjualanWindow(QWidget):
             self.search_hint_label.setText(
                 f"Tip {self._format_currency(self.tip_nominal)} ditambahkan ke transaksi."
             )
+            logger.info(f"Tip diterapkan: Rp {self.tip_nominal}")
         else:
             self.search_hint_label.setText("Tip transaksi dihapus.")
+            logger.info("Tip dihapus dari transaksi")
 
     def _get_cart_subtotal(self) -> int:
         return sum(item["harga_jual"] * item["qty"] for item in self.cart_items)
@@ -1132,11 +1190,25 @@ class PenjualanWindow(QWidget):
     def _process_payment(self):
         if not self.cart_items:
             self.search_hint_label.setText("Keranjang masih kosong. Tidak ada transaksi untuk dibayar.")
+            logger.debug("Proses bayar dibatalkan: keranjang kosong")
             return
 
         sale_payload = self._build_sale_payload()
+        logger.info(
+            f"Memproses pembayaran — metode='{sale_payload['payment_method']}', "
+            f"subtotal={sale_payload['subtotal']}, diskon={sale_payload['discount_nominal']}, "
+            f"pembulatan={sale_payload['rounding']}, tip={sale_payload['tip_amount']}, "
+            f"total={sale_payload['total']}, bayar={sale_payload['amount_paid']}, "
+            f"customer='{sale_payload['customer_name'] or 'Pelanggan Umum'}'"
+        )
+
         if sale_payload["amount_paid"] < sale_payload["total"]:
             self.search_hint_label.setText("Nominal bayar masih kurang dari total tagihan.")
+            logger.warning(
+                f"Pembayaran ditolak — nominal kurang: "
+                f"bayar={sale_payload['amount_paid']}, total={sale_payload['total']}, "
+                f"kurang={sale_payload['total'] - sale_payload['amount_paid']}"
+            )
             return
 
         result = self.db_manager.create_sale_transaction(
@@ -1146,20 +1218,39 @@ class PenjualanWindow(QWidget):
         )
 
         if not result.get("success"):
-            self.search_hint_label.setText(f"Gagal menyimpan transaksi: {result.get('message', '-')}")
+            error_msg = result.get('message', '-')
+            self.search_hint_label.setText(f"Gagal menyimpan transaksi: {error_msg}")
+            logger.error(
+                f"Gagal menyimpan transaksi ke database: {error_msg} — "
+                f"total={sale_payload['total']}, items={len(self.cart_items)}"
+            )
             return
 
         transaction_id = result.get("transaction_id")
         customer_name = result.get("customer_name", "Pelanggan Umum")
+        logger.info(
+            f"Transaksi berhasil disimpan: id=#{transaction_id}, "
+            f"customer='{customer_name}', total={sale_payload['total']}, "
+            f"bayar={sale_payload['amount_paid']}, "
+            f"kembalian={sale_payload['change_amount']}, "
+            f"metode='{sale_payload['payment_method']}', "
+            f"jumlah_produk={len(self.cart_items)}"
+        )
 
         if self.print_checkbox.isChecked():
+            logger.info(f"Cetak nota diminta untuk transaksi #{transaction_id}")
             transaction_data = self.db_manager.get_transaction_detail_with_items(transaction_id)
             if transaction_data:
                 dialog = PrinterSelectionDialog(self)
                 if dialog.exec() == QDialog.DialogCode.Accepted:
                     selected_printer = dialog.get_selected_printer()
+                    logger.info(f"Mencetak nota — printer='{selected_printer}', transaksi=#{transaction_id}")
                     printer = NotaPrinter(printer_name=selected_printer)
                     printer.print_receipt(transaction_data)
+                else:
+                    logger.info(f"Cetak nota dibatalkan oleh user untuk transaksi #{transaction_id}")
+            else:
+                logger.warning(f"Data transaksi #{transaction_id} tidak ditemukan untuk cetak nota")
 
         self._clear_cart()
         self._refresh_customer_suggestions()
