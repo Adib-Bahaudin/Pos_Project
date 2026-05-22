@@ -886,7 +886,7 @@ class DatabaseManager:
                     id, id_customer, id_kasir,
                     subtotal, diskon_nominal, diskon_persen, pembulatan, tip_amount,
                     total, metode_bayar, nominal_bayar, nominal_kembali, catatan
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     invoice_number,
