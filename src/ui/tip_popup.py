@@ -41,10 +41,7 @@ class TipPopup(QDialog):
             self.nominal_input.setText(self._format_nominal_text(current_tip))
         layout.addWidget(self.nominal_input)
 
-        # --- Tombol prasetel cepat ---
-        preset_label = QLabel("Prasetel Cepat")
-        preset_label.setStyleSheet("color: #9bb0c2; font-size: 12px;")
-        layout.addWidget(preset_label)
+        layout.addSpacing(5)
 
         preset_grid = QGridLayout()
         preset_grid.setHorizontalSpacing(8)

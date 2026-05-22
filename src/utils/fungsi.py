@@ -148,6 +148,17 @@ class MacroSpinBox(QSpinBox):
             QCoreApplication.postEvent(target_widget, left_press)
             QCoreApplication.postEvent(target_widget, left_release)
 
+            QTimer.singleShot(0, self._select_all_focused)
+
+    @staticmethod
+    def _select_all_focused():
+        """Select all text pada widget yang sedang fokus."""
+        focused = QApplication.focusWidget()
+        if isinstance(focused, QSpinBox):
+            focused.lineEdit().selectAll()
+        elif hasattr(focused, 'selectAll'):
+            focused.selectAll()  # type: ignore[union-attr]
+
     def jalankan_macro_ctrl_s(self):
         """Simulasikan penekanan Ctrl+S pada aplikasi (dipakai oleh spinbox terakhir)."""
         target_widget = QApplication.focusWidget()
