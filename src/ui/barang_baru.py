@@ -334,6 +334,8 @@ class TambahBarangBaru(QDialog):
             )
             if not valid:
                 self.label_peringatan.setText("Semua Kolom Wajib Diisi")
+            elif int(harga_jual) <= int(harga_beli):
+                self.label_peringatan.setText("Harga Jual harus lebih besar dari Harga Beli")
             else:
                 validasi = DatabaseManager()
                 validasi2 = validasi.verify_is_valid("satuan", sku, nama)
