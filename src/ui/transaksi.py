@@ -493,6 +493,8 @@ class PenjualanWindow(QWidget):
 
         self.payment_method.currentIndexChanged.connect(self._handle_payment_method_changed)
 
+        self.payment_input.returnPressed.connect(self._process_payment)
+
     def _fokus_nominal(self):
         self.payment_input.setFocus()
 
