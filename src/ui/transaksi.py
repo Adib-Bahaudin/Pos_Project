@@ -103,7 +103,7 @@ class PenjualanWindow(QWidget):
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(18)
+        layout.setSpacing(13)
 
         payment_card = self._create_payment_summary_card()
         input_card = self._create_payment_input_card()
@@ -1040,6 +1040,8 @@ class PenjualanWindow(QWidget):
         self.payment_input.clear()
         self.customer_input.clear()
         self.notes_input.clear()
+        self.payment_method.setCurrentIndex(0)
+        self.search_input.setFocus()
         self.search_hint_label.setText("Keranjang dikosongkan.")
 
     def _show_discount_popup(self):
