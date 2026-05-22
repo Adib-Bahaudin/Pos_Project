@@ -884,7 +884,7 @@ class DatabaseManager:
                 """
                 INSERT INTO transaksi (
                     id, id_customer, id_kasir,
-                    subtotal, diskon_nominal, diskon_persen, pembulatan,
+                    subtotal, diskon_nominal, diskon_persen, pembulatan, tip_amount,
                     total, metode_bayar, nominal_bayar, nominal_kembali, catatan
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
@@ -896,6 +896,7 @@ class DatabaseManager:
                     int(sale_data.get("discount_nominal") or 0),
                     float(sale_data.get("discount_percent") or 0),
                     int(sale_data.get("rounding") or 0),
+                    int(sale_data.get("tip_amount") or 0),
                     int(sale_data.get("total") or 0),
                     sale_data.get("payment_method"),
                     int(sale_data.get("amount_paid") or 0),
@@ -936,14 +937,14 @@ class DatabaseManager:
             total_hpp = self._calculate_total_hpp(cursor, cart_items)
             cursor.execute(
                 """
-                SELECT total, diskon_nominal, diskon_persen, pembulatan
+                SELECT total, diskon_nominal, diskon_persen, pembulatan, tip_amount
                 FROM transaksi
                 WHERE id = ?
                 """,
                 (transaction_id,),
             )
-            transaction_totals = cursor.fetchone() or (0, 0, 0, 0)
-            total, diskon_nominal, diskon_persen, pembulatan = transaction_totals
+            transaction_totals = cursor.fetchone() or (0, 0, 0, 0, 0)
+            total, diskon_nominal, diskon_persen, pembulatan, tip = transaction_totals
             laba_kotor = (
                 total
                 - total_hpp
@@ -952,7 +953,7 @@ class DatabaseManager:
                 + (pembulatan or 0)
             )
             pajak = int(laba_kotor * 0.2) if laba_kotor > 0 else 0
-            laba_bersih = laba_kotor - pajak
+            laba_bersih = laba_kotor - pajak + tip
         
             cursor.execute(
                 """
