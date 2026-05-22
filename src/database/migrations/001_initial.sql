@@ -1,5 +1,5 @@
 -- +goose Up
--- Membuat tabel konfigurasi aplikasi sebagai contoh awal migrasi
+-- Membuat tabel konfigurasi aplikasi sebagai percobaan awal migrasi
 CREATE TABLE IF NOT EXISTS system_config (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     key_name TEXT UNIQUE NOT NULL,
