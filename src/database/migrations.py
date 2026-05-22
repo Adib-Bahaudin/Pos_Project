@@ -1,7 +1,7 @@
 import os
+import re
 import sqlite3
 import shutil
-from datetime import datetime
 from threading import Lock
 
 from src.utils.logger import get_logger
@@ -41,19 +41,52 @@ class MigrationManager:
             except sqlite3.Error as e:
                 logger.error(f"Error initializing schema_version table: {e}")
 
+    _MAX_BACKUPS = 2
+
     def _backup_database(self):
-        """Backup database sebelum menjalankan migrasi apa pun."""
+        """Backup database sebelum menjalankan migrasi apa pun.
+        
+        Format nama file: {name}_backup_{counter:03d}{ext}
+        Contoh: pos_backup_001.db, pos_backup_002.db
+        
+        Hanya menyimpan maksimal 2 file backup. Jika sudah ada 2,
+        file backup paling lama akan dihapus sebelum membuat yang baru.
+        """
         if not os.path.exists(self.db_path):
             return
-            
-        today_str = datetime.now().strftime("%Y-%m-%d")
+
         db_dir = os.path.dirname(self.db_path)
         db_filename = os.path.basename(self.db_path)
-        
         name, ext = os.path.splitext(db_filename)
-        backup_filename = f"{name}_backup_{today_str}{ext}"
+
+        backup_pattern = re.compile(
+            rf"^{re.escape(name)}_backup_(\d{{3}}){re.escape(ext)}$"
+        )
+
+        existing_backups = []
+        if os.path.isdir(db_dir):
+            for f in os.listdir(db_dir):
+                match = backup_pattern.match(f)
+                if match:
+                    counter = int(match.group(1))
+                    existing_backups.append((counter, f))
+
+        existing_backups.sort(key=lambda x: x[0])
+
+        next_counter = (existing_backups[-1][0] + 1) if existing_backups else 1
+
+        while len(existing_backups) >= self._MAX_BACKUPS:
+            _, oldest_file = existing_backups.pop(0)
+            oldest_path = os.path.join(db_dir, oldest_file)
+            try:
+                os.remove(oldest_path)
+                logger.info(f"Deleted oldest backup: {oldest_path}")
+            except OSError as e:
+                logger.error(f"Failed to delete old backup {oldest_path}: {e}")
+
+        backup_filename = f"{name}_backup_{next_counter:03d}{ext}"
         backup_path = os.path.join(db_dir, backup_filename)
-        
+
         try:
             shutil.copy2(self.db_path, backup_path)
             logger.info(f"Database backed up to: {backup_path}")
