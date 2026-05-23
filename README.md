@@ -23,7 +23,7 @@ Saya membuat proyek ini sebagai **tantangan pribadi** untuk menjadi seorang **Fu
 ---
 
 ## ⚙️ Cara Menjalankan Proyek
-
+- Developer Mode - 
 Ikuti langkah-langkah berikut untuk mencoba proyek ini di perangkat Anda 👇  
 
 ```bash
@@ -41,9 +41,14 @@ mv src/utils/security.example.py src/utils/security.py
 # 4️⃣ Install dependensi
 python -m pip install -r requirements.txt
 
-# 5️⃣ Jalankan aplikasi
+# OPSIONAL - rekomendasi cepat
+# 5️⃣ Swap ke mode produksi 
+python src/utils/swap_testing.py
+
+# 6️⃣ Jalankan aplikasi
 python main.py
 ````
+- Normal User mode - Gunakan cara dibawah 👇
 > 📢 **Pengumuman**
 > 
 > Jika Anda ingin menggunakan versi `.exe` dari proyek ini, silakan unduh dari halaman **[Release](https://github.com/Adib-Bahaudin/Pos_Project/releases)** terlebih dahulu. Setelah itu, hubungi author untuk memperoleh **kunci akses master**.
