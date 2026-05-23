@@ -47,7 +47,7 @@ class AuthKeyPopup(QDialog):
 
         # ── Instruksi ─────────────────────────────────────────────
         instruction_label = QLabel("Masukkan key untuk melanjutkan:")
-        instruction_label.setStyleSheet("color: #d8e4ef; font-weight: 600;")
+        instruction_label.setStyleSheet("color: #d8e4ef; background-color: transparent; font-weight: 600;")
         layout.addWidget(instruction_label)
 
         # ── Input key ─────────────────────────────────────────────
@@ -58,7 +58,7 @@ class AuthKeyPopup(QDialog):
 
         # ── Status label (untuk pesan error) ──────────────────────
         self.status_label = QLabel("")
-        self.status_label.setStyleSheet("color: #ff5252; font-size: 12px;")
+        self.status_label.setStyleSheet("color: #ff5252; background-color: transparent; font-size: 12px;")
         self.status_label.setWordWrap(True)
         self.status_label.hide()
         layout.addWidget(self.status_label)
@@ -104,6 +104,24 @@ class AuthKeyPopup(QDialog):
                 min-height: 34px;
                 padding: 0px 14px;
                 border-radius: 10px;
+                background-color: #1a2332;
+                color: #8899aa;
+                border: 1px solid #263241;
+                font-weight: 600;
+            }
+            QDialog#authKeyPopup QPushButton:hover {
+                background-color: #263241;
+                color: #d8e4ef;
+            }
+            QDialog#authKeyPopup QPushButton#primaryButton {
+                background-color: #f9a825;
+                color: #0d1117;
+                border: 1px solid #f9a825;
+                font-weight: 700;
+            }
+            QDialog#authKeyPopup QPushButton#primaryButton:hover {
+                background-color: #fbc02d;
+                color: #0d1117;
             }
         """)
 
