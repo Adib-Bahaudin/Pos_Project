@@ -3,6 +3,9 @@ from PySide6.QtWidgets import (
     QDialog, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QPushButton
 )
 from src.ui.dialog_title_bar import DialogTitleBar
+from src.utils.logger import get_logger, log_error
+
+logger = get_logger("ui.auth_key_popup")
 
 
 class AuthKeyPopup(QDialog):
@@ -23,6 +26,7 @@ class AuthKeyPopup(QDialog):
 
     def __init__(self, parent, verify_callback, title: str = "Autentikasi Diperlukan"):
         super().__init__(parent)
+        logger.debug(f"Inisialisasi AuthKeyPopup — title: '{title}'")
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.verify_callback = verify_callback
         self.verified_data = None  # Menyimpan data user setelah verifikasi berhasil
@@ -81,6 +85,8 @@ class AuthKeyPopup(QDialog):
         self.confirm_button.clicked.connect(self._on_confirm)
         self.key_input.returnPressed.connect(self._on_confirm)
 
+        logger.info("AuthKeyPopup berhasil diinisialisasi dan siap ditampilkan.")
+
         # ── Stylesheet ───────────────────────────────────────────
         self.setStyleSheet("""
             QDialog#authKeyPopup {
@@ -128,21 +134,35 @@ class AuthKeyPopup(QDialog):
     def _on_confirm(self):
         key = self.key_input.text().strip()
         if not key:
+            logger.warning("Konfirmasi gagal — key kosong.")
             self._show_error("Key tidak boleh kosong.")
             return
 
-        success, data = self.verify_callback(key)
+        logger.debug("Tombol Konfirmasi ditekan, memverifikasi key...")
+        try:
+            success, data = self.verify_callback(key)
+        except Exception as e:
+            log_error(e, context="verifikasi key di AuthKeyPopup", logger=logger)
+            self._show_error("Terjadi kesalahan saat memverifikasi key.")
+            return
+
         if success:
             self.verified_data = data['role']
+            logger.info(f"Verifikasi key berhasil — role: {self.verified_data}")
             if self.verified_data == "Super_user":
+                logger.info("Akses Super_user diberikan, popup ditutup (accept).")
                 self.accept()
             else:
+                logger.warning(f"Akses ditolak — role '{self.verified_data}' tidak memiliki izin Super_user.")
                 self._show_error("Maaf, Anda tidak memiliki akses ke fitur ini")
         else:
-            self._show_error(data if isinstance(data, str) else "Key salah. Silakan coba lagi.")
+            error_msg = data if isinstance(data, str) else "Key salah. Silakan coba lagi."
+            logger.warning(f"Verifikasi key gagal — alasan: {error_msg}")
+            self._show_error(error_msg)
             self.key_input.clear()
             self.key_input.setFocus()
 
     def _show_error(self, message: str):
+        logger.debug(f"Menampilkan pesan error ke user: '{message}'")
         self.status_label.setText(message)
         self.status_label.show()
