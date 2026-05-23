@@ -308,10 +308,13 @@ class ManajemenProduk(BaseDataPage):
             self.table_data()
 
     def _show_hapus_dialog(self):
-        dialog = HapusProdukDialog(self)
-        result = dialog.exec()
-        if result == HapusProdukDialog.DialogCode.Accepted:
-            self.table_data()
+        from src.ui.auth_key_popup import AuthKeyPopup
+        verify = AuthKeyPopup(self, self.db.verify_login)
+        if verify.exec():
+            dialog = HapusProdukDialog(self)
+            result = dialog.exec()
+            if result == HapusProdukDialog.DialogCode.Accepted:
+                self.table_data()
 
     def _show_tambah_stok_dialog(self):
         """Menampilkan dialog tambah stok produk"""
