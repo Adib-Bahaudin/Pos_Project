@@ -35,11 +35,13 @@ class ManajemenProduk(BaseDataPage):
         self.db = DatabaseManager()
         self.logger = get_logger("ManajemenProduk")
 
+        self.logger.info("Inisialisasi ManajemenProduk dimulai")
         self._setup_ui()
         self._setup_connections()
 
         shortcut = QShortcut(QKeySequence("Return"), self)
         shortcut.activated.connect(self.handle_shortcut)
+        self.logger.info("ManajemenProduk berhasil diinisialisasi")
 
     def _add_custom_widgets(self, layout):
         # Tombol aksi utama
@@ -199,9 +201,11 @@ class ManajemenProduk(BaseDataPage):
         layout.addWidget(self.button_download)
 
     def download_data_csv(self):
+        self.logger.info("Memulai proses download data produk ke CSV")
         database = DatabaseManager()
         jumlah_satuan = database.get_rows_produk(0)
         jumlah_paket = database.get_rows_produk(1)
+        self.logger.debug(f"Jumlah data ditemukan — satuan: {jumlah_satuan}, paket: {jumlah_paket}")
 
         data_satuan = database.get_produk_satuan(jumlah_satuan, 0) if jumlah_satuan > 0 else []
         data_paket = database.get_produk_paket(jumlah_paket, 0) if jumlah_paket > 0 else []
@@ -236,6 +240,8 @@ class ManajemenProduk(BaseDataPage):
                 "nama_barang_satuan": item.get("nama", ""),
             })
 
+        self.logger.info(f"Total data untuk export: {len(data_export)} baris (satuan: {len(data_satuan)}, paket: {len(data_paket)})")
+
         default_name = f"produk_{datetime.now(ZoneInfo(self.TIMEZONE)).strftime('%Y%m%d_%H%M%S')}.csv"
         path, _ = QFileDialog.getSaveFileName(
             self,
@@ -244,21 +250,25 @@ class ManajemenProduk(BaseDataPage):
             "CSV Files (*.csv)"
         )
         if not path:
+            self.logger.info("Download CSV dibatalkan oleh user (dialog ditutup)")
             return
         if not path.lower().endswith(".csv"):
             path += ".csv"
 
+        self.logger.info(f"Menyimpan file CSV ke: {path}")
         try:
             with open(path, mode="w", newline="", encoding="utf-8-sig") as file:
                 writer = csv.DictWriter(file, fieldnames=headers)
                 writer.writeheader()
                 writer.writerows(data_export)
+            self.logger.info(f"Export CSV berhasil — {len(data_export)} baris tersimpan ke {path}")
             CustomMessageBox.information(
                 self,
                 "Berhasil",
                 f"Data berhasil disimpan ke:\n{path}\n\nJumlah data: {len(data_export)}"
             )
         except Exception as error:
+            log_error(error, context="saat export data produk ke CSV", logger=self.logger)
             CustomMessageBox.critical(
                 self,
                 "Gagal",
@@ -268,18 +278,23 @@ class ManajemenProduk(BaseDataPage):
 
     def _switch_product_view(self, index: int):
         """Switch tampilan tabel berdasarkan pilihan selector"""
+        view_name = "Satuan" if index == 0 else "Paket"
+        self.logger.info(f"Switch tampilan produk ke: {view_name} (index={index})")
         self.stack.setCurrentIndex(index)
         self.table_data()
 
     def _show_tambah_barang_dialog(self):
         """Menampilkan dialog tambah barang"""
+        self.logger.info("Membuka dialog Tambah Barang Baru")
         dialog = TambahBarangBaru(self)
         result = dialog.exec()
 
         if result == TambahBarangBaru.DialogCode.Accepted:
             jenis, data = dialog.get_data()
+            self.logger.info(f"Dialog Tambah Barang diterima — jenis: {jenis}")
 
             if jenis == "satuan":
+                self.logger.info(f"Menyimpan barang satuan baru — SKU: {data['sku']}, nama: {data['nama_barang']}, harga_jual: {data['harga_jual']}, stok: {data['stok']}")
                 barang_baru = DatabaseManager()
                 barang_baru.insert_barang_baru_satuan(
                     sku= data["sku"],
@@ -289,8 +304,10 @@ class ManajemenProduk(BaseDataPage):
                     stok= data["stok"],
                     tanggal= datetime.now(ZoneInfo("Asia/Jakarta"))
                 )
+                self.logger.info(f"Barang satuan '{data['nama_barang']}' (SKU: {data['sku']}) berhasil disimpan ke database")
                 self.table_data()
             else:
+                self.logger.info(f"Menyimpan barang paket baru — nama: {data['nama_paket']}, harga_jual: {data['harga_jual']}, konversi: {data['per_satuan']}")
                 barang_baru = DatabaseManager()
                 barang_baru.insert_barang_baru_paket(
                     nama= data["nama_paket"],
@@ -299,30 +316,45 @@ class ManajemenProduk(BaseDataPage):
                     sku= data["sku"],
                     coversion= data["per_satuan"],
                 )
+                self.logger.info(f"Barang paket '{data['nama_paket']}' berhasil disimpan ke database")
                 self.table_data()
+        else:
+            self.logger.info("Dialog Tambah Barang dibatalkan oleh user")
 
     def _show_edit_dialog(self):
+        self.logger.info("Membuka dialog Edit Produk")
         dialog = EditProduk(self)
         result = dialog.exec()
         if result == EditProduk.DialogCode.Accepted:
+            self.logger.info("Edit produk berhasil disimpan, memperbarui tabel")
             self.table_data()
+        else:
+            self.logger.info("Dialog Edit Produk dibatalkan oleh user")
 
     def _show_hapus_dialog(self):
+        self.logger.info("Membuka dialog Hapus Produk — memerlukan verifikasi auth key")
         from src.ui.auth_key_popup import AuthKeyPopup
         verify = AuthKeyPopup(self, self.db.verify_login)
         if verify.exec():
+            self.logger.info("Verifikasi auth key berhasil, membuka dialog Hapus Produk")
             dialog = HapusProdukDialog(self)
             result = dialog.exec()
             if result == HapusProdukDialog.DialogCode.Accepted:
+                self.logger.info("Produk berhasil dihapus, memperbarui tabel")
                 self.table_data()
+            else:
+                self.logger.info("Dialog Hapus Produk dibatalkan oleh user")
+        else:
+            self.logger.warning("Verifikasi auth key gagal atau dibatalkan — akses hapus produk ditolak")
 
     def _show_tambah_stok_dialog(self):
         """Menampilkan dialog tambah stok produk"""
+        self.logger.info("Membuka dialog Tambah Stok Produk")
         dialog = TambahStokDialog(self)
         result = dialog.exec_()
         if result == TambahStokDialog.DialogCode.Accepted:
             result, info = dialog.get_value()
-            self.logger.info(result)
+            self.logger.info(f"Tambah stok diterima — {result}")
             CustomMessageBox.information(self, "BERHASIL", 
                 "Sukses menambah produk: \n"
                 f"{result}."
@@ -338,10 +370,13 @@ class ManajemenProduk(BaseDataPage):
                 text_info.append(baris_teks)
 
             texts = "\n".join(text_info)
+            self.logger.debug(f"Detail tambah stok:\n{texts}")
+
             from src.services.services_produk import ServicesManajemenProduk
             services = ServicesManajemenProduk()
             payload = services.payloadtambahstok(info, texts)
             if payload is not None:
+                self.logger.info(f"Menyimpan pengeluaran tambah stok — amount: {payload['amount']}, method: {payload['method']}")
                 result = self.db.insert_pengeluaran(
                     payload["date"],
                     payload["category"],
@@ -350,21 +385,31 @@ class ManajemenProduk(BaseDataPage):
                     payload["note"]
                 )
                 if not result["success"]:
+                    self.logger.error(f"Gagal menyimpan pengeluaran tambah stok: {result['message']}")
                     CustomMessageBox.warning(self, "Error", result["message"])
+                else:
+                    self.logger.info("Pengeluaran tambah stok berhasil disimpan")
+            else:
+                self.logger.debug("Payload tambah stok kosong (None), pengeluaran tidak dicatat")
 
             self.table_data()
+        else:
+            self.logger.info("Dialog Tambah Stok dibatalkan oleh user")
 
     def table_data(self, offset=0):
         current = bool(self.search_input.property("active"))
         text = self.search_input.text().strip()
         database = DatabaseManager()
         produk = self.product_selector.currentIndex()
+        tipe = "Satuan" if produk == 0 else "Paket"
+
         if current == False or (text == "" and current == True):
             if current:
                 self.search_input.setProperty("active", not current)
                 self.search_input.style().unpolish(self.search_input)
                 self.search_input.style().polish(self.search_input)
 
+            self.logger.debug(f"Memuat data produk {tipe} — offset: {offset}")
             if produk == 0:
                 data = database.get_produk_satuan(5, offset)
                 self.table_satuan.set_data(data)
@@ -372,6 +417,7 @@ class ManajemenProduk(BaseDataPage):
                 data = database.get_produk_paket(5, offset)
                 self.table_paket.set_data(data)
         elif text != "" and current == True:
+            self.logger.debug(f"Pencarian produk {tipe} — keyword: '{text}', offset: {offset}")
             if produk == 0:
                 data = database.get_search_produk(produk, text, 5, offset)
                 self.table_satuan.set_data(data)
@@ -433,6 +479,7 @@ class ManajemenProduk(BaseDataPage):
             pass
     
     def refresh_data(self):
+        self.logger.info("Refresh data produk — reset pencarian dan halaman ke awal")
         self.table_data()
         self.search_input.clear()
         self.product_selector.setCurrentIndex(0)
