@@ -482,7 +482,7 @@ class DatabaseManager:
                 "role": decoded_token['role']
             }
         except jwt.ExpiredSignatureError as e:
-            log_error(e, context="verify_session (Expired)", logger=self.logger)
+            self.logger.warning("token sudah kadaluarsa")
             return False, "token already expired"
         except jwt.InvalidTokenError as e:
             log_error(e, context="verify_session (Invalid)", logger=self.logger)
