@@ -133,8 +133,11 @@ class AuthKeyPopup(QDialog):
 
         success, data = self.verify_callback(key)
         if success:
-            self.verified_data = data
-            self.accept()
+            self.verified_data = data['role']
+            if self.verified_data == "Super_user":
+                self.accept()
+            else:
+                self._show_error("Maaf, Anda tidak memiliki akses ke fitur ini")
         else:
             self._show_error(data if isinstance(data, str) else "Key salah. Silakan coba lagi.")
             self.key_input.clear()
